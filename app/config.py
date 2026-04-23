@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
               
     SENDGRID_API_KEY: str = ""
-    EMAIL_FROM: str = "noreply@yourapp.com"
-    EMAIL_FROM_NAME: str = "RAG System"
+    EMAIL_FROM: str = "noreply@supportmind.local"
+    EMAIL_FROM_NAME: str = "SupportMind"
 
            
     MINIO_ENDPOINT: str = "localhost:9000"
@@ -67,6 +67,7 @@ class Settings(BaseSettings):
 
          
     FRONTEND_URL: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 

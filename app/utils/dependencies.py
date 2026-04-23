@@ -25,7 +25,7 @@ async def get_current_user(
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked.")
 
     user = await db.scalar(select(User).where(User.id == payload["sub"]))
-    if not user or not user.is_active:
+    if not user or not user.is_active or user.is_deleted:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Account not found.")
     return user
 

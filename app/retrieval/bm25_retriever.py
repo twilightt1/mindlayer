@@ -41,7 +41,7 @@ class BM25Retriever:
                 Document.conversation_id == conversation_id,
                 Document.status == "ready",
                                     
-                DocumentChunk.metadata["chunk_type"].astext == "parent",
+                DocumentChunk.chunk_metadata["chunk_type"].astext == "parent",
             )
             .order_by(DocumentChunk.created_at)
         ).scalars().all()
@@ -50,7 +50,7 @@ class BM25Retriever:
             self._indexes.pop(conversation_id, None)
             return
 
-        parents = [{"id": str(c.id), "content": c.content, "metadata": c.metadata} for c in rows]
+        parents = [{"id": str(c.id), "content": c.content, "metadata": c.chunk_metadata} for c in rows]
         self.build_from_parents(conversation_id, parents)
 
     async def rebuild_async(self, db, conversation_id: str) -> None:
@@ -64,7 +64,7 @@ class BM25Retriever:
             .where(
                 Document.conversation_id == conversation_id,
                 Document.status == "ready",
-                DocumentChunk.metadata["chunk_type"].astext == "parent",
+                DocumentChunk.chunk_metadata["chunk_type"].astext == "parent",
             )
             .order_by(DocumentChunk.created_at)
         )
@@ -74,7 +74,7 @@ class BM25Retriever:
             self._indexes.pop(conversation_id, None)
             return
 
-        parents = [{"id": str(c.id), "content": c.content, "metadata": c.metadata} for c in rows]
+        parents = [{"id": str(c.id), "content": c.content, "metadata": c.chunk_metadata} for c in rows]
         self.build_from_parents(conversation_id, parents)
 
                                                                                 

@@ -110,3 +110,15 @@ class ChangePasswordRequest(BaseModel):
 
 class ChangePasswordResponse(BaseModel):
     message: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=32)
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = Field(default=None, min_length=32)
+
+
+class AuthRedirectExchangeRequest(BaseModel):
+    code: str = Field(min_length=32)

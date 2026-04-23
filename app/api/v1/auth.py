@@ -1,6 +1,8 @@
 """Auth endpoints — register, verify, login, Google OAuth, forgot password."""
 from __future__ import annotations
 import logging
+import json
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +23,7 @@ from app.schemas.auth import (
     ForgotPasswordRequest, ForgotPasswordResponse,
     ForgotPasswordOTPVerifyRequest, ForgotPasswordOTPVerifyResponse,
     ResetPasswordRequest, ResetPasswordResponse,
+    RefreshTokenRequest, LogoutRequest, AuthRedirectExchangeRequest,
     UserResponse,
 )
 from app.config import settings
@@ -68,7 +71,14 @@ async def verify_email_link(
         {"sub": str(user.id), "role": user.role, "scope": "onboarding"},
         expire_minutes=30,
     )
-    return RedirectResponse(f"{settings.FRONTEND_URL}/onboarding?token={access}")
+    redis = await get_redis()
+    exchange_code = secrets.token_urlsafe(32)
+    await redis.setex(
+        f"auth_exchange:{exchange_code}",
+        120,
+        json.dumps({"access_token": access, "refresh_token": None, "next": "onboarding"}),
+    )
+    return RedirectResponse(f"{settings.FRONTEND_URL}/onboarding?code={exchange_code}")
 
 
                                                                                 
@@ -152,21 +162,37 @@ async def google_callback(
     scope      = "onboarding" if not user.onboarding_done else "full"
     access     = create_access_token({"sub": str(user.id), "role": user.role, "scope": scope},
                                       expire_minutes=expire_min)
-    refresh    = await auth_service._create_refresh(user.id)
+    refresh    = None if not user.onboarding_done else await auth_service._create_refresh(user.id)
     dest       = "/onboarding" if not user.onboarding_done else "/chat"
-    return RedirectResponse(f"{settings.FRONTEND_URL}{dest}?token={access}&refresh={refresh}")
+    exchange_code = secrets.token_urlsafe(32)
+    await redis.setex(
+        f"auth_exchange:{exchange_code}",
+        120,
+        json.dumps({"access_token": access, "refresh_token": refresh, "next": dest.lstrip("/")}),
+    )
+    return RedirectResponse(f"{settings.FRONTEND_URL}{dest}?code={exchange_code}")
+
+
+@router.post("/exchange-code")
+async def exchange_auth_code(body: AuthRedirectExchangeRequest):
+    redis = await get_redis()
+    payload = await redis.get(f"auth_exchange:{body.code}")
+    if not payload:
+        raise HTTPException(400, detail="Authorization code invalid or expired.")
+    await redis.delete(f"auth_exchange:{body.code}")
+    return json.loads(payload)
 
 
                                                                                 
 @router.post("/refresh")
-async def refresh_token(refresh_token: str):
+async def refresh_token(body: RefreshTokenRequest):
     redis     = await get_redis()
-    user_id_b = await redis.get(f"refresh:{refresh_token}")
+    user_id_b = await redis.get(f"refresh:{body.refresh_token}")
     if not user_id_b:
         raise HTTPException(401, detail="Refresh token invalid or expired.")
 
     user_id = user_id_b
-    await redis.delete(f"refresh:{refresh_token}")
+    await redis.delete(f"refresh:{body.refresh_token}")
 
     from app.database import AsyncSessionLocal
     from app.models.user import User
@@ -174,7 +200,7 @@ async def refresh_token(refresh_token: str):
     async with AsyncSessionLocal() as db:
         user = await db.scalar(select(User).where(User.id == user_id))
 
-    if not user or not user.is_active:
+    if not user or not user.is_active or user.is_deleted:
         raise HTTPException(401, detail="Account not found.")
 
     new_access  = create_access_token({"sub": str(user.id), "role": user.role})
@@ -186,12 +212,12 @@ async def refresh_token(refresh_token: str):
 @router.post("/logout", status_code=200)
 async def logout(
     request: Request,
-    refresh_token: str|None = None,
+    body: LogoutRequest | None = None,
     current_user=Depends(get_current_user),
 ):
     redis = await get_redis()
-    if refresh_token:
-        await redis.delete(f"refresh:{refresh_token}")
+    if body and body.refresh_token:
+        await redis.delete(f"refresh:{body.refresh_token}")
 
                                         
     auth_header = request.headers.get("Authorization")

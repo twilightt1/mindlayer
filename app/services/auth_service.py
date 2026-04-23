@@ -178,7 +178,7 @@ async def login_email(db: AsyncSession, email: str, password: str) -> tuple[User
         raise HTTPException(401, detail="Invalid email or password.")
     if not user.is_verified:
         raise HTTPException(403, detail="Please verify your email first.")
-    if not user.is_active:
+    if not user.is_active or user.is_deleted:
         raise HTTPException(403, detail="Account deactivated.")
     access  = create_access_token({"sub": str(user.id), "role": user.role})
     refresh = await _create_refresh(user.id)
@@ -193,6 +193,8 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
                                    
     user = await db.scalar(select(User).where(User.google_id == sub))
     if user:
+        if user.is_deleted or not user.is_active:
+            raise HTTPException(403, detail="Account deactivated.")
         if picture and user.avatar_url != picture:
             user.avatar_url = picture
             await db.commit()
@@ -201,6 +203,8 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
                                              
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:
+        if existing.is_deleted or not existing.is_active:
+            raise HTTPException(403, detail="Account deactivated.")
         if existing.auth_provider == "email":
             raise HTTPException(409, detail="This email is registered with a password. Please log in with email.")
         existing.google_id  = sub
@@ -236,7 +240,7 @@ async def create_password_reset_session(db: AsyncSession, email: str) -> None:
     user = await db.scalar(
         select(User).where(and_(User.email == email, User.auth_provider == "email"))
     )
-    if not user or not user.is_active:
+    if not user or not user.is_active or user.is_deleted:
         return                                      
 
     await db.execute(

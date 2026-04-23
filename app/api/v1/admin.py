@@ -83,11 +83,27 @@ async def get_user_activity(
         raise HTTPException(404, detail="User not found.")
 
     total_convs = await db.scalar(select(func.count(Conversation.id)).where(Conversation.user_id == user_id))
-    total_msgs = await db.scalar(select(func.count(Message.id)).where(Message.user_id == user_id))
-    total_docs = await db.scalar(select(func.count(Document.id)).where(Document.user_id == user_id))
+    total_msgs = await db.scalar(
+        select(func.count(Message.id))
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .where(Conversation.user_id == user_id)
+    )
+    total_docs = await db.scalar(
+        select(func.count(Document.id))
+        .join(Conversation, Document.conversation_id == Conversation.id)
+        .where(Conversation.user_id == user_id)
+    )
 
-    last_msg = await db.scalar(select(func.max(Message.created_at)).where(Message.user_id == user_id))
-    last_doc = await db.scalar(select(func.max(Document.created_at)).where(Document.user_id == user_id))
+    last_msg = await db.scalar(
+        select(func.max(Message.created_at))
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .where(Conversation.user_id == user_id)
+    )
+    last_doc = await db.scalar(
+        select(func.max(Document.created_at))
+        .join(Conversation, Document.conversation_id == Conversation.id)
+        .where(Conversation.user_id == user_id)
+    )
 
     return UserActivitySummary(
         user_id=user_id,
@@ -274,8 +290,11 @@ async def retry_document(
     )
 
     await db.commit()
-                                                                                    
-    return {"message": "Document marked for retry."}
+
+    from app.tasks.ingestion_tasks import process_document
+    process_document.delay(str(doc.id))
+
+    return {"message": "Document queued for retry."}
 
 
 @router.delete("/documents/{document_id}", status_code=200)
@@ -288,14 +307,10 @@ async def delete_document(
     if not doc:
         raise HTTPException(404, detail="Document not found.")
 
-                                                                       
-                                                                           
+    conversation = await db.get(Conversation, doc.conversation_id)
+    if not conversation:
+        raise HTTPException(404, detail="Conversation not found for document.")
 
-    changes = {
-        "status": {"old": doc.status, "new": "deleted"}
-    }
-
-                                                
     filename = doc.filename
 
     await AuditService.log_action(
@@ -304,11 +319,11 @@ async def delete_document(
         action="delete_document",
         target_entity_type="document",
         target_entity_id=document_id,
-        changes={"filename": filename}
+        changes={"filename": filename, "conversation_id": str(doc.conversation_id)}
     )
 
-    await db.delete(doc)
-    await db.commit()
+    from app.services.document_service import delete_document as delete_document_service
+    await delete_document_service(db, doc, conversation)
     return {"message": "Document deleted successfully."}
 
 

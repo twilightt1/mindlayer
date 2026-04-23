@@ -94,17 +94,23 @@ async def invalidate_conversation(conversation_id: str) -> None:
 
 async def _load_from_db(db, parent_id: str, conversation_id: str) -> dict | None:
     from sqlalchemy import select
+    from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
 
     chunk = await db.scalar(
-        select(DocumentChunk).where(DocumentChunk.id == parent_id)
+        select(DocumentChunk)
+        .join(Document, DocumentChunk.document_id == Document.id)
+        .where(
+            DocumentChunk.id == parent_id,
+            Document.conversation_id == conversation_id,
+        )
     )
     if not chunk:
         return None
     return {
         "id":       str(chunk.id),
         "content":  chunk.content,
-        "metadata": chunk.metadata,
+        "metadata": chunk.chunk_metadata,
     }
 
 
@@ -114,17 +120,23 @@ async def _load_batch_from_db(
     conversation_id: str,
 ) -> dict[str, dict]:
     from sqlalchemy import select
+    from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
 
     result = await db.execute(
-        select(DocumentChunk).where(DocumentChunk.id.in_(parent_ids))
+        select(DocumentChunk)
+        .join(Document, DocumentChunk.document_id == Document.id)
+        .where(
+            DocumentChunk.id.in_(parent_ids),
+            Document.conversation_id == conversation_id,
+        )
     )
     chunks = result.scalars().all()
     return {
         str(c.id): {
             "id":       str(c.id),
             "content":  c.content,
-            "metadata": c.metadata,
+            "metadata": c.chunk_metadata,
         }
         for c in chunks
     }
