@@ -46,16 +46,28 @@ async def hallucination_agent(state: AgentState) -> AgentState:
         return state
 
     retry_count = state.get("retry_count", 0)
+    max_retries = 3
 
     if not chunks:
                                                                                                                                    
-        is_grounded = "don't know" in response.lower() or "cannot answer" in response.lower()
+        fallback_markers = (
+            "don't know",
+            "cannot answer",
+            "couldn't find information",
+            "không tìm thấy thông tin",
+            "không có thông tin",
+        )
+        is_grounded = any(marker in response.lower() for marker in fallback_markers)
         state["is_hallucination"] = not is_grounded
         state["answers_question"] = False
-        state["agent_trace"]["hallucination"] = "no_chunks_check"
+        state["agent_trace"]["hallucination"] = {
+            "grounded": is_grounded,
+            "answers": False,
+            "retry_count": retry_count,
+            "mode": "no_chunks_check",
+        }
 
-        will_save = not is_grounded or (not state["answers_question"] and retry_count >= 3)
-        if will_save:
+        if retry_count >= max_retries:
             state["response"] = "Tôi không tìm thấy thông tin về vấn đề này trong tài liệu."
         return state
 
@@ -93,8 +105,7 @@ async def hallucination_agent(state: AgentState) -> AgentState:
         state["is_hallucination"] = not is_grounded
         state["answers_question"] = answers_question
 
-        will_save = not is_grounded or (not answers_question and retry_count >= 3)
-        if will_save and (not is_grounded or not answers_question):
+        if retry_count >= max_retries and (not is_grounded or not answers_question):
             fallback = result_json.get("fallback_message")
             if fallback:
                 state["response"] = fallback
@@ -103,7 +114,8 @@ async def hallucination_agent(state: AgentState) -> AgentState:
 
         state["agent_trace"]["hallucination"] = {
             "grounded": is_grounded,
-            "answers": state["answers_question"]
+            "answers": state["answers_question"],
+            "retry_count": retry_count,
         }
 
     except Exception as e:

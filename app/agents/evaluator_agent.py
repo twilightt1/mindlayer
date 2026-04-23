@@ -30,13 +30,13 @@ async def evaluator_agent(state: AgentState) -> AgentState:
 
     if state.get("query_type") != "rag":
         state["context_relevant"] = True
-        state["agent_trace"]["evaluator"] = "skipped"
+        state["agent_trace"]["grade_docs"] = "skipped"
         return state
 
     chunks = state.get("reranked_chunks", [])
     if not chunks:
         state["context_relevant"] = False
-        state["agent_trace"]["evaluator"] = "no_chunks"
+        state["agent_trace"]["grade_docs"] = "no_chunks"
         return state
 
     query = state["query"]
@@ -74,9 +74,10 @@ async def evaluator_agent(state: AgentState) -> AgentState:
     else:
         state["context_relevant"] = False
 
-    state["agent_trace"]["evaluator"] = {
+    state["agent_trace"]["grade_docs"] = {
         "total": len(chunks),
         "kept":  len(relevant_chunks),
         "filtered": len(chunks) - len(relevant_chunks),
+        "retry_count": state.get("retry_count", 0),
     }
     return state

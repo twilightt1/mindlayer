@@ -64,6 +64,10 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
             
 async def router_agent(state: AgentState) -> AgentState:
     state.setdefault("agent_trace", {})
+    state.setdefault("retry_count", 0)
+    state.setdefault("context_relevant", True)
+    state.setdefault("is_hallucination", False)
+    state.setdefault("answers_question", True)
     query = state.get("query", "").strip()
     q_lower = query.lower()
 
@@ -132,11 +136,12 @@ async def router_agent(state: AgentState) -> AgentState:
     except Exception as e:
         log.error(f"Router LLM error: {str(e)}")
                                            
-        state["query_type"] = "chitchat"
+        fallback_intent = "rag" if state.get("has_documents") else "chitchat"
+        state["query_type"] = fallback_intent
         state["rewritten_query"] = query
-        state["search_variants"] = []
+        state["search_variants"] = [query] if fallback_intent == "rag" else []
         state["router_confidence"] = 0.0
         state["router_reasoning"] = f"Error fallback: {str(e)}"
-        state["agent_trace"]["router"] = "chitchat (error fallback)"
+        state["agent_trace"]["router"] = f"{fallback_intent} (error fallback)"
 
     return state

@@ -94,5 +94,6 @@ async def answer_agent(state: AgentState) -> AgentState:
         "model": settings.LLM_MODEL,
         "tokens": token_count,
         "context_chunks": len(state.get("reranked_chunks", [])),
+        "retry_count": state.get("retry_count", 0),
     }
     return state

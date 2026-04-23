@@ -141,6 +141,7 @@ async def retrieval_agent(state: AgentState) -> AgentState:
         "fused_children":  len(fused_children),
         "after_expansion": len(expanded),
         "final":           len(final),
+        "retry_count":     state.get("retry_count", 0),
     }
 
                                                                                

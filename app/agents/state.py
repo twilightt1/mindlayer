@@ -1,43 +1,35 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
-class AgentState(TypedDict):
-           
-    user_id:         str
+class AgentState(TypedDict, total=False):
+    user_id: str
     conversation_id: str
-    query:           str
-    rewritten_query: str                                     
+    query: str
+    rewritten_query: str
 
-            
-    query_type:      str                                                        
-    router_confidence: float                                    
-    router_reasoning:  str                                            
-    search_variants:   list[str]                                    
+    query_type: str
+    router_confidence: float
+    router_reasoning: str
+    search_variants: list[str]
 
-            
-    history:         list[dict]                                                     
+    history: list[dict[str, Any]]
 
-                                                       
-    bm25_results:    list[dict]
-    vector_results:  list[dict]
-    fused_chunks:    list[dict]                        
+    bm25_results: list[dict[str, Any]]
+    vector_results: list[dict[str, Any]]
+    fused_chunks: list[dict[str, Any]]
 
-                                                      
-    reranked_chunks: list[dict]                                          
+    reranked_chunks: list[dict[str, Any]]
 
-            
-    response:        str
-    token_count:     int
-    agent_trace:     dict                                           
+    response: str
+    token_count: int
+    agent_trace: dict[str, Any]
 
-             
-    error:           str | None
-    should_stream:   bool
-    has_documents:   bool                                          
-    document_count:  int
+    error: str | None
+    should_stream: bool
+    has_documents: bool
+    document_count: int
 
-                                  
     context_relevant: bool
     is_hallucination: bool
     answers_question: bool
-    retry_count:      int
+    retry_count: int
