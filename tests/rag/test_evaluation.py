@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 from app.agents.hallucination_agent import hallucination_agent
 from app.agents.state import AgentState
 
+pytestmark = pytest.mark.rag
+
 @pytest.mark.asyncio
 @patch("app.agents.hallucination_agent._get_client")
 async def test_hallucination_detection_pass(mock_get_client):

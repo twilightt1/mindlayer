@@ -1,149 +1,227 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from app.agents.state import AgentState
-from app.agents.graph import rag_graph
+
+from app.agents import graph
+
+pytestmark = pytest.mark.rag
+
 
 @pytest.mark.asyncio
-@patch("app.agents.answer_agent._get_client")
-@patch("app.agents.retrieval_agent.vector_search")
-@patch("app.agents.retrieval_agent.bm25_search")
-@patch("app.agents.memory_agent.memory_load_agent")
-@patch("app.agents.memory_agent.memory_save_agent")
-@patch("app.agents.router_agent.router_agent")
-@patch("app.agents.hallucination_agent.hallucination_agent")
-async def test_e2e_rag_query_flow(
-    mock_hallucination, mock_router, mock_mem_save, mock_mem_load,
-    mock_bm25, mock_vector, mock_get_client
-):
-    # Setup mocks
-    state = {
-        "query": "How do I configure the server?",
-        "conversation_id": "test_conv",
-        "history": [],
-        "document_ids": None
-    }
+async def test_e2e_rag_query_flow(monkeypatch):
+    calls: list[str] = []
 
-    # Mock the router deciding it's a RAG query
-    async def mock_router_fn(s):
-        s["query_type"] = "rag"
-        return s
-    mock_router.side_effect = mock_router_fn
+    async def router(state):
+        calls.append("router")
+        state.setdefault("agent_trace", {})
+        state["query_type"] = "rag"
+        state["has_documents"] = True
+        state["retry_count"] = 0
+        return state
 
-    # Mock memory load
-    async def mock_mem_load_fn(s):
-        return s
-    mock_mem_load.side_effect = mock_mem_load_fn
+    async def memory_load(state):
+        calls.append("memory")
+        state["history"] = []
+        return state
 
-    # Mock retrieval
-    mock_vector.return_value = [
-        {"content": "Server configuration requires a settings.json file.", "metadata": {"filename": "manual.md"}, "score": 0.9, "source": "vector"}
-    ]
-    mock_bm25.return_value = []
+    async def retrieval(state):
+        calls.append("retrieval")
+        state["reranked_chunks"] = [
+            {
+                "content": "Server configuration requires a settings.json file.",
+                "metadata": {"filename": "manual.md"},
+                "score": 0.9,
+                "source": "vector",
+            }
+        ]
+        return state
 
-    # Mock answer generation
-    mock_client = AsyncMock()
-    class MockStream:
-        async def __aiter__(self):
-            class MockChoice:
-                class MockDelta:
-                    content = "Server configuration requires a settings.json file [Source 1]."
-                delta = MockDelta()
-            class MockChunk:
-                choices = [MockChoice()]
-                usage = None
-            yield MockChunk()
+    async def grade_docs(state):
+        calls.append("grade_docs")
+        state["context_relevant"] = True
+        return state
 
-            class MockUsageChunk:
-                choices = [MockChoice()]
-                class MockUsage:
-                    total_tokens = 50
-                usage = MockUsage()
-            yield MockUsageChunk()
+    async def answer(state):
+        calls.append("answer")
+        state["response"] = "Server configuration requires a settings.json file [Source 1]."
+        return state
 
-    mock_client.chat.completions.create.return_value = MockStream()
-    mock_get_client.return_value = mock_client
+    async def grade_gen(state):
+        calls.append("grade_gen")
+        state["is_hallucination"] = False
+        state["answers_question"] = True
+        return state
 
-    # Mock hallucination grader
-    async def mock_hall_fn(s):
-        s["agent_trace"] = s.get("agent_trace", {})
-        s["agent_trace"]["hallucination"] = {"hallucinated": False, "score": 1.0}
-        return s
-    mock_hallucination.side_effect = mock_hall_fn
+    async def save(state):
+        calls.append("save")
+        return state
 
-    # Mock memory save
-    async def mock_mem_save_fn(s):
-        return s
-    mock_mem_save.side_effect = mock_mem_save_fn
+    monkeypatch.setattr(graph, "router_agent", router)
+    monkeypatch.setattr(graph, "memory_load_agent", memory_load)
+    monkeypatch.setattr(graph, "retrieval_agent", retrieval)
+    monkeypatch.setattr(graph, "evaluator_agent", grade_docs)
+    monkeypatch.setattr(graph, "answer_agent", answer)
+    monkeypatch.setattr(graph, "hallucination_agent", grade_gen)
+    monkeypatch.setattr(graph, "memory_save_agent", save)
 
-    # Execute the graph
-    result = await rag_graph.ainvoke(state)
+    test_graph = graph.build_graph()
 
-    # Verify flow
+    result = await test_graph.ainvoke(
+        {
+            "query": "How do I configure the server?",
+            "conversation_id": "test_conv",
+            "agent_trace": {},
+        }
+    )
+
+    assert calls == ["router", "memory", "retrieval", "grade_docs", "answer", "grade_gen", "save"]
     assert result["query_type"] == "rag"
-    assert len(result.get("retrieved_chunks", [])) > 0
-    assert result["response"] == "Server configuration requires a settings.json file [Source 1].Server configuration requires a settings.json file [Source 1]."
-    assert result["agent_trace"]["hallucination"]["hallucinated"] is False
+    assert result["reranked_chunks"][0]["metadata"]["filename"] == "manual.md"
+    assert result["response"] == "Server configuration requires a settings.json file [Source 1]."
+
 
 @pytest.mark.asyncio
-@patch("app.agents.answer_agent._get_client")
-@patch("app.agents.retrieval_agent.vector_search")
-@patch("app.agents.retrieval_agent.bm25_search")
-@patch("app.agents.memory_agent.memory_load_agent")
-@patch("app.agents.memory_agent.memory_save_agent")
-@patch("app.agents.router_agent.router_agent")
-@patch("app.agents.hallucination_agent.hallucination_agent")
-async def test_e2e_chitchat_flow(
-    mock_hallucination, mock_router, mock_mem_save, mock_mem_load,
-    mock_bm25, mock_vector, mock_get_client
-):
-    # Setup mocks
-    state = {
-        "query": "Hello there!",
-        "conversation_id": "test_conv",
-        "history": [],
-        "document_ids": None
-    }
+async def test_e2e_chitchat_flow_skips_memory_and_retrieval(monkeypatch):
+    calls: list[str] = []
 
-    # Mock the router deciding it's chitchat
-    async def mock_router_fn(s):
-        s["query_type"] = "chitchat"
-        return s
-    mock_router.side_effect = mock_router_fn
+    async def router(state):
+        calls.append("router")
+        state["query_type"] = "chitchat"
+        state["retry_count"] = 0
+        return state
 
-    # Mock answer generation
-    mock_client = AsyncMock()
-    class MockStream:
-        async def __aiter__(self):
-            class MockChoice:
-                class MockDelta:
-                    content = "Hi! How can I help you today?"
-                delta = MockDelta()
-            class MockChunk:
-                choices = [MockChoice()]
-                usage = None
-            yield MockChunk()
+    async def memory_load(state):
+        calls.append("memory")
+        return state
 
-    mock_client.chat.completions.create.return_value = MockStream()
-    mock_get_client.return_value = mock_client
+    async def retrieval(state):
+        calls.append("retrieval")
+        return state
 
-    # Mock hallucination grader
-    async def mock_hall_fn(s):
-        return s
-    mock_hallucination.side_effect = mock_hall_fn
+    async def grade_docs(state):
+        calls.append("grade_docs")
+        return state
 
-    # Mock memory save
-    async def mock_mem_save_fn(s):
-        return s
-    mock_mem_save.side_effect = mock_mem_save_fn
+    async def answer(state):
+        calls.append("answer")
+        state["response"] = "Hi! How can I help you today?"
+        return state
 
-    # Execute the graph
-    result = await rag_graph.ainvoke(state)
+    async def grade_gen(state):
+        calls.append("grade_gen")
+        state["is_hallucination"] = False
+        state["answers_question"] = True
+        return state
 
-    # Verify flow
+    async def save(state):
+        calls.append("save")
+        return state
+
+    monkeypatch.setattr(graph, "router_agent", router)
+    monkeypatch.setattr(graph, "memory_load_agent", memory_load)
+    monkeypatch.setattr(graph, "retrieval_agent", retrieval)
+    monkeypatch.setattr(graph, "evaluator_agent", grade_docs)
+    monkeypatch.setattr(graph, "answer_agent", answer)
+    monkeypatch.setattr(graph, "hallucination_agent", grade_gen)
+    monkeypatch.setattr(graph, "memory_save_agent", save)
+
+    test_graph = graph.build_graph()
+
+    result = await test_graph.ainvoke(
+        {
+            "query": "Hello there!",
+            "conversation_id": "test_conv",
+            "agent_trace": {},
+        }
+    )
+
+    assert calls == ["router", "answer", "grade_gen", "save"]
     assert result["query_type"] == "chitchat"
-    # Should skip memory and retrieval
-    mock_mem_load.assert_not_called()
-    mock_vector.assert_not_called()
-    mock_bm25.assert_not_called()
-
     assert result["response"] == "Hi! How can I help you today?"
+
+
+@pytest.mark.asyncio
+async def test_rag_flow_retries_retrieval_when_context_is_irrelevant(monkeypatch):
+    calls: list[str] = []
+    grade_attempts = 0
+
+    async def router(state):
+        calls.append("router")
+        state.setdefault("agent_trace", {})
+        state["query_type"] = "rag"
+        state["has_documents"] = True
+        state["retry_count"] = 0
+        return state
+
+    async def memory_load(state):
+        calls.append("memory")
+        return state
+
+    async def retrieval(state):
+        calls.append("retrieval")
+        state["reranked_chunks"] = [
+            {
+                "content": f"Retrieved context attempt {state.get('retry_count', 0)}",
+                "metadata": {"filename": "manual.md"},
+            }
+        ]
+        return state
+
+    async def grade_docs(state):
+        nonlocal grade_attempts
+        calls.append("grade_docs")
+        grade_attempts += 1
+        state["context_relevant"] = grade_attempts > 1
+        return state
+
+    async def answer(state):
+        calls.append("answer")
+        state["response"] = "Answer after retrieval retry."
+        return state
+
+    async def grade_gen(state):
+        calls.append("grade_gen")
+        state["is_hallucination"] = False
+        state["answers_question"] = True
+        return state
+
+    async def save(state):
+        calls.append("save")
+        return state
+
+    monkeypatch.setattr(graph, "router_agent", router)
+    monkeypatch.setattr(graph, "memory_load_agent", memory_load)
+    monkeypatch.setattr(graph, "retrieval_agent", retrieval)
+    monkeypatch.setattr(graph, "evaluator_agent", grade_docs)
+    monkeypatch.setattr(graph, "answer_agent", answer)
+    monkeypatch.setattr(graph, "hallucination_agent", grade_gen)
+    monkeypatch.setattr(graph, "memory_save_agent", save)
+
+    test_graph = graph.build_graph()
+
+    result = await test_graph.ainvoke(
+        {
+            "query": "How do I configure the server?",
+            "conversation_id": "test_conv",
+            "agent_trace": {},
+        }
+    )
+
+    assert calls == [
+        "router",
+        "memory",
+        "retrieval",
+        "grade_docs",
+        "retrieval",
+        "grade_docs",
+        "answer",
+        "grade_gen",
+        "save",
+    ]
+    assert result["retry_count"] == 1
+    assert result["response"] == "Answer after retrieval retry."
+    assert result["agent_trace"]["correction"] == [
+        {
+            "reason": "irrelevant_context",
+            "next_node": "retrieval",
+            "retry_count": 1,
+        }
+    ]
