@@ -1,43 +1,105 @@
 # RAG Evaluation Framework
 
-This directory contains the testing and evaluation framework for measuring the performance, reliability, and accuracy of the RAG system.
+This directory contains deterministic evaluation tooling for the SupportMind RAG demo.
+The default evaluation is **offline and CI-safe**: it uses `sample_docs/` and does
+not require the API server, database, ChromaDB, Redis, MinIO, or LLM keys.
 
 ## Components
 
-1. **Automated Test Cases (`dataset.json`)**
-   - A JSON file containing a curated "golden dataset" of realistic user queries.
-   - Each entry defines the `query`, the `ground_truth_chunks` (expected document chunk IDs that contain the answer), and the `ground_truth_answer` (the ideal response).
+| File | Purpose |
+|---|---|
+| `supportmind_eval_dataset.json` | Golden dataset of questions, expected sources, keywords, and fallback expectations. |
+| `metrics.py` | Deterministic metric helpers for source hit, keyword coverage, citations, fallback accuracy, and summaries. |
+| `reporting.py` | Markdown and JSON report generation helpers. |
+| `run_eval.py` | Offline evaluation runner that writes reports to `eval/results/`. |
+| `supportmind_offline_eval.py` | Legacy lightweight keyword sanity check kept for reference. |
 
-2. **Evaluation Script (`run_eval.py`)**
-   - An automated script that simulates the RAG pipeline against the `dataset.json`.
-   - **Metrics Calculated**:
-     - `Recall@k`: Measures whether the expected ground truth chunks were successfully retrieved in the top `k` results.
-     - `Precision@k`: Measures the proportion of the retrieved top `k` results that were actually relevant (in the ground truth set).
-     - `Correctness`: Uses an LLM-as-a-judge approach to grade the generated answer against the ground truth answer on a scale from 0 to 1 (normalized from 0-10).
-     - `Hallucination Check`: Passes the generated answer and retrieved context to the system's `hallucination_agent` to ensure the answer is fully grounded in the retrieved facts.
+## Dataset Schema
 
-## Running the Evaluation
+Each item in `supportmind_eval_dataset.json` uses this shape:
 
-To run the offline evaluation against the golden dataset:
-
-```bash
-python eval/run_eval.py
+```json
+{
+  "id": "api_auth_001",
+  "query": "How do I rotate an API key?",
+  "category": "api_auth",
+  "expected_sources": ["api_authentication_guide.md"],
+  "expected_keywords": ["rotate", "API key", "Settings", "Developer"],
+  "should_fallback": false
+}
 ```
 
-*Note: Ensure your environment variables (like `OPENROUTER_API_KEY` or `OPENAI_API_KEY` depending on your config) are set, as the script uses the LLM for correctness judging and hallucination checks.*
+Out-of-scope examples set `expected_sources` and `expected_keywords` to empty
+lists and use `should_fallback: true`.
+
+## Metrics
+
+| Metric | Meaning |
+|---|---|
+| `source_hit_rate` | Whether expected source files appeared in returned sources. |
+| `keyword_coverage` | Whether answer/source text contains expected support keywords. |
+| `citation_rate` | Whether answers include a citation marker or returned source metadata. |
+| `fallback_accuracy` | Whether out-of-scope cases fallback and in-scope cases do not. |
+| `avg_latency_ms` | Average deterministic evaluation runtime per case. |
+| `hallucination_flag_rate` | Placeholder-compatible metric for future live/API eval traces. |
+| `correction_rate` | Placeholder-compatible metric for future self-correction traces. |
+
+## Running Evaluation
+
+From the repository root:
+
+```bash
+python eval/run_eval.py --output-dir eval/results --top-k 5
+```
+
+The runner writes:
+
+- `eval/results/latest_report.md`
+- `eval/results/latest_report.json`
+
+Optional threshold checks:
+
+```bash
+python eval/run_eval.py \
+  --output-dir eval/results \
+  --top-k 5 \
+  --fail-under-source-hit 0.80 \
+  --fail-under-keyword-coverage 0.70
+```
+
+If a threshold is not met, the command exits non-zero.
+
+## Testing Metric Logic
+
+```bash
+python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py -q
+```
 
 ## Continuous Evaluation Strategy
 
-To ensure the RAG system remains reliable over time, implement the following continuous evaluation practices:
+### 1. Offline Evaluation in CI
 
-### 1. Offline Evaluation (CI/CD)
-- **Regression Testing**: Integrate `run_eval.py` into your CI/CD pipeline (e.g., GitHub Actions). Set minimum threshold assertions (e.g., `assert avg_recall >= 0.85`). If a change to the chunking strategy, embedding model, or prompt drops recall or correctness below the threshold, the build should fail.
-- **Dataset Expansion**: Continuously add failed or complex real-world queries from production into `dataset.json` to prevent future regressions.
+The default CI runs deterministic metric tests and a smoke evaluation. This gives
+fast regression coverage without infrastructure or secrets.
 
-### 2. Online Monitoring (Production)
-- **User Feedback**: Implement explicit feedback mechanisms (thumbs up/down) on generated answers in the UI.
-- **Implicit Signals**: Track metrics like session length, follow-up clarification queries, and copy-to-clipboard events to gauge answer utility.
-- **Shadow Evaluation**: Sample a percentage of production queries and run them through the `hallucination_agent` asynchronously to monitor the live hallucination rate on a dashboard (e.g., using Datadog, Grafana, or LangSmith).
+### 2. Live/API Evaluation Later
 
-### 3. Periodic A/B Testing
-- When testing a new embedding model, chunking size, or LLM, deploy it to a small percentage of traffic (e.g., 5%) and compare the online user feedback and shadow evaluation metrics against the control group before fully rolling out the change.
+For deeper end-to-end validation, add a separate non-blocking workflow that:
+
+1. Starts Postgres, Redis, ChromaDB, MinIO, API, and Celery.
+2. Uploads `sample_docs/` through the API.
+3. Waits for ingestion to complete.
+4. Sends each dataset query through `/api/v1/chat/.../message`.
+5. Scores returned sources, citations, fallback behavior, latency, and trace data.
+
+Keep that workflow separate from the default CI because it depends on service
+startup, API keys, and LLM latency.
+
+### 3. Dataset Expansion
+
+When a real query fails or produces weak citations, add it to the dataset with:
+
+- the expected source document
+- key phrases that should appear
+- whether it should fallback
+- the category impacted

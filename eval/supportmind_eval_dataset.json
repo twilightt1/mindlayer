@@ -1,0 +1,146 @@
+[
+  {
+    "id": "api_auth_001",
+    "query": "How do I rotate an API key?",
+    "category": "api_auth",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["rotate", "API key", "Settings", "Developer"],
+    "should_fallback": false
+  },
+  {
+    "id": "api_auth_002",
+    "query": "Why am I getting a 401 error?",
+    "category": "api_auth",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["401", "Authorization", "Bearer", "expired"],
+    "should_fallback": false
+  },
+  {
+    "id": "api_auth_003",
+    "query": "What endpoint refreshes an expired access token?",
+    "category": "api_auth",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["refresh", "access token", "/api/v1/auth/refresh"],
+    "should_fallback": false
+  },
+  {
+    "id": "billing_001",
+    "query": "Which plan supports SSO?",
+    "category": "billing",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["Enterprise", "SSO", "SAML", "OIDC"],
+    "should_fallback": false
+  },
+  {
+    "id": "billing_002",
+    "query": "What are the rate limits for the Pro plan?",
+    "category": "billing",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["Pro", "300", "requests per minute"],
+    "should_fallback": false
+  },
+  {
+    "id": "billing_003",
+    "query": "What happens when a payment fails?",
+    "category": "billing",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["payment fails", "7-day grace period", "upload new documents"],
+    "should_fallback": false
+  },
+  {
+    "id": "webhook_001",
+    "query": "What are the webhook retry rules?",
+    "category": "webhooks",
+    "expected_sources": ["webhook_troubleshooting.md"],
+    "expected_keywords": ["8 times", "24 hours", "exponential backoff"],
+    "should_fallback": false
+  },
+  {
+    "id": "webhook_002",
+    "query": "How do I debug failed webhook delivery?",
+    "category": "webhooks",
+    "expected_sources": ["webhook_troubleshooting.md"],
+    "expected_keywords": ["delivery attempts", "2xx", "10 seconds"],
+    "should_fallback": false
+  },
+  {
+    "id": "webhook_003",
+    "query": "Which header is used for webhook signature verification?",
+    "category": "webhooks",
+    "expected_sources": ["webhook_troubleshooting.md"],
+    "expected_keywords": ["X-SupportMind-Signature", "HMAC SHA-256", "webhook secret"],
+    "should_fallback": false
+  },
+  {
+    "id": "integration_001",
+    "query": "How do I troubleshoot failed Stripe integration?",
+    "category": "integrations",
+    "expected_sources": ["integration_guide.md"],
+    "expected_keywords": ["Stripe", "restricted key", "webhook", "signing secret"],
+    "should_fallback": false
+  },
+  {
+    "id": "integration_002",
+    "query": "What Slack permissions are required?",
+    "category": "integrations",
+    "expected_sources": ["integration_guide.md"],
+    "expected_keywords": ["Read messages", "Post answers", "citation previews"],
+    "should_fallback": false
+  },
+  {
+    "id": "release_001",
+    "query": "Which version introduced hybrid retrieval?",
+    "category": "releases",
+    "expected_sources": ["product_release_notes.md"],
+    "expected_keywords": ["2.3.0", "Hybrid Retrieval", "ChromaDB", "BM25"],
+    "should_fallback": false
+  },
+  {
+    "id": "release_002",
+    "query": "Which version added async ingestion?",
+    "category": "releases",
+    "expected_sources": ["product_release_notes.md"],
+    "expected_keywords": ["2.2.0", "Async Ingestion", "Celery", "MinIO"],
+    "should_fallback": false
+  },
+  {
+    "id": "incident_001",
+    "query": "What is the response time for a SEV-1 incident?",
+    "category": "incidents",
+    "expected_sources": ["incident_response_runbook.md"],
+    "expected_keywords": ["SEV-1", "15 minutes", "Full outage"],
+    "should_fallback": false
+  },
+  {
+    "id": "incident_002",
+    "query": "What should I check when Redis latency spikes?",
+    "category": "incidents",
+    "expected_sources": ["incident_response_runbook.md"],
+    "expected_keywords": ["connection pool", "slow commands", "worker queue", "memory pressure"],
+    "should_fallback": false
+  },
+  {
+    "id": "fallback_001",
+    "query": "How do I reset my Netflix password?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true
+  },
+  {
+    "id": "fallback_002",
+    "query": "What is the weather in Hanoi today?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true
+  },
+  {
+    "id": "fallback_003",
+    "query": "Can you recommend a gaming laptop under 1000 dollars?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true
+  }
+]

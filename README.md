@@ -1,169 +1,309 @@
-# 🚀 Hệ Thống RAG(RAG System)
+# SupportMind — Production RAG Backend for SaaS Support Teams
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/LangGraph-Stateful-orange?style=for-the-badge&logo=langchain" alt="LangGraph" />
-  <img src="https://img.shields.io/badge/ChromaDB-Vector_Store-lightgrey?style=for-the-badge" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-API-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/LangGraph-Agentic_Workflow-orange?style=for-the-badge" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/ChromaDB-Vector_Search-lightgrey?style=for-the-badge" alt="ChromaDB" />
   <img src="https://img.shields.io/badge/Docker-Infrastructure-2496ED?style=for-the-badge&logo=docker" alt="Docker" />
 </p>
 
+**SupportMind** is a production-oriented RAG backend for SaaS support teams. It
+helps support agents answer product, API, billing, integration, and
+troubleshooting questions from internal knowledge-base documents with cited,
+traceable answers.
+
+This project is designed as a backend/AI engineering portfolio project, not a
+single-file “chat with PDF” demo. It includes authentication, async document
+ingestion, object storage, vector search, BM25, reranking, Redis caching,
+Celery workers, admin APIs, and agent trace observability.
+
 ---
 
-## 🌟 Tổng Quan
+## Problem
 
-Một hệ thống backend **RAG (Retrieval-Augmented Generation)** với hiệu suất cao. Backend này sử dụng **LangGraph** để điều phối các luồng dữ liệu phức tạp, đảm bảo độ chính xác cao trong việc truy xuất, xếp hạng lại (reranking) tinh vi, và định tuyến linh hoạt các truy vấn của người dùng.
+SaaS support teams often need to search across product docs, API references,
+billing FAQs, troubleshooting playbooks, release notes, and incident runbooks.
+Answers can be slow, inconsistent, or hard to trace back to the source.
 
-Được thiết kế để có khả năng mở rộng và hiệu suất ở cấp độ sản phẩm thực tế (production-grade), hệ thống tích hợp tìm kiếm lai (hybrid search), bộ nhớ thông minh và phản hồi dạng luồng (streaming) qua SSE.
+## Solution
+
+SupportMind lets teams upload support knowledge-base documents and ask natural
+language questions. The backend retrieves relevant context with hybrid search,
+reranks the context, generates a grounded answer, and returns source metadata
+plus an `agent_trace` for debugging retrieval quality.
 
 ---
 
-## ✨ Các Tính Năng Chính
+## Key Features
 
-| Tính Năng | Mô Tả |
+| Feature | Description |
 | :--- | :--- |
-| **🤖 Luồng Làm Việc** | Điều phối nhiều bước, có trạng thái sử dụng LangGraph (Tác tử Định tuyến, Đánh giá, Ảo giác, v.v.). |
-| **🧭 Định Tuyến Động** | Phân loại thông minh các truy vấn thành `rag` (truy xuất), `chitchat` (trò chuyện), `summarize` (tóm tắt), hoặc `clarify` (làm rõ). |
-| **🔍 Tìm Kiếm Lai** | Kết hợp Tìm kiếm Ngữ nghĩa **Vector** (ChromaDB) với tìm kiếm từ vựng **BM25** thông qua RRF. |
-| **🎯 Xếp Hạng Lại (Reranking) Nâng Cao** | Tinh chỉnh cross-encoder sử dụng **Jina AI Reranker** để đạt độ chính xác hàng đầu. |
-| **🧠 Bộ Nhớ Thông Minh** | Đảm bảo tính nhất mạch trong hội thoại nhiều lượt thông qua quản lý lịch sử có trạng thái. |
-| **🔄 Tự Sửa Lỗi** | Đánh giá tính ảo giác và mức độ liên quan với khả năng tự động truy xuất lại. |
-| **🚀 Sẵn Sàng Cho Production** | Bộ đệm Redis, các tác vụ nền Celery, và lưu trữ MinIO. |
+| **JWT + Google OAuth auth** | Register, verify email, login, refresh, logout, Google OAuth, onboarding. |
+| **Async document ingestion** | Upload documents and process them in background workers with Celery. |
+| **Parent-child chunking** | Parent chunks are returned to the LLM; child chunks are embedded for retrieval. |
+| **Hybrid retrieval** | Dense vector search with ChromaDB plus lexical BM25 search fused by RRF. |
+| **Reranking** | Jina reranker selects the most relevant support snippets. |
+| **LangGraph workflow** | Router → memory → retrieval → relevance check → answer → hallucination check → save, with bounded self-correction retries. |
+| **Agent trace** | Stores routing, retrieval, reranking, and answer metadata for observability. |
+| **Admin APIs** | Manage users, documents, quotas, system settings, and audit logs. |
+| **Dockerized infra** | PostgreSQL, Redis, Celery, ChromaDB, MinIO, Flower. |
 
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+## Tech Stack
 
-- **Khung Cốt Lõi (Framework)**: [FastAPI](https://fastapi.tiangolo.com/)
-- **Điều Phối (Orchestration)**: [LangGraph](https://python.langchain.com/docs/langgraph) / [LangChain](https://python.langchain.com/)
-- **Cơ Sở Dữ Liệu Vector**: [ChromaDB](https://www.trychroma.com/)
-- **Xếp Hạng Lại (Reranker)**: [Jina AI](https://jina.ai/)
-- **Nhúng (Embedder)**: Text 3 Small (OpenAI)
-- **Cơ Sở Dữ Liệu**: [PostgreSQL](https://www.postgresql.org/) với SQLAlchemy (Bất đồng bộ)
-- **Lưu Trữ Đối Tượng (Object Storage)**: [MinIO](https://min.io/) (Tương thích S3)
-- **Bộ Nhớ Đệm & Tác Vụ**: [Redis](https://redis.io/) & [Celery](https://docs.celeryq.dev/)
-- **Cổng LLM (LLM Gateway)**: [OpenRouter](https://openrouter.ai/)
+- **API**: FastAPI, Pydantic, SQLAlchemy async
+- **Database**: PostgreSQL + Alembic
+- **Object Storage**: MinIO
+- **Cache / Queue**: Redis + Celery
+- **Vector DB**: ChromaDB
+- **Retrieval**: OpenAI embeddings, BM25, Reciprocal Rank Fusion, Jina reranker
+- **Agent Orchestration**: LangGraph
+- **LLM Gateway**: OpenRouter-compatible OpenAI SDK
+- **Testing / Tooling**: pytest, ruff, mypy
 
 ---
 
-## 📈 Kiến Trúc Hệ Thống
+## Architecture
 
 ```mermaid
 graph TD
-    User([Truy Vấn Người Dùng]) --> Rewriter[Viết Lại Truy Vấn]
-    Rewriter --> Router{Tác Tử Định Tuyến}
-    
-    Router -- rag/summarize --> Memory[Tác Tử Bộ Nhớ]
-    Router -- chitchat --> Answer[Tác Tử Trả Lời]
-    Router -- clarify --> Clarify[Nút Làm Rõ]
-    
-    Memory --> Retrieval[Tác Tử Truy Xuất]
-    Retrieval --> Evaluator[Tác Tử Đánh Giá]
-    
-    Evaluator -- không liên quan --> Retrieval
-    Evaluator -- có liên quan --> Answer
-    
-    Answer --> Hallucination[Tác Tử Ảo Giác]
-    Hallucination -- có ảo giác --> Retrieval
-    Hallucination -- dựa trên thực tế --> Save[Tác Tử Lưu Trữ]
-    
-    Clarify --> Save
-    Save --> End([Luồng Phản Hồi])
-    
-    subgraph "Tìm Kiếm Lai"
-    Retrieval -.-> Vector[Lưu Trữ Vector]
-    Retrieval -.-> BM25[Tìm Kiếm Từ Vựng]
-    end
+    User[Support agent or customer] --> API[FastAPI API]
+    API --> Auth[JWT and OAuth Auth]
+    API --> Chat[Conversation API]
+    API --> Upload[Document Upload]
+
+    Upload --> MinIO[MinIO Object Storage]
+    Upload --> Celery[Celery Ingestion Worker]
+    Celery --> Extract[Extract Text]
+    Extract --> Chunk[Parent Child Chunking]
+    Chunk --> Postgres[(PostgreSQL)]
+    Chunk --> Redis[(Redis Parent Cache)]
+    Chunk --> Chroma[(ChromaDB Child Vectors)]
+    Chunk --> BM25[In Memory BM25 Index]
+
+    Chat --> Graph[LangGraph Workflow]
+    Graph --> Router[Router Agent]
+    Router --> Memory[Memory Agent]
+    Memory --> Retrieval[Hybrid Retrieval Agent]
+    Retrieval --> Chroma
+    Retrieval --> BM25
+    Retrieval --> RRF[RRF Fusion]
+    RRF --> ParentExpansion[Parent Expansion]
+    ParentExpansion --> Reranker[Jina Reranker]
+    Reranker --> Answer[Answer Agent]
+    Answer --> Hallucination[Grounding Check]
+    Hallucination --> Save[Save Messages and Agent Trace]
+    Save --> API
 ```
 
 ---
 
-## 🚀 Bắt Đầu
+## RAG Pipeline
 
-### 1. Yêu Cầu Cần Thiết
-- Python 3.10+
-- Docker & Docker Compose
+### Ingestion
 
-### 2. Thiết Lập & Cài Đặt
+```text
+Upload support document
+→ Store original file in MinIO
+→ Celery worker extracts text
+→ Build parent and child chunks
+→ Store chunks in PostgreSQL
+→ Cache parent chunks in Redis
+→ Embed child chunks into ChromaDB
+→ Build BM25 over parent chunks
+→ Mark document as ready
+```
+
+### Query
+
+```text
+User asks support question
+→ Router classifies intent and rewrites query
+→ Memory loads recent conversation history
+→ Retrieve with BM25 + vector search
+→ Fuse results with Reciprocal Rank Fusion
+→ Expand child chunks to parent context
+→ Rerank with Jina
+→ Generate cited answer
+→ Save messages and agent trace
+```
+
+---
+
+## API Overview
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Register with email/password. |
+| `POST` | `/api/v1/auth/login` | Login and receive access/refresh tokens. |
+| `POST` | `/api/v1/auth/refresh` | Refresh token using request body. |
+| `POST` | `/api/v1/auth/exchange-code` | Exchange OAuth/email redirect code for tokens. |
+| `POST` | `/api/v1/chat/conversations` | Create support conversation. |
+| `POST` | `/api/v1/chat/conversations/{id}/documents` | Upload support document. |
+| `GET` | `/api/v1/chat/conversations/{id}/documents/{doc_id}` | Check ingestion status. |
+| `POST` | `/api/v1/chat/conversations/{id}/message` | Ask a question via SSE response. |
+| `GET` | `/api/v1/admin/stats` | Admin system statistics. |
+| `GET` | `/health` | Basic liveness check. |
+| `GET` | `/ready` | Dependency readiness check for Postgres, Redis, MinIO, and ChromaDB. |
+
+---
+
+## Quick Start
+
+### 1. Install dependencies
+
 ```bash
-# Clone kho lưu trữ
-git clone <repository-url>
-cd rag-backend
-
-# Khởi tạo Môi trường Ảo (Virtual Environment)
-python -m venv venv
-source venv/bin/activate  # Trên Windows: venv\Scripts\activate
-
-# Cài đặt các thư viện phụ thuộc
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Khởi Chạy Cơ Sở Hạ Tầng
-Khởi động các dịch vụ cần thiết (MinIO, Redis, PostgreSQL, ChromaDB) chỉ bằng một lệnh:
+### 2. Configure environment
+
 ```bash
-docker-compose up -d
+copy .env.example .env
+```
+
+Update `.env` with your OpenRouter, OpenAI, Jina, and JWT values.
+
+### 3. Start infrastructure
+
+```bash
+docker compose up -d
+```
+
+### 4. Run migrations
+
+```bash
+alembic upgrade head
+```
+
+### 5. Start the API
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Open API docs at: <http://localhost:8000/docs>
+
+---
+
+## Demo Knowledge Base
+
+The `sample_docs/` directory contains mock SaaS support documents:
+
+- API authentication guide
+- Billing and plans FAQ
+- Webhook troubleshooting guide
+- Integration guide
+- Product release notes
+- Incident response runbook
+
+Example questions:
+
+- “How do I rotate an API key?”
+- “Why am I getting a 401 error?”
+- “Which plan supports SSO?”
+- “What are the webhook retry rules?”
+- “How do I troubleshoot failed Stripe integration?”
+
+---
+
+## Evaluation
+
+The [eval](file:///d:/DL/rag-backend/rag-backend/eval) directory contains a deterministic, CI-safe evaluation pipeline for the SupportMind sample knowledge base.
+
+Run the offline evaluation:
+
+```bash
+python eval/run_eval.py --output-dir eval/results --top-k 5
+```
+
+The runner writes:
+
+- [latest_report.md](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.md)
+- [latest_report.json](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.json)
+
+Tracked metrics include:
+
+- Source hit rate
+- Keyword coverage
+- Citation rate
+- Fallback accuracy
+- Average latency
+- Hallucination flag rate
+- Self-correction rate
+
+Threshold example:
+
+```bash
+python eval/run_eval.py --fail-under-source-hit 0.80 --fail-under-keyword-coverage 0.70
 ```
 
 ---
 
-## ⚙️ Cấu Hình
+## Testing and CI
 
-Tạo tệp `.env` trong thư mục gốc:
+Fast checks that do not require Postgres, Redis, MinIO, ChromaDB, or external API keys:
 
-```env
-# 🐘 Cơ Sở Dữ Liệu
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/ragdb
-
-# 🔴 Bộ Đệm & Celery
-REDIS_URL=redis://localhost:6379/0
-CELERY_BROKER_URL=redis://localhost:6379/1
-CELERY_RESULT_BACKEND=redis://localhost:6379/2
-
-# 🤖 LLM (OpenRouter)
-OPENROUTER_API_KEY=your_openrouter_key
-LLM_MODEL=openai/gpt-4o-mini
-
-# 🎯 Jina Reranker
-JINA_API_KEY=your_jina_key
-
-# 📦 Lưu Trữ (MinIO)
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=rag-docs
-
-# 🔎 Cơ Sở Dữ Liệu Vector (ChromaDB)
-CHROMA_HOST=localhost
-CHROMA_PORT=8001
-
-# 🔑 Xác Thực
-JWT_SECRET_KEY=your_very_secret_key
-GOOGLE_CLIENT_ID=your_google_id
-GOOGLE_CLIENT_SECRET=your_google_secret
+```bash
+python -m pytest --confcutdir=tests/api tests/api/test_health_api.py -q
+python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
+python -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
+python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py -q
 ```
 
----
+Targeted lint used by CI:
 
-## 🛤️ Các API Endpoint
+```bash
+python -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py eval/run_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py
+```
 
-| Phương Thức | Endpoint | Mô Tả |
-| :--- | :--- | :--- |
-| `POST` | `/api/v1/chat/completions` | Điểm vào chính của RAG/Chat (Hỗ trợ Streaming) |
-| `POST` | `/api/v1/documents/upload` | Nhập tài liệu và nhúng (embedding) |
-| `GET` | `/api/v1/conversations` | Truy xuất lịch sử hội thoại |
-| `GET` | `/health` | Kiểm tra tình trạng hệ thống |
+Validate Docker Compose configuration:
 
----
+```bash
+docker compose config --quiet
+```
 
-## 🔍 Khả Năng Theo Dõi Tác Tử
-
-Mỗi phản hồi đều bao gồm một đối tượng siêu dữ liệu `agent_trace`. Điều này cung cấp khả năng hiển thị sâu vào:
-- **Các Quyết Định Định Tuyến**: Tại sao một luồng cụ thể được chọn.
-- **Số Liệu Truy Xuất**: Điểm số từ tìm kiếm Vector và BM25.
-- **Logic Xếp Hạng Lại**: Cách ưu tiên ngữ cảnh cuối cùng.
+Full integration tests use [tests/conftest.py](file:///d:/DL/rag-backend/rag-backend/tests/conftest.py) and expect a live Postgres test database at `ragdb_test`.
 
 ---
 
-<p align="center">
-  Được xây dựng với ❤️ dành cho Các Ứng Dụng AI Hiệu Suất Cao
-</p>
+## Security Hardening Included
+
+- CORS uses configured allowed origins instead of wildcard credentials.
+- Refresh tokens are accepted through request bodies, not query parameters.
+- OAuth/email redirects use short-lived one-time exchange codes instead of
+  exposing access/refresh tokens in URLs.
+- Soft-deleted users are blocked by auth dependencies and login flows.
+- Parent chunk DB fallback is scoped by conversation to prevent cross-conversation
+  data leakage.
+- Admin document retry re-enqueues ingestion, and admin delete uses shared cleanup
+  logic.
+
+---
+
+## What This Project Demonstrates
+
+- Production-style FastAPI backend design
+- Auth and user lifecycle implementation
+- Async background processing with Celery
+- RAG retrieval engineering beyond vector-only search
+- Parent-child chunking strategy
+- Hybrid search and reranking
+- Agent workflow orchestration with LangGraph
+- Observability through agent traces
+- Dockerized local infrastructure
+- Security/reliability audit-driven hardening
+
+---
+
+## Roadmap
+
+- Add atomic quota updates.
+- Add true token-level SSE streaming.
+- Expand CI with PostgreSQL/Redis/ChromaDB/MinIO integration services.
+- Add retrieval quality dashboards.
+- Add frontend demo for support agents.
