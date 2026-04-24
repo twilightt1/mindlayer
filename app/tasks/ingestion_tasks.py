@@ -9,10 +9,35 @@ Changes vs. original:
   - Caches PARENT chunks in Redis via parent_store
   - BM25 index built on PARENT content (better semantic units)
 """
+from __future__ import annotations
+
 import logging
+
 from app.tasks.celery_app import celery_app
 
 log = logging.getLogger(__name__)
+
+
+class IngestionStageError(RuntimeError):
+    def __init__(self, stage: str, message: str):
+        self.stage = stage
+        super().__init__(message)
+
+
+def _stage_error(stage: str, exc: Exception) -> IngestionStageError:
+    message = str(exc) or exc.__class__.__name__
+    if stage == "chroma_upsert":
+        try:
+            from app.config import settings
+
+            message = (
+                f"ChromaDB unavailable at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}. "
+                "Start docker compose service chromadb and retry ingestion. "
+                f"Original error: {message}"
+            )
+        except Exception:
+            message = f"ChromaDB unavailable. Original error: {message}"
+    return IngestionStageError(stage, message)
 
 
 @celery_app.task(
@@ -23,41 +48,53 @@ log = logging.getLogger(__name__)
     queue="ingestion",
 )
 def process_document(self, document_id: str) -> None:
+    from celery.exceptions import MaxRetriesExceededError, Retry
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
+
     from app.config import settings
 
     sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
-    engine   = create_engine(sync_url, pool_pre_ping=True)
+    engine = create_engine(sync_url, pool_pre_ping=True)
 
     with Session(engine) as db:
         try:
             _ingest(db, document_id)
         except Exception as exc:
-            db.rollback()                                                          
-            from celery.exceptions import Retry
+            db.rollback()
+            stage = getattr(exc, "stage", "unknown")
+            log.warning(
+                "Ingestion failed",
+                extra={"doc_id": document_id, "stage": stage, "error": str(exc)},
+            )
             try:
                 raise self.retry(exc=exc)
             except Retry:
-                log.warning("Ingestion failed, retrying...", extra={"doc_id": document_id, "error": str(exc)})
+                log.warning(
+                    "Ingestion retry scheduled",
+                    extra={"doc_id": document_id, "stage": stage, "error": str(exc)},
+                )
                 raise
-            except Exception as final_exc:
-                _fail(db, document_id, str(final_exc))
-                log.error("Ingestion failed permanently", extra={"doc_id": document_id, "error": str(final_exc)})
+            except MaxRetriesExceededError:
+                _fail(db, document_id, str(exc))
+                log.error(
+                    "Ingestion failed permanently",
+                    extra={"doc_id": document_id, "stage": stage, "error": str(exc)},
+                )
                 raise
 
 
 def _ingest(db, document_id: str) -> None:
-    import uuid as _uuid
+    from sqlalchemy import delete
+
+    from app import storage as minio
     from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
-    from app import storage as minio
-    from app.utils.chunker import extract_text, build_parent_child_chunks
-    from app.retrieval.vector_retriever import upsert_chunks_sync
     from app.retrieval.bm25_retriever import bm25_retriever
     from app.retrieval.parent_store import store_parents_sync
+    from app.retrieval.vector_retriever import delete_document_chunks_sync, upsert_chunks_sync
+    from app.utils.chunker import build_parent_child_chunks, extract_text
 
-                               
     doc = db.get(Document, document_id)
     if not doc:
         log.error("Document not found", extra={"doc_id": document_id})
@@ -65,81 +102,108 @@ def _ingest(db, document_id: str) -> None:
 
     conversation_id = str(doc.conversation_id)
     doc.status = "processing"
+    doc.error_msg = None
     db.commit()
 
-                 
-    file_bytes = minio.get_object_sync(doc.file_path)
+    try:
+        file_bytes = minio.get_object_sync(doc.file_path)
+    except Exception as exc:
+        raise _stage_error("minio_read", exc) from exc
 
-                     
-    text = extract_text(file_bytes, doc.mime_type)
-    if not text.strip():
-        raise ValueError("Could not extract text content from file.")
+    try:
+        text = extract_text(file_bytes, doc.mime_type)
+        if not text.strip():
+            raise ValueError("Could not extract text content from file.")
+    except Exception as exc:
+        raise _stage_error("text_extraction", exc) from exc
 
-                                    
-    parents, children = build_parent_child_chunks(
-        text=text,
-        document_id=document_id,
-        conversation_id=conversation_id,
-        filename=doc.filename,
-    )
-    if not children:
-        raise ValueError("No chunks produced from document.")
-
-                                                             
-    for p in parents:
-        db.add(DocumentChunk(
-            id=p.id,
+    try:
+        parents, children = build_parent_child_chunks(
+            text=text,
             document_id=document_id,
-            content=p.content,
-            chunk_index=p.index,
-            metadata=p.metadata,
-        ))
-    db.flush()
+            conversation_id=conversation_id,
+            filename=doc.filename,
+        )
+        if not children:
+            raise ValueError("No chunks produced from document.")
+    except Exception as exc:
+        raise _stage_error("chunking", exc) from exc
 
-                                                                              
-    for c in children:
-        db.add(DocumentChunk(
-            id=c.id,
-            document_id=document_id,
-            content=c.content,
-            chunk_index=c.index,
-            metadata=c.metadata,
-        ))
-    db.flush()
+    try:
+        delete_document_chunks_sync(conversation_id, document_id)
+        db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document_id))
+        db.flush()
+    except Exception as exc:
+        raise _stage_error("cleanup_existing_chunks", exc) from exc
 
-                                                                
-    store_parents_sync(
-        conversation_id,
-        [{"id": p.id, "content": p.content, "metadata": p.metadata} for p in parents],
-    )
+    try:
+        for parent in parents:
+            db.add(
+                DocumentChunk(
+                    id=parent.id,
+                    document_id=document_id,
+                    content=parent.content,
+                    chunk_index=parent.index,
+                    chunk_metadata=parent.metadata,
+                )
+            )
+        db.flush()
 
-                                                  
+        for child in children:
+            db.add(
+                DocumentChunk(
+                    id=child.id,
+                    document_id=document_id,
+                    content=child.content,
+                    chunk_index=child.index,
+                    chunk_metadata=child.metadata,
+                )
+            )
+        db.flush()
+    except Exception as exc:
+        raise _stage_error("db_insert_chunks", exc) from exc
+
+    try:
+        store_parents_sync(
+            conversation_id,
+            [{"id": p.id, "content": p.content, "metadata": p.metadata} for p in parents],
+        )
+    except Exception as exc:
+        raise _stage_error("redis_parent_cache", exc) from exc
+
     child_dicts = [
-        {"id": c.id, "content": c.content, "metadata": c.metadata}
-        for c in children
+        {"id": child.id, "content": child.content, "metadata": child.metadata}
+        for child in children
     ]
-    upsert_chunks_sync(conversation_id, child_dicts)
+    try:
+        upsert_chunks_sync(conversation_id, child_dicts)
+    except Exception as exc:
+        raise _stage_error("chroma_upsert", exc) from exc
 
-                                                                                      
     parent_dicts = [
-        {"id": p.id, "content": p.content, "metadata": p.metadata}
-        for p in parents
+        {"id": parent.id, "content": parent.content, "metadata": parent.metadata}
+        for parent in parents
     ]
-    bm25_retriever.build_from_parents(conversation_id, parent_dicts)
+    try:
+        bm25_retriever.build_from_parents(conversation_id, parent_dicts)
+    except Exception as exc:
+        raise _stage_error("bm25_build", exc) from exc
 
-                    
-    doc.status      = "ready"
-    doc.error_msg   = None
-    doc.chunk_count = len(parents)                                
-    db.commit()
+    doc.status = "ready"
+    doc.error_msg = None
+    doc.chunk_count = len(parents)
+    try:
+        db.commit()
+    except Exception as exc:
+        raise _stage_error("db_commit", exc) from exc
 
     log.info(
         "Ingestion complete",
         extra={
-            "doc_id":          document_id,
+            "doc_id": document_id,
             "conversation_id": conversation_id,
-            "parents":         len(parents),
-            "children":        len(children),
+            "parents": len(parents),
+            "children": len(children),
         },
     )
 
@@ -147,9 +211,10 @@ def _ingest(db, document_id: str) -> None:
 def _fail(db, document_id: str, error: str) -> None:
     try:
         from app.models.document import Document
+
         doc = db.get(Document, document_id)
         if doc:
-            doc.status    = "failed"
+            doc.status = "failed"
             doc.error_msg = error[:500]
             db.commit()
     except Exception:

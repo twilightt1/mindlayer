@@ -33,6 +33,15 @@ async def ensure_bucket() -> None:
         )
 
 
+async def bucket_exists(bucket_name: str | None = None) -> bool:
+    loop = asyncio.get_event_loop()
+    client = _get_client()
+    return await loop.run_in_executor(
+        None,
+        partial(client.bucket_exists, bucket_name or settings.MINIO_BUCKET),
+    )
+
+
 async def put_object(object_name: str, data: bytes, content_type: str) -> None:
     loop   = asyncio.get_event_loop()
     client = _get_client()

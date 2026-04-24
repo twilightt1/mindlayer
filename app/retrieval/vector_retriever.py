@@ -4,7 +4,7 @@ import chromadb
 import asyncio
 import time
 import httpx
-from typing import Callable, Any
+from typing import Callable
 from app.config import settings
 from app.retrieval.embedder import embed_texts, embed_query, embed_texts_sync
 
@@ -178,6 +178,17 @@ async def delete_document_chunks(conversation_id: str, document_id: str) -> None
             await collection.delete(ids=results["ids"])
     except Exception as e:
         log.warning("Failed to delete chunks", extra={"error": str(e)})
+
+
+def delete_document_chunks_sync(conversation_id: str, document_id: str) -> None:
+    try:
+        cli = _get_sync_client()
+        collection = cli.get_collection(_col_name(conversation_id))
+        results = collection.get(where={"document_id": {"$eq": document_id}})
+        if results["ids"]:
+            collection.delete(ids=results["ids"])
+    except Exception as e:
+        log.warning("Failed to delete chunks sync", extra={"error": str(e)})
 
 
 async def delete_conversation_collection(conversation_id: str) -> None:
