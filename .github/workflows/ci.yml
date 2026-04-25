@@ -33,18 +33,21 @@ jobs:
             app/storage.py \
             app/tasks/ingestion_tasks.py \
             app/retrieval/vector_retriever.py \
+            app/api/v1/chat.py \
+            app/api/v1/sse.py \
             eval/run_eval.py \
             eval/metrics.py \
             eval/reporting.py \
             tests/api/test_health_api.py \
+            tests/api/test_sse.py \
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
             tests/services/test_health_service.py \
             tests/eval/test_eval_metrics.py
 
-      - name: Run API health tests
-        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py -q
+      - name: Run API tests
+        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py -q
 
       - name: Run service tests
         run: python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q

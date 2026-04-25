@@ -3,8 +3,10 @@ Chat router — conversations, messages, documents (nested), SSE streaming.
 All document operations are scoped to the parent conversation.
 """
 from __future__ import annotations
-import json
+import asyncio
 import logging
+from contextlib import suppress
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -26,6 +28,7 @@ from app.agents.graph import rag_graph
 from app.agents.state import AgentState
 from app.middleware.rate_limiter import check_rate_limit
 from app.config import settings
+from app.api.v1.sse import format_sse
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 log    = logging.getLogger(__name__)
@@ -170,32 +173,110 @@ async def send_message(
     )
 
     async def event_stream():
-                                            
-        buffer: list[str] = []
+        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        final_state: dict[str, Any] = {}
+        tokens_emitted = False
 
-        try:
-            async for event in rag_graph.astream(state):
-                node = list(event.keys())[0]
-                data = event[node]
+        async def emit(data: dict[str, Any], event: str | None = None) -> None:
+            await queue.put({"event": event, "data": data})
 
-                if node == "save":
-                                                                                     
-                    current_response = data.get("response", "")
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': current_response})}\n\n"
+        async def stream_token(delta: str) -> None:
+            nonlocal tokens_emitted
+            if not delta:
+                return
+            tokens_emitted = True
+            await emit(
+                {
+                    "type": "token",
+                    "content": delta,
+                    "retry_count": state.get("retry_count", 0),
+                },
+                event="token",
+            )
 
-                    sources = [
+        state["_stream_callback"] = stream_token
+
+        async def run_graph() -> None:
+            nonlocal tokens_emitted
+            try:
+                await emit({"type": "status", "stage": "started"}, event="status")
+                async for event in rag_graph.astream(state):
+                    node, data = next(iter(event.items()))
+                    if isinstance(data, dict):
+                        final_state.update(data)
+
+                    await emit(
                         {
-                            "content":  c.get("content", "")[:200],
-                            "filename": c.get("metadata", {}).get("filename", ""),
-                            "score":    round(c.get("rerank_score", 0), 4),
-                        }
-                        for c in data.get("reranked_chunks", [])
-                    ]
-                    yield f"data: {json.dumps({'type': 'done', 'sources': sources})}\n\n"
+                            "type": "status",
+                            "stage": node,
+                            "retry_count": final_state.get("retry_count", 0),
+                        },
+                        event="status",
+                    )
 
-        except Exception as e:
-            log.error("Stream error", extra={"error": str(e)})
-            yield f"data: {json.dumps({'type': 'error', 'message': 'An error occurred.'})}\n\n"
+                    if node == "answer" and not tokens_emitted:
+                        response = final_state.get("response", "")
+                        if response:
+                            tokens_emitted = True
+                            await emit(
+                                {
+                                    "type": "token",
+                                    "content": response,
+                                    "retry_count": final_state.get("retry_count", 0),
+                                    "mode": "fallback_full_response",
+                                },
+                                event="token",
+                            )
+
+                    if node == "save":
+                        sources = [
+                            {
+                                "content": c.get("content", "")[:200],
+                                "filename": c.get("metadata", {}).get("filename", ""),
+                                "score": round(c.get("rerank_score", 0), 4),
+                            }
+                            for c in final_state.get("reranked_chunks", [])
+                        ]
+                        await emit({"type": "sources", "sources": sources}, event="sources")
+                        await emit(
+                            {
+                                "type": "trace",
+                                "agent_trace": final_state.get("agent_trace", {}),
+                            },
+                            event="trace",
+                        )
+                        await emit(
+                            {
+                                "type": "done",
+                                "sources": sources,
+                                "token_count": final_state.get("token_count", 0),
+                                "retry_count": final_state.get("retry_count", 0),
+                            },
+                            event="done",
+                        )
+                if "response" not in final_state:
+                    await emit({"type": "done", "sources": []}, event="done")
+            except Exception as e:
+                log.error("Stream error", extra={"error": str(e)})
+                await emit(
+                    {"type": "error", "message": "An error occurred."},
+                    event="error",
+                )
+            finally:
+                await queue.put(None)
+
+        graph_task = asyncio.create_task(run_graph())
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield format_sse(item["data"], event=item.get("event"))
+        finally:
+            if not graph_task.done():
+                graph_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await graph_task
 
     return StreamingResponse(
         event_stream(),

@@ -126,8 +126,10 @@ User asks support question
 → Fuse results with Reciprocal Rank Fusion
 → Expand child chunks to parent context
 → Rerank with Jina
-→ Generate cited answer
+→ Stream cited answer tokens over SSE
+→ Validate grounding and answer quality
 → Save messages and agent trace
+→ Emit sources, trace, and done events
 ```
 
 ---
@@ -143,10 +145,38 @@ User asks support question
 | `POST` | `/api/v1/chat/conversations` | Create support conversation. |
 | `POST` | `/api/v1/chat/conversations/{id}/documents` | Upload support document. |
 | `GET` | `/api/v1/chat/conversations/{id}/documents/{doc_id}` | Check ingestion status. |
-| `POST` | `/api/v1/chat/conversations/{id}/message` | Ask a question via SSE response. |
+| `POST` | `/api/v1/chat/conversations/{id}/message` | Ask a question via token-level SSE response. |
 | `GET` | `/api/v1/admin/stats` | Admin system statistics. |
 | `GET` | `/health` | Basic liveness check. |
 | `GET` | `/ready` | Dependency readiness check for Postgres, Redis, MinIO, and ChromaDB. |
+
+### Chat SSE Event Contract
+
+`POST /api/v1/chat/conversations/{id}/message` returns `text/event-stream` frames:
+
+```text
+event: status
+data: {"type":"status","stage":"retrieval","retry_count":0}
+
+event: token
+data: {"type":"token","content":"SupportMind","retry_count":0}
+
+event: sources
+data: {"type":"sources","sources":[...]}
+
+event: trace
+data: {"type":"trace","agent_trace":{...}}
+
+event: done
+data: {"type":"done","sources":[...],"token_count":123,"retry_count":0}
+```
+
+Errors are emitted as:
+
+```text
+event: error
+data: {"type":"error","message":"An error occurred."}
+```
 
 ---
 

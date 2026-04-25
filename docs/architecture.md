@@ -39,6 +39,8 @@ Evaluates the `reranked_chunks` against the user's `query`.
 
 ### 5. Answer Agent (`answer`) - *Generator*
 Generates the final response using the user's query, conversation history, and the `reranked_chunks`.
+When the chat API sets `_stream_callback` in `AgentState`, streamed LLM deltas are emitted immediately as token-level SSE `token` events while the graph continues running.
+After validation and save, the API emits `sources`, `trace`, and `done` events.
 
 ### 6. Hallucination & Answer Checker Agent (`grade_gen`) - *Validator*
 Evaluates the generated `response` against the retrieved `reranked_chunks` and the user's `query`.
