@@ -171,6 +171,24 @@ Reports are written to [latest_report.md](file:///d:/DL/rag-backend/rag-backend/
 These tests use mocks/monkeypatching and do not need Postgres, Redis, MinIO,
 ChromaDB, or external LLM/API credentials.
 
+### Live integration tests
+
+Live tests exercise real Postgres, Redis, ChromaDB, and MinIO services. They are
+marked `requires_infra` and skipped unless `RUN_LIVE_INTEGRATION=1` is set.
+
+```powershell
+copy .env.test.example .env.test
+docker compose up -d postgres redis chromadb minio
+$env:RUN_LIVE_INTEGRATION="1"
+.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/integration tests/integration -q
+```
+
+To clean up the local service volumes afterwards:
+
+```powershell
+docker compose down -v
+```
+
 ### Full test suite
 
 The full suite expects a local test database at the URL configured in

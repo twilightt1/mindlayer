@@ -233,6 +233,25 @@ uvicorn app.main:app --reload
 
 Open API docs at: <http://localhost:8000/docs>
 
+### Live Integration Tests
+
+Phase 7 adds optional live-service tests for Postgres, Redis, ChromaDB, and
+MinIO. They are skipped unless explicitly enabled:
+
+```bash
+copy .env.test.example .env.test
+docker compose up -d postgres redis chromadb minio
+set RUN_LIVE_INTEGRATION=1
+python -m pytest --confcutdir=tests/integration tests/integration -q
+```
+
+On PowerShell, use:
+
+```powershell
+$env:RUN_LIVE_INTEGRATION="1"
+.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/integration tests/integration -q
+```
+
 ---
 
 ## Demo Knowledge Base
