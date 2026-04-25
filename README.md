@@ -178,6 +178,21 @@ event: error
 data: {"type":"error","message":"An error occurred."}
 ```
 
+Manual streaming test with curl:
+
+```bash
+curl -N \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST "http://localhost:8000/api/v1/chat/conversations/$CONVERSATION_ID/message" \
+  -d '{"query":"How do I rotate an API key?"}'
+```
+
+Frontend clients should append `token` event content to the visible answer, display
+`status` retry events as progress indicators, and render `sources`/`trace` after
+`done`.
+
+
 ---
 
 ## Quick Start

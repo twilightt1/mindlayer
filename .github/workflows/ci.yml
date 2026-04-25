@@ -40,6 +40,7 @@ jobs:
             eval/reporting.py \
             tests/api/test_health_api.py \
             tests/api/test_sse.py \
+            tests/api/test_chat_streaming.py \
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
@@ -47,7 +48,7 @@ jobs:
             tests/eval/test_eval_metrics.py
 
       - name: Run API tests
-        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py -q
+        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py -q
 
       - name: Run service tests
         run: python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q

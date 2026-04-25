@@ -205,11 +205,15 @@ async def send_message(
                     if isinstance(data, dict):
                         final_state.update(data)
 
+                    retry_count = final_state.get("retry_count", 0)
+                    is_retry_stage = node.startswith("retry_") or node.startswith("record_")
                     await emit(
                         {
                             "type": "status",
                             "stage": node,
-                            "retry_count": final_state.get("retry_count", 0),
+                            "retry_count": retry_count,
+                            "attempt": retry_count + 1,
+                            "category": "retry" if is_retry_stage else "progress",
                         },
                         event="status",
                     )
