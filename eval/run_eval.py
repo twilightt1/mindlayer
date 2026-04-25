@@ -184,18 +184,43 @@ def run_evaluation(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run SupportMind deterministic RAG evaluation.")
+    parser = argparse.ArgumentParser(description="Run SupportMind RAG evaluation.")
+    parser.add_argument("--mode", choices=("offline", "live-api"), default="offline")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--sample-docs", type=Path, default=DEFAULT_SAMPLE_DOCS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--fail-under-source-hit", type=float, default=0.0)
     parser.add_argument("--fail-under-keyword-coverage", type=float, default=0.0)
+    parser.add_argument("--api-base-url", default="http://localhost:8000")
+    parser.add_argument("--email", default=None)
+    parser.add_argument("--password", default=None)
+    parser.add_argument("--access-token", default=None)
+    parser.add_argument("--document-poll-timeout-seconds", type=float, default=120.0)
+    parser.add_argument("--document-poll-interval-seconds", type=float, default=2.0)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.mode == "live-api":
+        from eval.live_api_eval import LiveApiEvalConfig, run_live_api_evaluation
+
+        run_live_api_evaluation(
+            LiveApiEvalConfig(
+                api_base_url=args.api_base_url,
+                dataset_path=args.dataset,
+                sample_docs_dir=args.sample_docs,
+                output_dir=args.output_dir,
+                email=args.email,
+                password=args.password,
+                access_token=args.access_token,
+                document_poll_timeout_seconds=args.document_poll_timeout_seconds,
+                document_poll_interval_seconds=args.document_poll_interval_seconds,
+            )
+        )
+        return 0
+
     run_evaluation(
         dataset_path=args.dataset,
         sample_docs_dir=args.sample_docs,

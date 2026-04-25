@@ -277,18 +277,34 @@ Example questions:
 
 ## Evaluation
 
-The [eval](file:///d:/DL/rag-backend/rag-backend/eval) directory contains a deterministic, CI-safe evaluation pipeline for the SupportMind sample knowledge base.
+The [eval](file:///d:/DL/rag-backend/rag-backend/eval) directory contains both a deterministic offline evaluator and an optional live API evaluator for the SupportMind sample knowledge base.
 
-Run the offline evaluation:
+Run the default CI-safe offline evaluation:
 
 ```bash
-python eval/run_eval.py --output-dir eval/results --top-k 5
+python eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 ```
 
-The runner writes:
+Run the opt-in live API evaluation after the API, Celery worker, and Docker-backed services are running:
+
+```bash
+python eval/run_eval.py --mode live-api \
+  --api-base-url http://localhost:8000 \
+  --email eval-user@example.com \
+  --password EvalPassword123! \
+  --sample-docs sample_docs \
+  --output-dir eval/results
+```
+
+The offline runner writes:
 
 - [latest_report.md](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.md)
 - [latest_report.json](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.json)
+
+The live API runner writes:
+
+- `eval/results/live_api_report.md`
+- `eval/results/live_api_report.json`
 
 Tracked metrics include:
 
@@ -313,16 +329,16 @@ python eval/run_eval.py --fail-under-source-hit 0.80 --fail-under-keyword-covera
 Fast checks that do not require Postgres, Redis, MinIO, ChromaDB, or external API keys:
 
 ```bash
-python -m pytest --confcutdir=tests/api tests/api/test_health_api.py -q
+python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py -q
 python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
 python -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
-python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py -q
+python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
 ```
 
 Targeted lint used by CI:
 
 ```bash
-python -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py eval/run_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py
+python -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/integration
 ```
 
 Validate Docker Compose configuration:

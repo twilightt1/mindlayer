@@ -154,16 +154,16 @@ celery -A app.tasks.celery_app beat -l INFO --scheduler celery.beat:PersistentSc
 ### CI-safe tests that do not need infrastructure
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/api tests/api/test_health_api.py -q
+.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py -q
 .\.venv\Scripts\python.exe -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
 .\.venv\Scripts\python.exe -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
-.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py -q
+.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
 ```
 
 Run the deterministic RAG evaluation report:
 
 ```powershell
-.\.venv\Scripts\python.exe eval/run_eval.py --output-dir eval/results --top-k 5
+.\.venv\Scripts\python.exe eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 ```
 
 Reports are written to [latest_report.md](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.md) and [latest_report.json](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.json).
@@ -189,6 +189,34 @@ To clean up the local service volumes afterwards:
 docker compose down -v
 ```
 
+### Live API RAG evaluation
+
+Live API evaluation exercises the real API, document upload/ingestion, SSE chat
+streaming, returned sources, and trace metadata. Start the API and Celery worker
+first, then run one of these commands:
+
+```powershell
+.\.venv\Scripts\python.exe eval/run_eval.py --mode live-api `
+  --api-base-url http://localhost:8000 `
+  --email eval-user@example.com `
+  --password EvalPassword123! `
+  --sample-docs sample_docs `
+  --output-dir eval/results
+```
+
+Or use an existing bearer token:
+
+```powershell
+.\.venv\Scripts\python.exe eval/run_eval.py --mode live-api `
+  --api-base-url http://localhost:8000 `
+  --access-token $env:ACCESS_TOKEN `
+  --sample-docs sample_docs `
+  --output-dir eval/results
+```
+
+Reports are written to `eval/results/live_api_report.md` and
+`eval/results/live_api_report.json`.
+
 ### Full test suite
 
 The full suite expects a local test database at the URL configured in
@@ -203,7 +231,7 @@ pytest tests/ -v
 Targeted lint used by CI:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py eval/run_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py
+.\.venv\Scripts\python.exe -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/integration
 ```
 
 Full-repo lint is still stricter and may expose legacy style issues:
