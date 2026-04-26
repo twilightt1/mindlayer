@@ -1,11 +1,16 @@
 import logging
+import re
+import time
+
 from openai import AsyncOpenAI
+
 from app.agents.state import AgentState
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 _client: AsyncOpenAI | None = None
+
 
 def _get_client() -> AsyncOpenAI:
     global _client
@@ -30,25 +35,54 @@ Format example:
 "Thời hạn bảo hành là 12 tháng [Source 1]. Điều kiện áp dụng bao gồm... [Source 2]."
 """
 
+CITATION_RE = re.compile(r"\[source\s*\d+\]", re.IGNORECASE)
+VIETNAMESE_HINTS = (
+    "à", "á", "ạ", "ả", "ã", "â", "ầ", "ấ", "ậ", "ẩ", "ẫ", "ă", "ằ", "ắ", "ặ", "ẳ", "ẵ",
+    "è", "é", "ẹ", "ẻ", "ẽ", "ê", "ề", "ế", "ệ", "ể", "ễ", "ì", "í", "ị", "ỉ", "ĩ",
+    "ò", "ó", "ọ", "ỏ", "õ", "ô", "ồ", "ố", "ộ", "ổ", "ỗ", "ơ", "ờ", "ớ", "ợ", "ở", "ỡ",
+    "ù", "ú", "ụ", "ủ", "ũ", "ư", "ừ", "ứ", "ự", "ử", "ữ", "ỳ", "ý", "ỵ", "ỷ", "ỹ", "đ",
+)
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((time.perf_counter() - start) * 1000, 2)
+
+
+def _safe_generation_error(query: str) -> str:
+    if any(char in query.casefold() for char in VIETNAMESE_HINTS):
+        return "Xin lỗi, tôi chưa thể tạo câu trả lời lúc này. Vui lòng thử lại."
+    return "Sorry, I couldn't generate an answer right now. Please try again."
+
+
+def _record_citation_trace(state: AgentState) -> None:
+    response = state.get("response", "")
+    source_count = len(state.get("reranked_chunks", []))
+    state.setdefault("agent_trace", {})["citation"] = {
+        "has_citation": bool(CITATION_RE.search(response)),
+        "source_count": source_count,
+        "required": state.get("query_type") == "rag" and source_count > 0,
+    }
+
 
 async def answer_agent(state: AgentState) -> AgentState:
     state.setdefault("agent_trace", {})
+    total_start = time.perf_counter()
+    first_token_ms: float | None = None
 
-                                        
     if state.get("query_type") == "summarize" and state.get("reranked_chunks"):
         context_parts = []
-        for i, chunk in enumerate(state["reranked_chunks"], 1):
+        for chunk in state["reranked_chunks"]:
             fname = chunk.get("metadata", {}).get("filename", "unknown")
             context_parts.append(f"=== DOCUMENT: {fname} ===\n{chunk['content']}\n=== END OF {fname} ===")
         context = "\n\n".join(context_parts)
-        system  = f"You are an expert analyst. The user has provided the full text of one or more documents below. Please provide a comprehensive, well-structured summary of these documents. DO NOT complain about the text being disjointed, because it is the full document text reconstructed. Just summarize it.\nIMPORTANT: You MUST respond in the EXACT SAME LANGUAGE as the user's request.\n\n{context}"
+        system = f"You are an expert analyst. The user has provided the full text of one or more documents below. Please provide a comprehensive, well-structured summary of these documents. DO NOT complain about the text being disjointed, because it is the full document text reconstructed. Just summarize it.\nIMPORTANT: You MUST respond in the EXACT SAME LANGUAGE as the user's request.\n\n{context}"
     elif state.get("query_type") == "rag" and state.get("reranked_chunks"):
         context_parts = []
         for i, chunk in enumerate(state["reranked_chunks"], 1):
             fname = chunk.get("metadata", {}).get("filename", "unknown")
             context_parts.append(f"[Source {i} - {fname}]\n{chunk['content']}")
         context = "\n\n---\n\n".join(context_parts)
-        system  = f"{SYSTEM_PROMPT}\n\nContext:\n{context}"
+        system = f"{SYSTEM_PROMPT}\n\nContext:\n{context}"
     else:
         system = SYSTEM_PROMPT
 
@@ -58,7 +92,8 @@ async def answer_agent(state: AgentState) -> AgentState:
     messages.append({"role": "user", "content": state["query"]})
 
     full_response = ""
-    token_count   = 0
+    token_count = 0
+    error: str | None = None
 
     try:
         stream = await _get_client().chat.completions.create(
@@ -75,8 +110,10 @@ async def answer_agent(state: AgentState) -> AgentState:
 
         async for chunk in stream:
             delta = chunk.choices[0].delta.content or ""
+            if delta and first_token_ms is None:
+                first_token_ms = _elapsed_ms(total_start)
             full_response += delta
-                                                                             
+
             cb = state.get("_stream_callback")
             if cb:
                 await cb(delta)
@@ -86,14 +123,20 @@ async def answer_agent(state: AgentState) -> AgentState:
 
     except Exception as e:
         log.error("LLM error", extra={"error": str(e)})
-        full_response = f"Sorry, I encountered an error while generating a response. Error: {str(e)}"
+        error = str(e)
+        full_response = _safe_generation_error(state.get("query", ""))
 
-    state["response"]    = full_response
+    state["response"] = full_response
     state["token_count"] = token_count
     state["agent_trace"]["answer"] = {
         "model": settings.LLM_MODEL,
         "tokens": token_count,
         "context_chunks": len(state.get("reranked_chunks", [])),
         "retry_count": state.get("retry_count", 0),
+        "latency_ms": _elapsed_ms(total_start),
+        "first_token_ms": first_token_ms,
     }
+    if error:
+        state["agent_trace"]["answer"]["error"] = error
+    _record_citation_trace(state)
     return state

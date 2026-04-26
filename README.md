@@ -40,10 +40,10 @@ metadata plus an `agent_trace` for debugging retrieval quality.
 | **Auth** | Email registration, OTP/link verification, login, refresh, logout, Google OAuth, onboarding. |
 | **User lifecycle** | Profile endpoints, soft-delete-aware auth, verified/onboarded access gates. |
 | **Documents** | Conversation-scoped uploads, MinIO storage, Celery ingestion, status polling, cleanup. |
-| **RAG retrieval** | Parent-child chunking, OpenAI embeddings, ChromaDB vector search, BM25, RRF fusion, Jina reranking. |
+| **RAG retrieval** | Parent-child chunking, OpenAI embeddings, ChromaDB vector search, BM25 lazy rebuild, RRF fusion, Jina reranking. |
 | **Agent workflow** | LangGraph routing, memory loading, retrieval, relevance grading, answer generation, hallucination checks, bounded retries. |
 | **Streaming** | `text/event-stream` status, token, sources, trace, done, and error events. |
-| **Observability** | Agent trace metadata, `/ready`, admin-only diagnostics, Celery and ingestion visibility. |
+| **Observability** | Agent trace metadata, retrieval timing, citation trace, `/ready`, admin-only diagnostics, Celery and ingestion visibility. |
 | **Admin** | User/document/quota/settings management, document retry/delete, system stats, diagnostics. |
 | **Quality** | CI-safe API/service/RAG/eval/config tests, live-service integration tests, offline and live API eval modes. |
 | **Deployment** | Dockerized infra, production compose overlay, non-root Docker image, production config guardrails, runbooks. |
@@ -115,12 +115,15 @@ User asks support question
 → Rate limit and quota checks
 → Router classifies intent
 → Memory loads conversation history
+→ Conversation-scoped query cache lookup
+→ Lazy rebuild BM25 in API process when needed
 → BM25 + vector retrieval
 → Reciprocal Rank Fusion
 → Parent expansion
 → Jina reranking
 → Stream answer tokens over SSE
 → Validate grounding and answer quality
+→ Record retrieval timing, citation trace, and evaluator failure mode
 → Persist messages and agent trace
 → Emit sources, trace, and done events
 ```
@@ -285,14 +288,14 @@ Fast checks that do not require external infrastructure:
 python -m pytest --confcutdir=tests/config tests/config/test_settings_validation.py -q
 python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py -q
 python -m pytest --confcutdir=tests/services tests/services/test_health_service.py tests/services/test_diagnostics_service.py -q
-python -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
+python -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/test_ai_hardening.py -q
 python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
 ```
 
 Targeted lint used by CI:
 
 ```bash
-python -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/services/diagnostics_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py app/api/v1/admin.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/test_diagnostics_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
+python -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/services/diagnostics_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval app/api/v1/chat.py app/api/v1/sse.py app/api/v1/admin.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/test_ai_hardening.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/test_diagnostics_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
 ```
 
 Live integration tests are opt-in and expect Postgres, Redis, ChromaDB, and

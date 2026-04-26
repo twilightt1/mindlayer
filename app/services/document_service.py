@@ -48,7 +48,10 @@ async def upload_document(db: AsyncSession, conversation: Conversation, file: Up
     await db.commit()
     await db.refresh(doc)
 
+    from app.retrieval.retrieval_cache import invalidate_query_cache
     from app.tasks.ingestion_tasks import process_document
+
+    await invalidate_query_cache(str(conversation.id))
     process_document.delay(str(doc.id))
 
     log.info("Document uploaded", extra={"doc_id": doc_id, "conversation_id": str(conversation.id)})
@@ -78,8 +81,9 @@ async def get_document(db: AsyncSession, document_id: UUID, conversation_id: UUI
 
 async def delete_document(db: AsyncSession, document: Document, conversation: Conversation) -> None:
     from app import storage
-    from app.retrieval.vector_retriever import delete_document_chunks
     from app.retrieval.bm25_retriever import bm25_retriever
+    from app.retrieval.retrieval_cache import invalidate_query_cache
+    from app.retrieval.vector_retriever import delete_document_chunks
 
               
     try:
@@ -97,4 +101,5 @@ async def delete_document(db: AsyncSession, document: Document, conversation: Co
 
                      
     await bm25_retriever.rebuild_async(db, str(conversation.id))
+    await invalidate_query_cache(str(conversation.id))
     log.info("Document deleted", extra={"doc_id": str(document.id)})

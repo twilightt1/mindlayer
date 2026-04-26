@@ -117,8 +117,9 @@ sequenceDiagram
     API-->>Client: SSE status=start
     API->>Graph: Start AgentState
     Graph->>DB: Load conversation memory
+    Graph->>Redis: Query cache lookup
+    Graph->>DB: Lazy rebuild BM25 index if API worker has no in-memory index
     Graph->>Chroma: Vector retrieval
-    Graph->>Redis: Parent cache lookup
     Graph->>Graph: BM25 + RRF + parent expansion
     Graph->>Jina: Rerank candidate context
     Graph->>LLM: Generate grounded answer
@@ -128,6 +129,22 @@ sequenceDiagram
     Graph->>DB: Save messages + agent trace
     API-->>Client: SSE sources + trace + done
 ```
+
+## AI Runtime Hardening
+
+- BM25 indexes are in-memory per process, so API workers lazily rebuild missing
+  indexes from PostgreSQL before lexical search. This keeps hybrid retrieval
+  effective even when Celery ingestion built BM25 in a separate worker process.
+- Retrieval query cache keys are conversation-scoped and invalidated on document
+  upload, delete, ingestion success, and ingestion failure.
+- `agent_trace` includes retrieval cache mode, BM25 rebuild metadata, BM25/vector
+  result counts, parent expansion counts, citation status, answer latency, and
+  retrieval timing breakdowns.
+- Embeddings are batched with `EMBED_BATCH_SIZE` to avoid provider request-size
+  limits while preserving output order.
+- `EVALUATOR_FAILURE_MODE` controls grader failures:
+  - `warn_only` / `fail_open`: keep answers flowing and trace evaluator errors.
+  - `fail_closed`: treat evaluator errors as unsafe/irrelevant for stricter use.
 
 ### Operations Flow
 
@@ -168,3 +185,5 @@ sequenceDiagram
 - `/ready` is a dependency readiness gate.
 - `/api/v1/admin/diagnostics` is an authenticated operator view.
 - Offline eval is deterministic and CI-safe; live API eval is opt-in.
+- BM25 runtime consistency, query cache invalidation, citation trace, and timing
+  metadata are part of the AI runtime hardening layer.

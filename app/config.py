@@ -51,11 +51,15 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     EMBED_MODEL: str = "text-embedding-3-small"
     EMBED_DIMENSIONS: int = 1536
+    EMBED_BATCH_SIZE: int = 64
 
                      
     JINA_API_KEY: str = ""
     JINA_RERANKER_MODEL: str = "jina-reranker-v2-base-multilingual"
     JINA_RERANKER_TOP_N: int = 5
+
+                         
+    EVALUATOR_FAILURE_MODE: str = "warn_only"
 
             
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
@@ -80,6 +84,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_environment_settings(self):
         self.ENVIRONMENT = self.ENVIRONMENT.casefold()
+        self.EVALUATOR_FAILURE_MODE = self.EVALUATOR_FAILURE_MODE.casefold()
+        self._validate_ai_runtime_settings()
         if self.is_production:
             self._validate_production_settings()
         else:
@@ -88,6 +94,15 @@ class Settings(BaseSettings):
             if not self.MINIO_SECRET_KEY:
                 self.MINIO_SECRET_KEY = "minioadmin"
         return self
+
+    def _validate_ai_runtime_settings(self) -> None:
+        if self.EMBED_BATCH_SIZE < 1 or self.EMBED_BATCH_SIZE > 2048:
+            raise ValueError("EMBED_BATCH_SIZE must be between 1 and 2048")
+        allowed_modes = {"warn_only", "fail_open", "fail_closed"}
+        if self.EVALUATOR_FAILURE_MODE not in allowed_modes:
+            raise ValueError(
+                "EVALUATOR_FAILURE_MODE must be one of: warn_only, fail_open, fail_closed"
+            )
 
     def _validate_production_settings(self) -> None:
         self._require_strong_jwt_secret()

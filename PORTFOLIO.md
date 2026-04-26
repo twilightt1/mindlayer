@@ -40,6 +40,10 @@ agent trace for debugging.
 - Parent-child chunking: child chunks are embedded for precision; parent chunks
   are expanded as LLM context for readability.
 - Hybrid retrieval: ChromaDB vector search + BM25 lexical search.
+- API-process BM25 lazy rebuild so hybrid retrieval remains consistent when
+  Celery ingestion runs in a separate worker process.
+- Conversation-scoped retrieval cache invalidation on document changes and
+  ingestion completion/failure.
 - Reciprocal Rank Fusion to merge retrieval strategies.
 - Jina reranker to select the highest-quality snippets.
 - LangGraph workflow with routing, memory, retrieval, relevance grading, answer
@@ -75,6 +79,8 @@ agent trace for debugging.
 - Offline deterministic RAG evaluator.
 - Optional live API evaluator that exercises upload, ingestion, SSE chat,
   sources, and trace metadata.
+- Agent trace includes retrieval timing, BM25 rebuild metadata, citation status,
+  evaluator failure mode, and answer latency.
 - Targeted ruff lint in CI.
 
 ## Architecture Summary
@@ -88,7 +94,8 @@ FastAPI API
 → parent-child chunking
 → ChromaDB vector index + BM25 lexical index
 → LangGraph corrective RAG workflow
-→ SSE cited answer + sources + agent trace
+→ BM25 lazy rebuild + retrieval cache invalidation
+→ SSE cited answer + sources + timing/citation trace
 → admin diagnostics and production runbooks
 ```
 

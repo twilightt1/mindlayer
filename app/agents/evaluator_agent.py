@@ -1,13 +1,16 @@
-import logging
+import asyncio
 import json
+import logging
+
 from openai import AsyncOpenAI
+
 from app.agents.state import AgentState
 from app.config import settings
-import asyncio
 
 log = logging.getLogger(__name__)
 
 _client: AsyncOpenAI | None = None
+
 
 def _get_client() -> AsyncOpenAI:
     global _client
@@ -18,11 +21,17 @@ def _get_client() -> AsyncOpenAI:
         )
     return _client
 
+
 SYSTEM_PROMPT = """You are a grader assessing relevance of a retrieved document to a user question.
 If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant.
 It does not need to be a stringent test. The goal is to filter out erroneous retrievals.
 
 Provide your output as a JSON object with a single key "score" and value "yes" or "no". No other text."""
+
+
+def _fail_open() -> bool:
+    return settings.EVALUATOR_FAILURE_MODE in {"warn_only", "fail_open"}
+
 
 async def evaluator_agent(state: AgentState) -> AgentState:
     state.setdefault("agent_trace", {})
@@ -42,14 +51,14 @@ async def evaluator_agent(state: AgentState) -> AgentState:
     query = state["query"]
     client = _get_client()
 
-    async def _grade_chunk(chunk: dict) -> tuple[dict, bool]:
+    async def _grade_chunk(chunk: dict) -> tuple[dict, bool, str | None]:
         user_prompt = f"Question: {query}\n\nDocument:\n{chunk['content']}"
         try:
             resp = await client.chat.completions.create(
                 model=settings.LLM_MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user",   "content": user_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.0,
                 response_format={"type": "json_object"},
@@ -59,25 +68,29 @@ async def evaluator_agent(state: AgentState) -> AgentState:
                 },
             )
             result = json.loads(resp.choices[0].message.content.strip())
-            return chunk, result.get("score", "no").lower() == "yes"
-        except Exception:
-            return chunk, True                                     
+            return chunk, result.get("score", "no").lower() == "yes", None
+        except Exception as exc:
+            log.warning("Document relevance grading failed", extra={"error": str(exc)})
+            return chunk, _fail_open(), str(exc)
 
-                            
     results = await asyncio.gather(*[_grade_chunk(c) for c in chunks])
-    
-    relevant_chunks = [c for c, is_relevant in results if is_relevant]
-    
+    relevant_chunks = [c for c, is_relevant, _ in results if is_relevant]
+    errors = [error for _, _, error in results if error]
+
     if relevant_chunks:
-        state["reranked_chunks"] = relevant_chunks                           
+        state["reranked_chunks"] = relevant_chunks
         state["context_relevant"] = True
     else:
         state["context_relevant"] = False
 
     state["agent_trace"]["grade_docs"] = {
         "total": len(chunks),
-        "kept":  len(relevant_chunks),
+        "kept": len(relevant_chunks),
         "filtered": len(chunks) - len(relevant_chunks),
         "retry_count": state.get("retry_count", 0),
+        "failure_mode": settings.EVALUATOR_FAILURE_MODE,
+        "error_count": len(errors),
     }
+    if errors:
+        state["agent_trace"]["grade_docs"]["errors"] = errors[:3]
     return state

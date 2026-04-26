@@ -78,3 +78,19 @@ def test_production_accepts_complete_safe_settings():
     assert settings.ENVIRONMENT == "production"
     assert settings.is_production is True
     assert settings.ALLOWED_ORIGINS == "https://app.supportmind.example"
+
+
+def test_rejects_invalid_embedding_batch_size():
+    with pytest.raises(ValidationError, match="EMBED_BATCH_SIZE"):
+        _base_settings(EMBED_BATCH_SIZE=0)
+
+
+def test_rejects_invalid_evaluator_failure_mode():
+    with pytest.raises(ValidationError, match="EVALUATOR_FAILURE_MODE"):
+        _base_settings(EVALUATOR_FAILURE_MODE="unsafe")
+
+
+def test_normalizes_evaluator_failure_mode():
+    settings = _base_settings(EVALUATOR_FAILURE_MODE="FAIL_CLOSED")
+
+    assert settings.EVALUATOR_FAILURE_MODE == "fail_closed"

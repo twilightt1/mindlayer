@@ -13,6 +13,19 @@ class BM25Retriever:
 
                                                                                 
 
+    def has_index(self, conversation_id: str) -> bool:
+        return conversation_id in self._indexes
+
+    async def ensure_async(self, db, conversation_id: str) -> dict[str, bool]:
+        had_index = self.has_index(conversation_id)
+        if not had_index:
+            await self.rebuild_async(db, conversation_id)
+        return {
+            "had_index": had_index,
+            "rebuilt": not had_index and self.has_index(conversation_id),
+            "has_index": self.has_index(conversation_id),
+        }
+
     def build_from_parents(self, conversation_id: str, parents: list[dict]) -> None:
         if not parents:
             self._indexes.pop(conversation_id, None)

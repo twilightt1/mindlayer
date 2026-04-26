@@ -92,6 +92,7 @@ def _ingest(db, document_id: str) -> None:
     from app.models.document_chunk import DocumentChunk
     from app.retrieval.bm25_retriever import bm25_retriever
     from app.retrieval.parent_store import store_parents_sync
+    from app.retrieval.retrieval_cache import invalidate_query_cache_sync
     from app.retrieval.vector_retriever import delete_document_chunks_sync, upsert_chunks_sync
     from app.utils.chunker import build_parent_child_chunks, extract_text
 
@@ -197,6 +198,14 @@ def _ingest(db, document_id: str) -> None:
     except Exception as exc:
         raise _stage_error("db_commit", exc) from exc
 
+    try:
+        invalidate_query_cache_sync(conversation_id)
+    except Exception as exc:
+        log.warning(
+            "Retrieval query cache invalidation failed",
+            extra={"doc_id": document_id, "conversation_id": conversation_id, "error": str(exc)},
+        )
+
     log.info(
         "Ingestion complete",
         extra={
@@ -216,6 +225,10 @@ def _fail(db, document_id: str, error: str) -> None:
         if doc:
             doc.status = "failed"
             doc.error_msg = error[:500]
+            conversation_id = str(doc.conversation_id)
             db.commit()
+            from app.retrieval.retrieval_cache import invalidate_query_cache_sync
+
+            invalidate_query_cache_sync(conversation_id)
     except Exception:
         pass

@@ -1,12 +1,15 @@
-import logging
 import json
+import logging
+
 from openai import AsyncOpenAI
+
 from app.agents.state import AgentState
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 _client: AsyncOpenAI | None = None
+
 
 def _get_client() -> AsyncOpenAI:
     global _client
@@ -17,6 +20,7 @@ def _get_client() -> AsyncOpenAI:
         )
     return _client
 
+
 COMBINED_SYSTEM = """You are an expert evaluator assessing an LLM generation.
 You must output a JSON object with exactly three keys:
 1. "is_grounded": boolean (true if the answer is grounded in and supported by the provided facts. False if it contains made-up information or contradicts the facts).
@@ -26,10 +30,14 @@ You must output a JSON object with exactly three keys:
 If the answer is essentially "I don't know" or "There is no information", then is_grounded=true but answers_question=false.
 Provide only the JSON object. No markdown, no explanations."""
 
+
+def _fail_open() -> bool:
+    return settings.EVALUATOR_FAILURE_MODE in {"warn_only", "fail_open"}
+
+
 async def hallucination_agent(state: AgentState) -> AgentState:
     state.setdefault("agent_trace", {})
 
-                                                  
     if state.get("query_type") != "rag":
         state["is_hallucination"] = False
         state["answers_question"] = True
@@ -49,7 +57,6 @@ async def hallucination_agent(state: AgentState) -> AgentState:
     max_retries = 3
 
     if not chunks:
-                                                                                                                                   
         fallback_markers = (
             "don't know",
             "cannot answer",
@@ -71,7 +78,6 @@ async def hallucination_agent(state: AgentState) -> AgentState:
             state["response"] = "Tôi không tìm thấy thông tin về vấn đề này trong tài liệu."
         return state
 
-                   
     context_parts = []
     for i, chunk in enumerate(chunks, 1):
         context_parts.append(f"[Source {i}]\n{chunk['content']}")
@@ -79,7 +85,6 @@ async def hallucination_agent(state: AgentState) -> AgentState:
 
     try:
         client = _get_client()
-
         eval_prompt = f"User question: {state['query']}\n\nSet of facts:\n{context}\n\nLLM generation to evaluate:\n{response}"
 
         eval_resp = await client.chat.completions.create(
@@ -116,13 +121,24 @@ async def hallucination_agent(state: AgentState) -> AgentState:
             "grounded": is_grounded,
             "answers": state["answers_question"],
             "retry_count": retry_count,
+            "failure_mode": settings.EVALUATOR_FAILURE_MODE,
         }
 
     except Exception as e:
         log.error("Hallucination/Answer LLM error", extra={"error": str(e)})
-                              
-        state["is_hallucination"] = False
-        state["answers_question"] = True
-        state["agent_trace"]["hallucination"] = f"error: {str(e)}"
+        if _fail_open():
+            state["is_hallucination"] = False
+            state["answers_question"] = True
+        else:
+            state["is_hallucination"] = True
+            state["answers_question"] = False
+            if retry_count >= max_retries:
+                state["response"] = "Tôi không tìm thấy thông tin về vấn đề này trong tài liệu."
+        state["agent_trace"]["hallucination"] = {
+            "mode": "evaluator_error",
+            "failure_mode": settings.EVALUATOR_FAILURE_MODE,
+            "error": str(e),
+            "retry_count": retry_count,
+        }
 
     return state

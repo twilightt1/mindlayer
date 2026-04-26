@@ -34,7 +34,7 @@ jobs:
             app/services/diagnostics_service.py \
             app/storage.py \
             app/tasks/ingestion_tasks.py \
-            app/retrieval/vector_retriever.py \
+            app/retrieval \
             app/api/v1/chat.py \
             app/api/v1/sse.py \
             app/api/v1/admin.py \
@@ -50,6 +50,7 @@ jobs:
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
+            tests/rag/test_ai_hardening.py \
             tests/rag/conftest.py \
             tests/services/test_health_service.py \
             tests/services/test_diagnostics_service.py \
@@ -71,6 +72,7 @@ jobs:
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
+            tests/rag/test_ai_hardening.py \
             -q
 
       - name: Run evaluation tests
@@ -118,9 +120,11 @@ jobs:
       OPENAI_API_KEY: test-openai-key
       EMBED_MODEL: text-embedding-3-small
       EMBED_DIMENSIONS: "1536"
+      EMBED_BATCH_SIZE: "64"
       JINA_API_KEY: test-jina-key
       JINA_RERANKER_MODEL: jina-reranker-v2-base-multilingual
       JINA_RERANKER_TOP_N: "5"
+      EVALUATOR_FAILURE_MODE: warn_only
       CELERY_BROKER_URL: redis://localhost:6379/1
       CELERY_RESULT_BACKEND: redis://localhost:6379/2
       RATE_LIMIT_PER_MINUTE: "600"
