@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import EmailStr, model_validator
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -73,17 +73,67 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.casefold() == "production"
+
     @model_validator(mode="after")
-    def check_minio_credentials(self):
-        if self.ENVIRONMENT == "production":
-            if not self.MINIO_ACCESS_KEY or not self.MINIO_SECRET_KEY:
-                raise ValueError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in production")
+    def validate_environment_settings(self):
+        self.ENVIRONMENT = self.ENVIRONMENT.casefold()
+        if self.is_production:
+            self._validate_production_settings()
         else:
             if not self.MINIO_ACCESS_KEY:
                 self.MINIO_ACCESS_KEY = "minioadmin"
             if not self.MINIO_SECRET_KEY:
                 self.MINIO_SECRET_KEY = "minioadmin"
         return self
+
+    def _validate_production_settings(self) -> None:
+        self._require_strong_jwt_secret()
+        self._require_explicit_cors_origins()
+        self._require_provider_keys()
+        self._require_secure_minio_credentials()
+
+    def _require_strong_jwt_secret(self) -> None:
+        placeholders = {
+            "change-me",
+            "change-me-to-a-random-256-bit-secret",
+            "test-secret-key-change-in-production",
+            "secret",
+            "your-secret-key",
+        }
+        normalized_secret = self.JWT_SECRET_KEY.strip().casefold()
+        if normalized_secret in placeholders or "change-me" in normalized_secret:
+            raise ValueError("JWT_SECRET_KEY must not use a placeholder value in production")
+        if len(self.JWT_SECRET_KEY) < 32:
+            raise ValueError("JWT_SECRET_KEY must be at least 32 characters in production")
+
+    def _require_explicit_cors_origins(self) -> None:
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        if not origins:
+            raise ValueError("ALLOWED_ORIGINS must define at least one origin in production")
+        for origin in origins:
+            if origin == "*":
+                raise ValueError("ALLOWED_ORIGINS cannot contain '*' in production")
+            if not origin.startswith(("https://", "http://")):
+                raise ValueError("ALLOWED_ORIGINS must contain explicit HTTP(S) origins in production")
+
+    def _require_provider_keys(self) -> None:
+        required_keys = {
+            "OPENROUTER_API_KEY": self.OPENROUTER_API_KEY,
+            "OPENAI_API_KEY": self.OPENAI_API_KEY,
+            "JINA_API_KEY": self.JINA_API_KEY,
+        }
+        missing = [name for name, value in required_keys.items() if not value.strip()]
+        if missing:
+            raise ValueError(f"Missing provider keys in production: {', '.join(missing)}")
+
+    def _require_secure_minio_credentials(self) -> None:
+        if not self.MINIO_ACCESS_KEY or not self.MINIO_SECRET_KEY:
+            raise ValueError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in production")
+        if self.MINIO_ACCESS_KEY == "minioadmin" or self.MINIO_SECRET_KEY == "minioadmin":
+            raise ValueError("Default MinIO credentials are not allowed in production")
 
 
 settings = Settings()

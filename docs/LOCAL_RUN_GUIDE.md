@@ -58,6 +58,15 @@ OAuth values as needed.
 docker compose up -d postgres redis chromadb minio flower
 ```
 
+`docker-compose.yml` is optimized for local development and uses source bind
+mounts plus API `--reload`. For production-like validation, use
+[docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml) with the deployment docs:
+
+- [DEPLOYMENT_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEPLOYMENT_GUIDE.md)
+- [OPERATIONS_RUNBOOK.md](file:///d:/DL/rag-backend/rag-backend/docs/OPERATIONS_RUNBOOK.md)
+- [BACKUP_RESTORE.md](file:///d:/DL/rag-backend/rag-backend/docs/BACKUP_RESTORE.md)
+- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
+
 Check container health:
 
 ```powershell
@@ -158,6 +167,7 @@ celery -A app.tasks.celery_app beat -l INFO --scheduler celery.beat:PersistentSc
 .\.venv\Scripts\python.exe -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
 .\.venv\Scripts\python.exe -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
 .\.venv\Scripts\python.exe -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
+.\.venv\Scripts\python.exe -m pytest --confcutdir=tests/config tests/config/test_settings_validation.py -q
 ```
 
 Run the deterministic RAG evaluation report:
@@ -231,7 +241,7 @@ pytest tests/ -v
 Targeted lint used by CI:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/integration
+.\.venv\Scripts\python.exe -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
 ```
 
 Full-repo lint is still stricter and may expose legacy style issues:

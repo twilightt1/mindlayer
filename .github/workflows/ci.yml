@@ -28,6 +28,7 @@ jobs:
         run: |
           python -m ruff check \
             app/main.py \
+            app/config.py \
             app/agents \
             app/services/health_service.py \
             app/storage.py \
@@ -42,12 +43,16 @@ jobs:
             tests/api/test_health_api.py \
             tests/api/test_sse.py \
             tests/api/test_chat_streaming.py \
+            tests/api/conftest.py \
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
+            tests/rag/conftest.py \
             tests/services/test_health_service.py \
+            tests/services/conftest.py \
             tests/eval/test_eval_metrics.py \
             tests/eval/test_live_api_eval.py \
+            tests/config/test_settings_validation.py \
             tests/integration
 
       - name: Run API tests
@@ -67,14 +72,20 @@ jobs:
       - name: Run evaluation tests
         run: python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
 
+      - name: Run config tests
+        run: python -m pytest --confcutdir=tests/config tests/config/test_settings_validation.py -q
+
       - name: Run evaluation smoke
-        run: python eval/run_eval.py --output-dir eval/results --top-k 5
+        run: python eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 
       - name: Prepare Docker Compose env
         run: cp .env.test.example .env
 
       - name: Validate Docker Compose config
         run: docker compose config --quiet
+
+      - name: Validate production Docker Compose config
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 
   integration:
     name: Live service integration tests

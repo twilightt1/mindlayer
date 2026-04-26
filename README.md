@@ -338,16 +338,30 @@ python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/e
 Targeted lint used by CI:
 
 ```bash
-python -m ruff check app/main.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/services/test_health_service.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/integration
+python -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
 ```
 
 Validate Docker Compose configuration:
 
 ```bash
 docker compose config --quiet
+docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 ```
 
 Full integration tests use [tests/conftest.py](file:///d:/DL/rag-backend/rag-backend/tests/conftest.py) and expect a live Postgres test database at `ragdb_test`.
+
+---
+
+## Deployment Readiness
+
+Production-like deployment and operations docs are available here:
+
+- [DEPLOYMENT_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEPLOYMENT_GUIDE.md)
+- [OPERATIONS_RUNBOOK.md](file:///d:/DL/rag-backend/rag-backend/docs/OPERATIONS_RUNBOOK.md)
+- [BACKUP_RESTORE.md](file:///d:/DL/rag-backend/rag-backend/docs/BACKUP_RESTORE.md)
+- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
+
+Use [docker-compose.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.yml) for development and combine it with [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml) for production-like validation.
 
 ---
 
