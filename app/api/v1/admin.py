@@ -2,9 +2,10 @@
 from __future__ import annotations
 from uuid import UUID
 from datetime import datetime
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -16,6 +17,7 @@ from app.models.message import Message
 from app.models.conversation import Conversation
 from app.schemas.auth import UserResponse
 from app.services.audit_service import AuditService
+from app.services.diagnostics_service import build_diagnostics
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -54,7 +56,7 @@ async def list_users(
 ):
     query = select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
     if not include_deleted:
-        query = query.where(User.is_deleted == False)
+        query = query.where(User.is_deleted.is_(False))
 
     result = await db.execute(query)
     return result.scalars().all()
@@ -327,13 +329,21 @@ async def delete_document(
     return {"message": "Document deleted successfully."}
 
 
+@router.get("/diagnostics", response_model=dict[str, Any])
+async def get_diagnostics(
+    _=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await build_diagnostics(db)
+
+
 @router.get("/stats", response_model=StatsResponse)
 async def get_stats(
     _=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     total_users     = await db.scalar(select(func.count(User.id)))
-    active_users    = await db.scalar(select(func.count(User.id)).where(User.is_active == True))
+    active_users    = await db.scalar(select(func.count(User.id)).where(User.is_active.is_(True)))
     total_docs      = await db.scalar(select(func.count(Document.id)))
     pending_docs    = await db.scalar(select(func.count(Document.id)).where(
                             Document.status.in_(["pending", "processing"])

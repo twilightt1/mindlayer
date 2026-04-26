@@ -329,8 +329,8 @@ python eval/run_eval.py --fail-under-source-hit 0.80 --fail-under-keyword-covera
 Fast checks that do not require Postgres, Redis, MinIO, ChromaDB, or external API keys:
 
 ```bash
-python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py -q
-python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
+python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py -q
+python -m pytest --confcutdir=tests/services tests/services/test_health_service.py tests/services/test_diagnostics_service.py -q
 python -m pytest --confcutdir=tests/rag tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py -q
 python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py -q
 ```
@@ -338,7 +338,7 @@ python -m pytest --confcutdir=tests/eval tests/eval/test_eval_metrics.py tests/e
 Targeted lint used by CI:
 
 ```bash
-python -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
+python -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/services/diagnostics_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval/vector_retriever.py app/api/v1/chat.py app/api/v1/sse.py app/api/v1/admin.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/test_diagnostics_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
 ```
 
 Validate Docker Compose configuration:
@@ -362,6 +362,8 @@ Production-like deployment and operations docs are available here:
 - [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
 
 Use [docker-compose.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.yml) for development and combine it with [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml) for production-like validation.
+
+Admin diagnostics are available at `GET /api/v1/admin/diagnostics` for authenticated admins. The endpoint summarizes dependency health, Celery reachability, secret-safe runtime config, and document ingestion status.
 
 ---
 

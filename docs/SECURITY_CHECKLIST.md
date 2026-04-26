@@ -35,6 +35,8 @@ Use this checklist before deploying SupportMind to a public environment.
 - [ ] Put the API behind HTTPS.
 - [ ] Prefer a reverse proxy with request body size limits.
 - [ ] Keep `/docs` disabled in production unless intentionally exposed.
+- [ ] Keep `/api/v1/admin/diagnostics` admin-only and never expose it as a public health endpoint.
+- [ ] Confirm diagnostics responses do not include JWT secrets, provider API keys, DB URLs, Redis URLs, MinIO secrets, access tokens, or refresh tokens.
 
 ## File Uploads
 
@@ -75,4 +77,6 @@ After deployment:
 ```bash
 curl -fsS https://api.example.com/health
 curl -fsS https://api.example.com/ready
+curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  https://api.example.com/api/v1/admin/diagnostics
 ```

@@ -12,6 +12,25 @@ curl -fsS http://localhost:8000/ready
 
 `/health` checks API liveness. `/ready` checks Postgres, Redis, MinIO, and ChromaDB.
 
+## Admin Diagnostics
+
+Use the admin-only diagnostics endpoint when `/ready` is degraded or ingestion appears stuck:
+
+```bash
+curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  http://localhost:8000/api/v1/admin/diagnostics
+```
+
+The response includes:
+
+- dependency checks for Postgres, Redis, MinIO, ChromaDB, and Celery
+- secret-safe config summary such as model names, rate limits, and MinIO bucket
+- ingestion counts by status
+- recent failed documents
+- documents stuck in `pending` or `processing` longer than the configured threshold
+
+`status: degraded` means at least one dependency check failed. The endpoint intentionally excludes secrets such as JWT keys, provider API keys, DB URLs, Redis URLs, and MinIO secret keys.
+
 ## Logs
 
 API logs:
@@ -86,6 +105,9 @@ Checklist:
 Useful commands:
 
 ```bash
+curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  http://localhost:8000/api/v1/admin/diagnostics
+
 docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=200 celery_worker
 docker compose -f docker-compose.yml -f docker-compose.prod.yml restart celery_worker
 ```

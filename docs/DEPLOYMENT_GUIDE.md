@@ -84,6 +84,15 @@ curl -fsS http://localhost:8000/ready
 
 `/ready` returns HTTP 503 when any dependency is degraded.
 
+For authenticated operational checks, use the admin diagnostics endpoint:
+
+```bash
+curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  http://localhost:8000/api/v1/admin/diagnostics
+```
+
+Diagnostics includes Celery and ingestion status in addition to dependency readiness, but it must remain admin-only.
+
 ## Reverse Proxy Notes
 
 Put a reverse proxy in front of the API for HTTPS and request buffering control.
@@ -126,6 +135,8 @@ Run:
 ```bash
 curl -fsS http://localhost:8000/health
 curl -fsS http://localhost:8000/ready
+curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  http://localhost:8000/api/v1/admin/diagnostics
 python eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 ```
 

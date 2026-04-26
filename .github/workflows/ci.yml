@@ -31,11 +31,13 @@ jobs:
             app/config.py \
             app/agents \
             app/services/health_service.py \
+            app/services/diagnostics_service.py \
             app/storage.py \
             app/tasks/ingestion_tasks.py \
             app/retrieval/vector_retriever.py \
             app/api/v1/chat.py \
             app/api/v1/sse.py \
+            app/api/v1/admin.py \
             eval/run_eval.py \
             eval/live_api_eval.py \
             eval/metrics.py \
@@ -43,12 +45,14 @@ jobs:
             tests/api/test_health_api.py \
             tests/api/test_sse.py \
             tests/api/test_chat_streaming.py \
+            tests/api/test_admin_diagnostics.py \
             tests/api/conftest.py \
             tests/rag/test_graph_routing.py \
             tests/rag/test_evaluation.py \
             tests/rag/test_integration.py \
             tests/rag/conftest.py \
             tests/services/test_health_service.py \
+            tests/services/test_diagnostics_service.py \
             tests/services/conftest.py \
             tests/eval/test_eval_metrics.py \
             tests/eval/test_live_api_eval.py \
@@ -56,10 +60,10 @@ jobs:
             tests/integration
 
       - name: Run API tests
-        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py -q
+        run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py -q
 
       - name: Run service tests
-        run: python -m pytest --confcutdir=tests/services tests/services/test_health_service.py -q
+        run: python -m pytest --confcutdir=tests/services tests/services/test_health_service.py tests/services/test_diagnostics_service.py -q
 
       - name: Run RAG tests
         run: |

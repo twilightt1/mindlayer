@@ -69,17 +69,29 @@ async def _measure(name: str, checker: CheckFn) -> tuple[str, CheckPayload]:
         }
 
 
-async def check_readiness() -> CheckPayload:
-    checkers: dict[str, CheckFn] = {
+def _default_readiness_checkers() -> dict[str, CheckFn]:
+    return {
         "postgres": _check_postgres,
         "redis": _check_redis,
         "minio": _check_minio,
         "chroma": _check_chroma,
     }
+
+
+async def run_readiness_checks(
+    extra_checkers: dict[str, CheckFn] | None = None,
+) -> dict[str, CheckPayload]:
+    checkers = _default_readiness_checkers()
+    if extra_checkers:
+        checkers.update(extra_checkers)
     results = await asyncio.gather(
         *[_measure(name, checker) for name, checker in checkers.items()]
     )
-    checks = dict(results)
+    return dict(results)
+
+
+async def check_readiness() -> CheckPayload:
+    checks = await run_readiness_checks()
     status = "ok" if all(check["status"] == "ok" for check in checks.values()) else "degraded"
     return {
         "status": status,
