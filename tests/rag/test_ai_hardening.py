@@ -136,38 +136,19 @@ def test_citation_trace_detects_source_marker():
 async def test_embed_texts_batches_and_preserves_order(monkeypatch):
     calls: list[list[str]] = []
 
-    class FakeResponse:
-        def __init__(self, batch: list[str]):
-            self.batch = batch
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {
-                "data": [
-                    {"embedding": [float(text[-1])]}
-                    for text in self.batch
-                ]
-            }
-
-    class FakeAsyncClient:
-        def __init__(self, *args, **kwargs):
-            return None
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return None
-
-        async def post(self, url, headers, json):
-            batch = list(json["input"])
-            calls.append(batch)
-            return FakeResponse(batch)
+    async def fake_create(model, input, encoding_format, timeout):
+        assert encoding_format == "float"
+        calls.append(list(input))
+        return SimpleNamespace(
+            data=[SimpleNamespace(embedding=[float(text[-1])]) for text in input]
+        )
 
     monkeypatch.setattr(embedder.settings, "EMBED_BATCH_SIZE", 2)
-    monkeypatch.setattr(embedder.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        embedder.async_client,
+        "embeddings",
+        SimpleNamespace(create=fake_create),
+    )
 
     embeddings = await embedder.embed_texts(["text-1", "text-2", "text-3"])
 
