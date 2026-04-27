@@ -275,9 +275,14 @@ Fix:
 ```powershell
 docker compose up -d chromadb
 docker compose logs chromadb --tail=100
-curl http://localhost:8001/api/v1/heartbeat
+curl http://localhost:8001/api/v2/heartbeat
 curl http://localhost:8000/ready
 ```
+
+> [!NOTE]
+> Docker Compose maps Postgres to host port `55432` by default to avoid
+> collisions with a developer's local Postgres on `5432`. Container-to-container
+> traffic still uses `postgres:5432`.
 
 If you run Chroma manually instead of Docker:
 

@@ -1,87 +1,205 @@
-# RAG Pipeline Architecture & Design Document
+# RAG Pipeline Architecture & Optimization Notes
 
 ## Overview
 
-This document outlines the architectural changes made to the Retrieval-Augmented Generation (RAG) pipeline to bring it to a production-grade level. The primary goals were to drastically reduce latency, improve system scalability, and enhance retrieval accuracy for the Vietnamese language.
+This document describes the current Retrieval-Augmented Generation (RAG)
+pipeline after the AI architecture hardening work. The design goal is to balance
+latency, retrieval quality, and runtime safety for a portfolio-grade but
+production-oriented support knowledge-base backend.
 
-## 1. Flattening the Pipeline (Latency Optimization)
+The current architecture is not a minimal linear "chat with PDF" flow. It uses a
+bounded corrective LangGraph workflow, hybrid retrieval, parent-child chunking,
+reranking, streaming answers, and traceable guardrails.
 
-### The Problem
-The previous pipeline was heavily nested and sequential. It executed multiple LLM calls back-to-back:
-1. `query_rewriter` (LLM)
-2. `router_agent` (LLM)
-3. Multi-query generation (LLM)
-4. Evaluator checks (LLM)
-5. Answer generation (LLM)
+## 1. Combined Routing and Query Processing
 
-This sequential processing created a "latency bottleneck" where users could wait 10-15 seconds before the first token appeared.
+### Problem
 
-### The Solution: Combined Routing and Query Processing
-We have refactored the `router_agent.py` to handle intent classification, query rewriting, and search variant generation in **a single LLM call** using structured JSON output.
+A naive RAG pipeline often performs separate LLM calls for:
+
+1. intent classification
+2. query rewriting
+3. multi-query generation
+4. answer generation
+5. post-generation checks
+
+If each step blocks the next, first-token latency becomes unacceptable.
+
+### Current Solution
+
+The router consolidates intent classification, query rewriting, and search
+variant generation into a single structured LLM call. It returns JSON like:
 
 ```json
 {
   "intent": "rag",
   "confidence": 0.95,
-  "reasoning": "User asks about product specs",
-  "rewritten_query": "What are the specifications of product X?",
-  "search_variants": ["Product X technical details", "Features of product X", "Product X datasheet"]
+  "reasoning": "User asks about product docs",
+  "rewritten_query": "How can a user rotate an API key?",
+  "search_variants": [
+    "API key rotation steps",
+    "regenerate API token",
+    "replace compromised API key"
+  ]
 }
 ```
 
-### Rationale & Trade-offs
-- **Why this approach?** Consolidating multiple tasks into a single LLM prompt significantly cuts down network latency. Models like `openrouter/elephant-alpha` (or similar advanced models) are capable of performing multi-step reasoning and returning complex JSON objects efficiently.
-- **Trade-off (Accuracy vs. Latency):** While breaking tasks into distinct prompts *might* theoretically increase accuracy on edge cases, the user experience cost (15s latency) is unacceptable in production. A single, well-crafted structured prompt achieves comparable accuracy with a fraction of the delay.
+A regex fast path handles simple chitchat greetings without an LLM call.
 
-## 2. Trusting the Reranker & Removing Retry Loops
+### Trade-off
 
-### The Problem
-The pipeline previously used an `evaluator_agent` to grade retrieved chunks using an LLM *before* answering. It also implemented a cyclic retry loop (`retry_count`) that retrieved deeper into the vector database if initial results were deemed poor. This turned the system into a cyclic graph, severely impacting latency. Retrieving deeper results from the same embedding space rarely yielded better answers, instead introducing noise.
+Combining router duties reduces network latency and prompt overhead. The trade-off
+is that router quality depends on one structured prompt, so the output is traced
+with confidence, reasoning, rewritten query, and variants for debugging.
 
-### The Solution: Streamlined DAG
-- Removed `evaluator_agent` and `contextual_compressor`.
-- Removed the cyclic `retry_count` loops in `graph.py` and `retrieval_agent.py`.
-- Rely entirely on the **Jina Reranker** (`jina-reranker-v2-base-multilingual`) to surface the top chunks.
-- The pipeline is now a pure Directed Acyclic Graph (DAG): `router` -> `memory` -> `retrieval` -> `answer` -> `grade_gen` -> `save`.
+## 2. Bounded Corrective RAG, Not an Unbounded Cycle
 
-### Rationale & Trade-offs
-- **Why this approach?** Rerankers (cross-encoders) are specifically trained to evaluate query-document relevance far faster and more consistently than a general-purpose LLM acting as a zero-shot grader. If the top 5 reranked documents do not contain the answer, pulling documents ranked 15-25 is highly unlikely to solve the problem; it is better to fast-fail.
-- **Trade-off (Simplicity vs. Deep Search):** We lose the ability to iteratively search the database if the first pass fails. However, we gain predictable latency and prevent the LLM from becoming confused by a massive context window filled with low-relevance chunks.
+### Problem
 
-## 3. Improved BM25 Tokenization for Vietnamese
+Fully cyclic agent graphs can create unpredictable latency and cost if they keep
+retrieving or regenerating without hard limits.
 
-### The Problem
-The in-memory `BM25Retriever` tokenized text using a naive regex: `re.findall(r'\w+', text.lower())`. Since Vietnamese relies heavily on compound words (e.g., "trường học"), splitting by `\w+` breaks semantic meaning, leading to poor keyword search recall.
+### Current Solution
 
-### The Solution: Bigram Expansion
-Updated the tokenizer in `bm25_retriever.py` to generate both unigrams and bigrams:
+The LangGraph workflow keeps corrective behavior but bounds it with
+`MAX_RETRIES = 3` and records correction reasons in `agent_trace`.
+
+Current high-level flow:
+
+```text
+router
+→ memory
+→ retrieval
+→ grade_docs
+→ answer
+→ grade_gen
+→ save
+```
+
+Correction paths are bounded:
+
+```text
+irrelevant context → retry retrieval
+hallucination detected → retry answer
+answer does not resolve question → retry retrieval
+retry limit reached → record limit and continue safely
+```
+
+### Trade-off
+
+A pure DAG would have lower and more predictable latency. The current bounded
+corrective graph preserves safety and debuggability while preventing infinite
+loops. Trace metadata makes retry behavior visible in SSE `trace` events and
+saved messages.
+
+## 3. Hybrid Retrieval with Parent-Child Context
+
+### Current Retrieval Flow
+
+```text
+conversation-scoped query cache lookup
+→ API-process BM25 lazy rebuild if needed
+→ BM25 parent search
+→ multi-query ChromaDB child vector search
+→ Reciprocal Rank Fusion
+→ parent expansion from Redis or PostgreSQL fallback
+→ Jina reranking
+→ final top context chunks
+```
+
+### Why Parent-Child Chunking
+
+Child chunks are embedded for precise vector recall. Parent chunks are expanded
+as LLM context so the answer model receives readable, coherent evidence instead
+of tiny fragments.
+
+### BM25 Runtime Consistency
+
+BM25 indexes are in-memory per process. Ingestion may build BM25 inside a Celery
+worker, while live chat runs in a separate FastAPI worker. To avoid losing hybrid
+retrieval at runtime, the API process lazily rebuilds missing BM25 indexes from
+PostgreSQL before lexical search.
+
+This keeps the current simple in-memory implementation viable for a local or
+single-node deployment while documenting a clear migration path to durable
+keyword search later.
+
+## 4. Vietnamese-Friendly BM25 Tokenization
+
+The BM25 tokenizer uses both unigrams and adjacent bigrams:
+
 ```python
-words = re.findall(r'\w+', text.lower())
-bigrams = [f"{words[i]}_{words[i+1]}" for i in range(len(words)-1)]
+words = re.findall(r"\w+", text.lower())
+bigrams = [f"{words[i]}_{words[i+1]}" for i in range(len(words) - 1)]
 return words + bigrams
 ```
 
-### Rationale & Trade-offs
-- **Why this approach?** A full NLP tokenizer (like `pyvi` or `underthesea`) introduces significant dependencies and latency overhead. Generating unigrams and bigrams is a lightweight, zero-dependency heuristic that captures adjacent word pairs, drastically improving keyword match accuracy for Vietnamese compound words.
-- **Trade-off (Simplicity vs. Linguistic Accuracy):** Bigram expansion is a heuristic. It will generate nonsense pairs alongside valid compound words. However, BM25 natively handles noise well, making this an acceptable trade-off for speed and zero-dependency deployment.
+This lightweight heuristic improves matching for Vietnamese compound terms
+without adding heavier NLP dependencies such as `pyvi` or `underthesea`.
 
-## 4. Asynchronous Hallucination Checking
+## 5. Query Cache and Invalidation
 
-### The Problem
-The `hallucination_agent` previously blocked the final saving of the conversation state.
+Retrieval results are cached per conversation and query/history hash to reduce
+repeat retrieval cost. Cache entries are invalidated when document state changes:
 
-### The Solution
-The `hallucination_agent` now executes *after* the `answer_agent` has finished generating (and streaming) the response. It acts as a safety net and observability metric rather than a blocking guardrail.
+- document upload
+- document delete
+- ingestion success
+- ingestion permanent failure
 
-### Rationale
-Streaming the answer immediately provides the best UX. If a hallucination is detected post-generation, the system logs it for offline evaluation or could be configured to emit a UI warning flag.
+This prevents stale context from being reused after a knowledge base update.
+
+## 6. Guardrails and Failure Modes
+
+The pipeline still includes:
+
+- pre-answer relevance grading via `evaluator_agent`
+- post-answer groundedness / answer-completeness checks via `hallucination_agent`
+- citation trace from `answer_agent`
+
+Evaluator behavior is configurable with `EVALUATOR_FAILURE_MODE`:
+
+- `warn_only` / `fail_open`: preserve demo continuity and trace failures
+- `fail_closed`: stricter behavior for safer production-style operation
+
+The default favors availability for local demos while making stricter operation a
+configuration choice.
+
+## 7. Streaming and Observability
+
+The API streams tokens over SSE and emits final sources, trace, and done events.
+`agent_trace` includes runtime metadata such as:
+
+- retrieval cache hit/miss
+- BM25 rebuild status
+- BM25/vector result counts
+- parent expansion counts
+- retrieval timing breakdown
+- answer latency / first-token latency
+- citation status
+- evaluator failure mode
+- correction reasons and retry counts
+
+This makes the RAG system easier to debug during demos and live smoke tests.
 
 ## Limitations & Future Work
 
-1. **In-Memory BM25:** The current `BM25Retriever` relies on an in-memory dictionary (`self._indexes`). While acceptable for a single-node prototype, this is a **critical anti-pattern** for horizontal scaling. 
-   - *Recommendation:* Migrate keyword search to Elasticsearch, OpenSearch, or PostgreSQL (`pg_trgm` / `pg_search`).
-2. **HyDE Usage:** Hypothetical Document Embeddings (HyDE) are still used in the query processor. While effective for general knowledge, HyDE can perform poorly on highly proprietary internal company data where the LLM might hallucinate incorrect internal jargon.
-   - *Recommendation:* Evaluate HyDE's performance specifically on your internal documents; consider disabling it in favor of standard multi-query synonym expansion if accuracy degrades.
+1. **Durable keyword search:** BM25 is still in-memory per API worker. Lazy rebuild
+   fixes runtime consistency, but horizontally scaled production should migrate to
+   Elasticsearch, OpenSearch, PostgreSQL full-text search, or a managed hybrid
+   retrieval platform.
+2. **Provider resilience:** LLM, embedding, and reranker calls should eventually
+   share explicit retry, timeout, and circuit-breaker policies.
+3. **Retrieval ablation:** Add retrieval-only evaluation for BM25 vs vector vs
+   hybrid vs reranked performance.
+4. **Strict citation enforcement:** The current runtime records citation status.
+   A future strict mode can reject or regenerate uncited factual answers.
 
 ## Conclusion
-The updated architecture shifts the pipeline from a slow, multi-LLM-call cyclic graph to a fast, predictable DAG. By leveraging the Jina Reranker directly, consolidating routing logic, and improving the tokenizer heuristic, the system is significantly closer to meeting production latency targets (< 3 seconds) while maintaining high retrieval quality.
+
+The current architecture balances latency and reliability by combining router
+work into one structured call, using hybrid retrieval with reranking, preserving
+bounded corrective loops, and exposing detailed trace metadata. Phase 12A fixed
+the major runtime consistency issue by adding API-process BM25 lazy rebuild and
+cache invalidation, making the system more credible for production-like live
+smoke validation.

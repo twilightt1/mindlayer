@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pytest
+import pytest_asyncio
 
 _TEST_ENV_DEFAULTS = {
-    "DATABASE_URL": "postgresql+asyncpg://postgres:password@localhost:5432/ragdb",
+    "DATABASE_URL": "postgresql+asyncpg://postgres:password@localhost:55432/ragdb",
     "REDIS_URL": "redis://localhost:6379/0",
     "JWT_SECRET_KEY": "test-secret-key-change-in-production",
     "MINIO_ENDPOINT": "localhost:9000",
@@ -30,3 +32,19 @@ pytestmark = [pytest.mark.integration, pytest.mark.requires_infra]
 def pytest_runtest_setup(item):
     if "requires_infra" in item.keywords and os.getenv("RUN_LIVE_INTEGRATION") != "1":
         pytest.skip("Set RUN_LIVE_INTEGRATION=1 to run live integration tests.")
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_async_resources_between_tests():
+    yield
+
+    from app.database import engine
+
+    await engine.dispose()

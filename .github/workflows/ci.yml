@@ -99,7 +99,8 @@ jobs:
 
     env:
       RUN_LIVE_INTEGRATION: "1"
-      DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/ragdb
+      DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:55432/ragdb
+      POSTGRES_PORT: "55432"
       DATABASE_POOL_SIZE: "5"
       DATABASE_MAX_OVERFLOW: "5"
       REDIS_URL: redis://localhost:6379/0
@@ -162,7 +163,7 @@ jobs:
           for i in {1..60}; do
             docker compose exec -T postgres pg_isready -U postgres -d ragdb \
               && docker compose exec -T redis redis-cli ping \
-              && curl -fsS http://localhost:8001/api/v1/heartbeat >/dev/null \
+              && curl -fsS http://localhost:8001/api/v2/heartbeat >/dev/null \
               && curl -fsS http://localhost:9000/minio/health/live >/dev/null \
               && exit 0
             sleep 2

@@ -80,7 +80,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app celery
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec redis redis-cli ping
-curl -fsS http://localhost:8001/api/v1/heartbeat
+curl -fsS http://localhost:8001/api/v2/heartbeat
 curl -fsS http://localhost:9000/minio/health/live
 ```
 

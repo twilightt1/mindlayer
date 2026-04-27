@@ -175,29 +175,18 @@ async def send_message(
     async def event_stream():
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         final_state: dict[str, Any] = {}
-        tokens_emitted = False
+        final_response_emitted = False
 
         async def emit(data: dict[str, Any], event: str | None = None) -> None:
             await queue.put({"event": event, "data": data})
 
         async def stream_token(delta: str) -> None:
-            nonlocal tokens_emitted
-            if not delta:
-                return
-            tokens_emitted = True
-            await emit(
-                {
-                    "type": "token",
-                    "content": delta,
-                    "retry_count": state.get("retry_count", 0),
-                },
-                event="token",
-            )
+            return
 
         state["_stream_callback"] = stream_token
 
         async def run_graph() -> None:
-            nonlocal tokens_emitted
+            nonlocal final_response_emitted
             try:
                 await emit({"type": "status", "stage": "started"}, event="status")
                 async for event in rag_graph.astream(state):
@@ -218,21 +207,20 @@ async def send_message(
                         event="status",
                     )
 
-                    if node == "answer" and not tokens_emitted:
+                    if node == "save":
                         response = final_state.get("response", "")
-                        if response:
-                            tokens_emitted = True
+                        if response and not final_response_emitted:
+                            final_response_emitted = True
                             await emit(
                                 {
                                     "type": "token",
                                     "content": response,
                                     "retry_count": final_state.get("retry_count", 0),
-                                    "mode": "fallback_full_response",
+                                    "mode": "final_evaluated_response",
                                 },
                                 event="token",
                             )
 
-                    if node == "save":
                         sources = [
                             {
                                 "content": c.get("content", "")[:200],

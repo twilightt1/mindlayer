@@ -127,12 +127,12 @@ async def test_chat_stream_emits_status_tokens_sources_trace_and_done(
     event_names = [frame["event"] for frame in frames]
 
     assert "status" in event_names
-    assert event_names.count("token") == 2
+    assert event_names.count("token") == 1
     assert "sources" in event_names
     assert "trace" in event_names
     assert event_names[-1] == "done"
-    assert '"content":"Hello"' in response.text
-    assert '"content":" world"' in response.text
+    assert '"content":"Hello world"' in response.text
+    assert '"mode":"final_evaluated_response"' in response.text
     assert '"filename":"streaming.md"' in response.text
 
 
@@ -154,6 +154,8 @@ async def test_chat_stream_retry_status_includes_retry_metadata(
     assert '"category":"retry"' in response.text
     assert '"retry_count":1' in response.text
     assert '"attempt":2' in response.text
+    assert '"content":"grounded"' in response.text
+    assert '"content":"draft"' not in response.text
 
 
 @pytest.mark.asyncio

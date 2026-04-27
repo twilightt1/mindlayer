@@ -40,7 +40,7 @@ async def _check_minio() -> None:
 
 
 async def _check_chroma() -> None:
-    url = f"http://{settings.CHROMA_HOST}:{settings.CHROMA_PORT}/api/v1/heartbeat"
+    url = f"http://{settings.CHROMA_HOST}:{settings.CHROMA_PORT}/api/v2/heartbeat"
     async with httpx.AsyncClient(timeout=2.0) as client:
         response = await client.get(url)
         response.raise_for_status()
