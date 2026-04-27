@@ -1,4 +1,4 @@
-.PHONY: dev build up down migrate seed test lint
+.PHONY: dev build up down migrate seed test lint demo-smoke
 
 dev:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -32,3 +32,6 @@ lint:
 
 format:
 	ruff format app/
+
+demo-smoke:
+	python scripts/demo_smoke.py

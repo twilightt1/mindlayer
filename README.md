@@ -226,8 +226,8 @@ pip install -r requirements.txt -r requirements-dev.txt
 copy .env.example .env
 ```
 
-Update `.env` with OpenRouter, OpenAI, Jina, database, Redis, MinIO, and JWT
-values.
+Update `.env` with OpenRouter, OpenAI-compatible embedding, Jina, database,
+Redis, MinIO, and JWT values.
 
 ### 3. Start infrastructure
 
@@ -241,13 +241,34 @@ docker compose up -d
 alembic upgrade head
 ```
 
-### 5. Start API
+### 5. Start API and worker
+
+Start the API:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
+Start the Celery worker in a second terminal. On Windows, use `--pool=solo`:
+
+```bash
+celery -A app.tasks.celery_app worker -Q default,ingestion,email --pool=solo -l INFO
+```
+
 Open API docs at: <http://localhost:8000/docs>
+
+### 6. Run the demo smoke workflow
+
+After the API and worker are running, execute the reusable smoke script:
+
+```bash
+python scripts/demo_smoke.py
+```
+
+The script seeds a verified/onboarded local demo user, logs in through the API,
+creates a conversation, uploads sample documents, waits for ingestion, asks the
+standard demo questions over SSE, and verifies answer tokens, sources, and
+agent trace events.
 
 For detailed local setup, see [LOCAL_RUN_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/LOCAL_RUN_GUIDE.md).
 

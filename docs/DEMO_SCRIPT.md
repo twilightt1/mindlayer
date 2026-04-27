@@ -19,6 +19,23 @@ docker compose up -d
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
+Start the Celery worker in a second terminal. On Windows, use `--pool=solo`:
+
+```powershell
+.\.venv\Scripts\celery.exe -A app.tasks.celery_app worker -Q default,ingestion,email --pool=solo -l INFO
+```
+
+Run the end-to-end demo smoke workflow:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/demo_smoke.py
+```
+
+The smoke script seeds a verified/onboarded local demo user, logs in through the
+API, creates a conversation, uploads sample docs, waits for ingestion, asks the
+standard demo questions via SSE, and verifies answer tokens, sources, and trace
+events.
+
 ## 1. Open With the Problem
 
 Talking point:
