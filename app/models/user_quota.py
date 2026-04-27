@@ -1,9 +1,14 @@
 import uuid
 from datetime import datetime, date
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Integer, Date, TIMESTAMP, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class UserQuota(Base):

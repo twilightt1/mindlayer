@@ -1,6 +1,8 @@
 """Authentication business logic."""
 from __future__ import annotations
-import logging, secrets, string
+import logging
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import bcrypt
@@ -16,9 +18,12 @@ from app.models.password_reset_session import PasswordResetSession
 from app.redis_client import get_redis
 from app.utils.security import create_access_token
 
-log     = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 OTP_MAX = 5
-_now    = lambda: datetime.now(timezone.utc)
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
                                                                                 
 def _hash(pw: str) -> str:
@@ -35,7 +40,8 @@ def _verify(pw: str, h: str) -> bool:
         return bcrypt.checkpw(pw_bytes, h.encode('utf-8'))
     except Exception:
         return False
-def _otp() -> str:                    return "".join(secrets.choice(string.digits) for _ in range(6))
+def _otp() -> str:
+    return "".join(secrets.choice(string.digits) for _ in range(6))
 
 
                                                                                 
@@ -85,7 +91,8 @@ async def verify_email_otp(db: AsyncSession, email: str, otp_code: str) -> User:
             EmailVerification.expires_at > _now(),
         ))
     )
-    if not ev:       raise HTTPException(400, detail="OTP expired. Please request a new one.")
+    if not ev:
+        raise HTTPException(400, detail="OTP expired. Please request a new one.")
     if ev.otp_attempts >= OTP_MAX:
         raise HTTPException(400, detail="Too many attempts. Please request a new code.")
     if ev.otp_code != otp_code:
@@ -127,10 +134,12 @@ async def verify_email_link(db: AsyncSession, token: str) -> User:
 async def resend_verification(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
-    key   = f"resend_limit:{email}"
+    key = f"resend_limit:{email}"
     count = await redis.incr(key)
-    if count == 1: await redis.expire(key, 3600)
-    if count > 3:  raise HTTPException(429, detail="Too many resend requests. Try again in 1 hour.")
+    if count == 1:
+        await redis.expire(key, 3600)
+    if count > 3:
+        raise HTTPException(429, detail="Too many resend requests. Try again in 1 hour.")
 
     user = await db.scalar(select(User).where(User.email == email))
     if not user or user.is_verified:
@@ -232,10 +241,12 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
 async def create_password_reset_session(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
-    key   = f"forgot_pw:{email}"
+    key = f"forgot_pw:{email}"
     count = await redis.incr(key)
-    if count == 1: await redis.expire(key, 3600)
-    if count > 3:  raise HTTPException(429, detail="Too many requests. Try again in 1 hour.")
+    if count == 1:
+        await redis.expire(key, 3600)
+    if count > 3:
+        raise HTTPException(429, detail="Too many requests. Try again in 1 hour.")
 
     user = await db.scalar(
         select(User).where(and_(User.email == email, User.auth_provider == "email"))
@@ -269,7 +280,7 @@ async def verify_reset_otp(db: AsyncSession, email: str, otp_code: str) -> str:
         select(PasswordResetSession)
         .where(and_(
             PasswordResetSession.user_id == user.id,
-            PasswordResetSession.verified == False,
+            PasswordResetSession.verified.is_(False),
             PasswordResetSession.used_at.is_(None),
             PasswordResetSession.expires_at > _now(),
         ))
@@ -294,7 +305,7 @@ async def verify_reset_link(db: AsyncSession, token: str) -> str:
     session = await db.scalar(
         select(PasswordResetSession).where(and_(
             PasswordResetSession.token == token,
-            PasswordResetSession.verified == False,
+            PasswordResetSession.verified.is_(False),
             PasswordResetSession.used_at.is_(None),
             PasswordResetSession.expires_at > _now(),
         ))
@@ -311,7 +322,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
     session = await db.scalar(
         select(PasswordResetSession).where(and_(
             PasswordResetSession.token == token,
-            PasswordResetSession.verified == True,
+            PasswordResetSession.verified.is_(True),
             PasswordResetSession.used_at.is_(None),
             PasswordResetSession.expires_at > _now(),
         ))

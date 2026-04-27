@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.settings_service import SettingsService
-from app.models.system_setting import SystemSetting
 
 @pytest.fixture
 def mock_redis():

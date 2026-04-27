@@ -10,7 +10,10 @@ Splitting strategy:
   - Plain text / no headings       → RecursiveCharacterTextSplitter fallback
 """
 from __future__ import annotations
-import io, logging, re, uuid
+import io
+import logging
+import re
+import uuid
 from dataclasses import dataclass, field
 
 log = logging.getLogger(__name__)
@@ -72,10 +75,14 @@ def _extract_docx(data: bytes) -> str:
         if not para.text.strip():
             continue
         s = para.style.name or ""
-        if   "Heading 1" in s: lines.append(f"## {para.text.strip()}")
-        elif "Heading 2" in s: lines.append(f"### {para.text.strip()}")
-        elif "Heading 3" in s: lines.append(f"#### {para.text.strip()}")
-        else:                  lines.append(para.text.strip())
+        if "Heading 1" in s:
+            lines.append(f"## {para.text.strip()}")
+        elif "Heading 2" in s:
+            lines.append(f"### {para.text.strip()}")
+        elif "Heading 3" in s:
+            lines.append(f"#### {para.text.strip()}")
+        else:
+            lines.append(para.text.strip())
     return "\n\n".join(lines)
 
 
@@ -87,15 +94,15 @@ def _recursive_split(text: str, size: int, overlap: int) -> list[str]:
     sp = RecursiveCharacterTextSplitter(
         chunk_size=size,
         chunk_overlap=overlap,
-        separators=[r"\n\n", r"\n", r"(?<=[.!?])\s+", r" "],
-        is_separator_regex=True
+        separators=[r"\n\n", r"\n", r"(?<=[.!?])\s+", r" ", ""],
+        is_separator_regex=True,
     )
     return [c for c in sp.split_text(text) if c.strip()]
 
 
 def _split_by_headings(text: str) -> list[str]:
     parts = re.split(r"(?m)(?=^#{2,4}\s)", text)
-    return [p.strip() for p in parts if p.strip()]
+    return [p.strip() for p in parts if re.match(r"^#{2,4}\s", p.strip())]
 
 
 def _split_parents(text: str) -> list[str]:

@@ -1,9 +1,16 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String, Integer, TIMESTAMP, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.document import Document
+    from app.models.message import Message
+    from app.models.user import User
 
 
 class Conversation(Base):

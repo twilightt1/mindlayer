@@ -1,9 +1,17 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String, Boolean, TIMESTAMP, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.conversation import Conversation
+    from app.models.email_verification import EmailVerification
+    from app.models.password_reset_session import PasswordResetSession
+    from app.models.user_quota import UserQuota
 
 
 class User(Base):

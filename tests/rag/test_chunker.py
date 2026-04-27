@@ -6,9 +6,6 @@ from app.utils.chunker import (
     build_parent_child_chunks,
     extract_text,
     PARENT_SIZE,
-    PARENT_OVERLAP,
-    CHILD_SIZE,
-    CHILD_OVERLAP,
 )
 
 @pytest.mark.unit

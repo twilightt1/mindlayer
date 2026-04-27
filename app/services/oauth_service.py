@@ -31,7 +31,7 @@ class GoogleOAuthService:
     async def exchange_code(self, code: str) -> dict:
         """Exchange authorization code for user info. Returns {sub, email, name, picture}."""
         async with self._client() as client:
-            token = await client.fetch_token(
+            await client.fetch_token(
                 GOOGLE_TOKEN_URL,
                 code=code,
                 redirect_uri=self._redirect_uri,

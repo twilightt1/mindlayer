@@ -1,6 +1,7 @@
 """Document service — scoped to conversation."""
 from __future__ import annotations
-import logging, uuid
+import logging
+import uuid
 from uuid import UUID
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select, and_

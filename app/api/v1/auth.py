@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.redis_client import get_redis
 from app.middleware.rate_limiter import check_rate_limit
-from app.utils.dependencies import get_current_user, get_current_verified_user, bearer
+from app.utils.dependencies import get_current_user
 from app.utils.security import create_access_token, decode_access_token
 from app.services import auth_service
 from app.services.oauth_service import google_oauth
