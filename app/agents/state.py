@@ -33,3 +33,10 @@ class AgentState(TypedDict, total=False):
     is_hallucination: bool
     answers_question: bool
     retry_count: int
+
+    # AI/ML observability (cost & latency tracking)
+    cumulative_cost_usd: float
+    total_tokens_in: int
+    total_tokens_out: int
+    agent_costs: dict[str, float]
+    agent_latency_ms: dict[str, float]

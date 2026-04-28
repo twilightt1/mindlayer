@@ -357,3 +357,63 @@ async def get_stats(
         total_messages=total_messages or 0,
         pending_documents=pending_docs or 0,
     )
+
+
+class AgentCostSummary(BaseModel):
+    agent: str
+    calls: int
+    tokens_in: int
+    tokens_out: int
+    total_cost_usd: float
+
+
+class AICostsResponse(BaseModel):
+    window_hours: int
+    total_cost_usd: float
+    by_agent: list[AgentCostSummary]
+    recent_calls: list[dict[str, Any]]
+    note: str | None = None
+
+
+@router.get("/ai-costs", response_model=AICostsResponse)
+async def get_ai_costs(
+    hours: int = 24,
+    _=Depends(require_admin),
+):
+    """
+    AI/ML cost summary over the last `hours` window (default 24).
+    Reads from the SQLite-backed CostTracker populated by agent calls.
+    """
+    try:
+        from app.observability.cost import CostTracker, budget_window_iso
+
+        tracker = CostTracker()
+        since = budget_window_iso(hours=hours)
+        total = tracker.total(since_iso=since)
+        breakdown = tracker.breakdown_by_agent(since_iso=since)
+        recent = tracker.recent(limit=20)
+        by_agent = [
+            AgentCostSummary(
+                agent=agent,
+                calls=stats["calls"],
+                tokens_in=stats["tokens_in"],
+                tokens_out=stats["tokens_out"],
+                total_cost_usd=round(stats["total_cost_usd"], 6),
+            )
+            for agent, stats in breakdown.items()
+        ]
+        return AICostsResponse(
+            window_hours=hours,
+            total_cost_usd=round(total, 6),
+            by_agent=by_agent,
+            recent_calls=recent,
+            note=None,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        return AICostsResponse(
+            window_hours=hours,
+            total_cost_usd=0.0,
+            by_agent=[],
+            recent_calls=[],
+            note=f"Cost tracker unavailable: {exc}",
+        )

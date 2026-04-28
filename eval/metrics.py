@@ -70,6 +70,10 @@ def calculate_fallback_accuracy(should_fallback: bool, answer: str) -> float:
     return 1.0 if did_fallback == should_fallback else 0.0
 
 
+def _mean(items: list[float]) -> float:
+    return sum(items) / len(items) if items else 0.0
+
+
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(results)
     if total == 0:
@@ -86,26 +90,38 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
             "failed_cases": 0,
         }
 
-    source_hit_rate = sum(result["source_hit"] for result in results) / total
-    keyword_coverage = sum(result["keyword_coverage"] for result in results) / total
-    citation_rate = sum(1 for result in results if result["has_citation"]) / total
-    fallback_accuracy = sum(result["fallback_accuracy"] for result in results) / total
-    avg_latency_ms = sum(result["latency_ms"] for result in results) / total
-    hallucination_flag_rate = sum(
-        1 for result in results if result.get("hallucination_flagged", False)
-    ) / total
-    correction_rate = sum(1 for result in results if result.get("correction_count", 0) > 0) / total
-    passed_cases = sum(1 for result in results if result.get("passed", False))
-
-    return {
+    # Always-reported core metrics
+    core: dict[str, Any] = {
         "total_cases": total,
-        "source_hit_rate": source_hit_rate,
-        "keyword_coverage": keyword_coverage,
-        "citation_rate": citation_rate,
-        "fallback_accuracy": fallback_accuracy,
-        "avg_latency_ms": avg_latency_ms,
-        "hallucination_flag_rate": hallucination_flag_rate,
-        "correction_rate": correction_rate,
-        "passed_cases": passed_cases,
-        "failed_cases": total - passed_cases,
+        "source_hit_rate": _mean([result["source_hit"] for result in results]),
+        "keyword_coverage": _mean([result["keyword_coverage"] for result in results]),
+        "citation_rate": _mean([1.0 if result.get("has_citation") else 0.0 for result in results]),
+        "fallback_accuracy": _mean([result["fallback_accuracy"] for result in results]),
+        "avg_latency_ms": _mean([result["latency_ms"] for result in results]),
+        "hallucination_flag_rate": _mean(
+            [1.0 if result.get("hallucination_flagged") else 0.0 for result in results]
+        ),
+        "correction_rate": _mean(
+            [1.0 if result.get("correction_count", 0) > 0 else 0.0 for result in results]
+        ),
+        "passed_cases": sum(1 for result in results if result.get("passed")),
+        "failed_cases": sum(1 for result in results if not result.get("passed")),
     }
+
+    # Optional RAGAS-style metrics — aggregate only those present in all results
+    ragas_keys: set[str] = set().union(
+        *(set(result.get("ragas", {}).keys()) for result in results)
+    )
+    ragas_summary: dict[str, float] = {}
+    for key in sorted(ragas_keys):
+        values = [
+            result["ragas"][key]
+            for result in results
+            if "ragas" in result and key in result["ragas"]
+        ]
+        if values:
+            ragas_summary[key] = _mean(values)
+    if ragas_summary:
+        core["ragas"] = ragas_summary
+    return core
+

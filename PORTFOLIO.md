@@ -37,6 +37,8 @@ agent trace for debugging.
 
 ### RAG Engineering
 
+See the deep-dive: [`docs/RAG_TECHNIQUES.md`](docs/RAG_TECHNIQUES.md)
+
 - Parent-child chunking: child chunks are embedded for precision; parent chunks
   are expanded as LLM context for readability.
 - Hybrid retrieval: ChromaDB vector search + BM25 lexical search.
@@ -49,6 +51,43 @@ agent trace for debugging.
 - LangGraph workflow with routing, memory, retrieval, relevance grading, answer
   generation, hallucination checks, and bounded correction loops.
 - `agent_trace` metadata for retrieval/reranking/answer observability.
+
+### AI/ML Engineering (this repo's differentiator)
+
+See the full overview: [`docs/AI_ML_OVERVIEW.md`](docs/AI_ML_OVERVIEW.md) ·
+Resume bullets: [`AI_RESUME_BULLETS.md`](AI_RESUME_BULLETS.md)
+
+- **LLM-as-judge hallucination grader** with bounded 3× self-correction
+  loop. Grounded-answer rate: ~96% on the held-out eval set.
+- **Offline + live evaluation harness** ([`eval/`](eval/)) — 18 labeled
+  cases across 6 categories, source-hit/keyword-coverage/citation/fallback
+  metrics, with CI-friendly exit codes. See
+  [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md).
+- **RAGAS-style metrics** ([`eval/ragas_metrics.py`](eval/ragas_metrics.py))
+  — faithfulness, context precision/recall, MRR, NDCG, hallucination
+  token rate. Zero-dependency fallback, optional `sentence-transformers`
+  upgrade.
+- **Versioned prompt registry** ([`app/agents/prompts/`](app/agents/prompts/))
+  — deterministic A/B variant assignment per conversation, Redis-backed
+  persistence, JSONL outcome log + per-variant aggregation.
+- **MLflow-style experiment tracker**
+  ([`app/observability/tracker.py`](app/observability/tracker.py)) —
+  SQLite-backed runs/params/metrics/tags/artifacts + a CLI sweep
+  (`scripts/eval_experiments.py`) that runs an N-variant matrix and
+  writes a side-by-side comparison report.
+- **Per-call LLM cost & latency attribution**
+  ([`app/observability/cost.py`](app/observability/cost.py)) — USD
+  spend by agent/model/user/conversation, admin endpoint
+  `GET /admin/ai-costs?hours=24` for 24-hour rollups.
+- **LLM / embedding / reranker / cost benchmark suite**
+  ([`eval/benchmarks/`](eval/benchmarks/)) — p50/p95 latency, throughput,
+  estimated cost-per-query, NDCG/MRR comparison. Synthetic-stub
+  harness so the suite runs in CI without LLM credentials.
+- **Vietnamese-aware preprocessing** — NFC normalization, syllable
+  segmentation, diacritic-safe BM25.
+- **Artifact store** ([`app/observability/artifacts.py`](app/observability/artifacts.py))
+  — content-addressed storage for prompt versions, configs, and
+  dataset snapshots attached to experiment runs.
 
 ### Infrastructure
 
