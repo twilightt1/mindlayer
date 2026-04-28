@@ -1,8 +1,8 @@
-import json
 import logging
 
 from openai import AsyncOpenAI
 
+from app.agents.llm_parsing import coerce_bool, parse_llm_json_object
 from app.agents.state import AgentState
 from app.config import settings
 
@@ -101,18 +101,20 @@ async def hallucination_agent(state: AgentState) -> AgentState:
             },
         )
 
-        result_text = eval_resp.choices[0].message.content.strip()
-        result_json = json.loads(result_text)
+        parsed = parse_llm_json_object(eval_resp.choices[0].message.content)
+        if not parsed.ok or parsed.data is None:
+            raise ValueError(parsed.error or "invalid_hallucination_json")
 
-        is_grounded = result_json.get("is_grounded", True)
-        answers_question = result_json.get("answers_question", True)
+        result_json = parsed.data
+        is_grounded = coerce_bool(result_json.get("is_grounded"), True)
+        answers_question = coerce_bool(result_json.get("answers_question"), True)
 
         state["is_hallucination"] = not is_grounded
         state["answers_question"] = answers_question
 
         if retry_count >= max_retries and (not is_grounded or not answers_question):
             fallback = result_json.get("fallback_message")
-            if fallback:
+            if isinstance(fallback, str) and fallback.strip():
                 state["response"] = fallback
             else:
                 state["response"] = "Tôi không tìm thấy thông tin về vấn đề này trong tài liệu."
@@ -122,6 +124,7 @@ async def hallucination_agent(state: AgentState) -> AgentState:
             "answers": state["answers_question"],
             "retry_count": retry_count,
             "failure_mode": settings.EVALUATOR_FAILURE_MODE,
+            "fallback_used": False,
         }
 
     except Exception as e:
@@ -137,6 +140,7 @@ async def hallucination_agent(state: AgentState) -> AgentState:
         state["agent_trace"]["hallucination"] = {
             "mode": "evaluator_error",
             "failure_mode": settings.EVALUATOR_FAILURE_MODE,
+            "fallback_used": True,
             "error": str(e),
             "retry_count": retry_count,
         }

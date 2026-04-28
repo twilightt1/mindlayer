@@ -1,9 +1,9 @@
 import asyncio
-import json
 import logging
 
 from openai import AsyncOpenAI
 
+from app.agents.llm_parsing import parse_llm_json_object
 from app.agents.state import AgentState
 from app.config import settings
 
@@ -51,7 +51,7 @@ async def evaluator_agent(state: AgentState) -> AgentState:
     query = state["query"]
     client = _get_client()
 
-    async def _grade_chunk(chunk: dict) -> tuple[dict, bool, str | None]:
+    async def _grade_chunk(chunk: dict) -> tuple[dict, bool, str | None, str | None]:
         user_prompt = f"Question: {query}\n\nDocument:\n{chunk['content']}"
         try:
             resp = await client.chat.completions.create(
@@ -67,15 +67,18 @@ async def evaluator_agent(state: AgentState) -> AgentState:
                     "X-Title": "RAG Evaluator",
                 },
             )
-            result = json.loads(resp.choices[0].message.content.strip())
-            return chunk, result.get("score", "no").lower() == "yes", None
+            parsed = parse_llm_json_object(resp.choices[0].message.content)
+            if not parsed.ok or parsed.data is None:
+                raise ValueError(parsed.error or "invalid_grader_json")
+            score = str(parsed.data.get("score", "no")).strip().casefold()
+            return chunk, score == "yes", None, parsed.raw_preview
         except Exception as exc:
             log.warning("Document relevance grading failed", extra={"error": str(exc)})
-            return chunk, _fail_open(), str(exc)
+            return chunk, _fail_open(), str(exc), None
 
     results = await asyncio.gather(*[_grade_chunk(c) for c in chunks])
-    relevant_chunks = [c for c, is_relevant, _ in results if is_relevant]
-    errors = [error for _, _, error in results if error]
+    relevant_chunks = [c for c, is_relevant, _, _ in results if is_relevant]
+    errors = [error for _, _, error, _ in results if error]
 
     if relevant_chunks:
         state["reranked_chunks"] = relevant_chunks
@@ -89,6 +92,7 @@ async def evaluator_agent(state: AgentState) -> AgentState:
         "filtered": len(chunks) - len(relevant_chunks),
         "retry_count": state.get("retry_count", 0),
         "failure_mode": settings.EVALUATOR_FAILURE_MODE,
+        "fallback_used": bool(errors),
         "error_count": len(errors),
     }
     if errors:

@@ -1,13 +1,16 @@
 import logging
-import json
 import re
+
 from openai import AsyncOpenAI
+
+from app.agents.llm_parsing import coerce_float, coerce_string_list, parse_llm_json_object
 from app.agents.state import AgentState
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 _client: AsyncOpenAI | None = None
+
 
 def _get_client() -> AsyncOpenAI:
     global _client
@@ -18,11 +21,10 @@ def _get_client() -> AsyncOpenAI:
         )
     return _client
 
-            
-                                                            
+
 CHITCHAT_PATTERN = re.compile(
     r"^(hello|hi|hey|xin chào|chào|alo|chào bạn|bạn khỏe|cảm ơn|thanks|thank you|ok|okay|bye|tạm biệt)[\s!?.]*$",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 ROUTER_SYSTEM = """You are an intent classifier and query optimizer for a Vietnamese RAG chatbot.
@@ -61,7 +63,23 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 {{"intent": "rag", "confidence": 0.95, "reasoning": "User asks about product specs", "rewritten_query": "What are the specifications of product X?", "search_variants": ["Product X technical details", "Features of product X", "Product X datasheet"]}}
 ## Output:"""
 
-            
+
+def _router_fallback(state: AgentState, query: str, error: str, raw_preview: str | None = None) -> None:
+    fallback_intent = "rag" if state.get("has_documents") else "chitchat"
+    state["query_type"] = fallback_intent
+    state["rewritten_query"] = query
+    state["search_variants"] = [query] if fallback_intent == "rag" else []
+    state["router_confidence"] = 0.0
+    state["router_reasoning"] = f"Error fallback: {error}"
+    state["agent_trace"]["router"] = {
+        "mode": "fallback",
+        "intent": fallback_intent,
+        "fallback_used": True,
+        "error": error,
+        "raw_response_preview": raw_preview,
+    }
+
+
 async def router_agent(state: AgentState) -> AgentState:
     state.setdefault("agent_trace", {})
     state.setdefault("retry_count", 0)
@@ -71,14 +89,18 @@ async def router_agent(state: AgentState) -> AgentState:
     query = state.get("query", "").strip()
     q_lower = query.lower()
 
-                     
     if CHITCHAT_PATTERN.match(q_lower):
         state["query_type"] = "chitchat"
         state["rewritten_query"] = query
         state["search_variants"] = []
         state["router_confidence"] = 1.0
         state["router_reasoning"] = "Matched chitchat regex fast-path"
-        state["agent_trace"]["router"] = "chitchat (regex)"
+        state["agent_trace"]["router"] = {
+            "mode": "regex",
+            "intent": "chitchat",
+            "confidence": 1.0,
+            "fallback_used": False,
+        }
         return state
 
     history = state.get("history", [])
@@ -91,7 +113,6 @@ async def router_agent(state: AgentState) -> AgentState:
     if not history_str:
         history_str = "(empty)"
 
-                       
     try:
         client = _get_client()
         prompt = ROUTER_SYSTEM.format(query=query, history=history_str.strip())
@@ -108,40 +129,36 @@ async def router_agent(state: AgentState) -> AgentState:
                 "X-Title": "RAG Router",
             },
         )
-        result_text = resp.choices[0].message.content.strip()
+        result_text = resp.choices[0].message.content
+        parsed = parse_llm_json_object(result_text)
+        if not parsed.ok or parsed.data is None:
+            _router_fallback(state, query, parsed.error or "invalid_router_json", parsed.raw_preview)
+            log.warning("Router JSON parsing failed", extra={"error": parsed.error})
+            return state
 
-                                    
-        start_idx = result_text.find("{")
-        end_idx = result_text.rfind("}")
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            result_text = result_text[start_idx:end_idx+1]
-
-        try:
-            result_json = json.loads(result_text)
-        except json.JSONDecodeError:
-            log.error(f"Failed to parse JSON. Raw text: {result_text}")
-            raise
-
-        intent = result_json.get("intent", "rag").lower()
+        result_json = parsed.data
+        intent = str(result_json.get("intent", "rag")).lower()
         if intent not in ["rag", "chitchat", "summarize"]:
             intent = "rag"
 
+        rewritten_query = result_json.get("rewritten_query")
+        if not isinstance(rewritten_query, str) or not rewritten_query.strip():
+            rewritten_query = query
+
         state["query_type"] = intent
-        state["router_confidence"] = float(result_json.get("confidence", 0.0))
-        state["router_reasoning"] = result_json.get("reasoning", "No reasoning provided")
-        state["rewritten_query"] = result_json.get("rewritten_query", query)
-        state["search_variants"] = result_json.get("search_variants", [])
-        state["agent_trace"]["router"] = f"{intent} (llm)"
+        state["router_confidence"] = coerce_float(result_json.get("confidence"), 0.0, minimum=0.0, maximum=1.0)
+        state["router_reasoning"] = str(result_json.get("reasoning") or "No reasoning provided")
+        state["rewritten_query"] = rewritten_query.strip()
+        state["search_variants"] = coerce_string_list(result_json.get("search_variants"), limit=3)
+        state["agent_trace"]["router"] = {
+            "mode": "llm",
+            "intent": intent,
+            "confidence": state["router_confidence"],
+            "fallback_used": False,
+        }
 
     except Exception as e:
-        log.error(f"Router LLM error: {str(e)}")
-                                           
-        fallback_intent = "rag" if state.get("has_documents") else "chitchat"
-        state["query_type"] = fallback_intent
-        state["rewritten_query"] = query
-        state["search_variants"] = [query] if fallback_intent == "rag" else []
-        state["router_confidence"] = 0.0
-        state["router_reasoning"] = f"Error fallback: {str(e)}"
-        state["agent_trace"]["router"] = f"{fallback_intent} (error fallback)"
+        log.error("Router LLM error", extra={"error": str(e)})
+        _router_fallback(state, query, str(e))
 
     return state

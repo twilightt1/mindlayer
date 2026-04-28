@@ -2,7 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.agents import answer_agent, evaluator_agent
+from app.agents import answer_agent, evaluator_agent, hallucination_agent, router_agent
+from app.agents.llm_parsing import parse_llm_json_object
 from app.agents.state import AgentState
 from app.retrieval import embedder, retrieval_cache
 from app.retrieval.bm25_retriever import BM25Retriever
@@ -207,3 +208,132 @@ async def test_evaluator_fail_closed_filters_chunks_on_grader_error(monkeypatch)
     assert result["context_relevant"] is False
     assert result["agent_trace"]["grade_docs"]["kept"] == 0
     assert result["agent_trace"]["grade_docs"]["failure_mode"] == "fail_closed"
+
+
+def test_llm_json_parser_handles_fenced_json_and_none():
+    parsed = parse_llm_json_object('```json\n{"score": "yes"}\n```')
+
+    assert parsed.ok is True
+    assert parsed.data == {"score": "yes"}
+
+    empty = parse_llm_json_object(None)
+
+    assert empty.ok is False
+    assert empty.error == "empty_response"
+    assert empty.raw_preview is None
+
+
+@pytest.mark.asyncio
+async def test_router_malformed_json_falls_back_with_trace(monkeypatch):
+    class BadCompletions:
+        async def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=None))]
+            )
+
+    class FakeClient:
+        chat = SimpleNamespace(completions=BadCompletions())
+
+    monkeypatch.setattr(router_agent, "_get_client", lambda: FakeClient())
+
+    state: AgentState = {
+        "query": "Which plan supports SSO?",
+        "history": [],
+        "has_documents": True,
+        "agent_trace": {},
+    }
+
+    result = await router_agent.router_agent(state)
+
+    assert result["query_type"] == "rag"
+    assert result["search_variants"] == ["Which plan supports SSO?"]
+    assert result["agent_trace"]["router"]["fallback_used"] is True
+    assert result["agent_trace"]["router"]["error"] == "empty_response"
+
+
+@pytest.mark.asyncio
+async def test_evaluator_malformed_json_warn_only_keeps_chunks(monkeypatch):
+    class BadCompletions:
+        async def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
+            )
+
+    class FakeClient:
+        chat = SimpleNamespace(completions=BadCompletions())
+
+    monkeypatch.setattr(evaluator_agent.settings, "EVALUATOR_FAILURE_MODE", "warn_only")
+    monkeypatch.setattr(evaluator_agent, "_get_client", lambda: FakeClient())
+
+    state: AgentState = {
+        "query": "Which plan supports SSO?",
+        "query_type": "rag",
+        "reranked_chunks": [{"content": "Enterprise supports SSO."}],
+        "agent_trace": {},
+    }
+
+    result = await evaluator_agent.evaluator_agent(state)
+
+    assert result["context_relevant"] is True
+    assert result["reranked_chunks"] == [{"content": "Enterprise supports SSO."}]
+    trace = result["agent_trace"]["grade_docs"]
+    assert trace["fallback_used"] is True
+    assert trace["error_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_hallucination_malformed_json_warn_only_fails_open(monkeypatch):
+    class BadCompletions:
+        async def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
+            )
+
+    class FakeClient:
+        chat = SimpleNamespace(completions=BadCompletions())
+
+    monkeypatch.setattr(hallucination_agent.settings, "EVALUATOR_FAILURE_MODE", "warn_only")
+    monkeypatch.setattr(hallucination_agent, "_get_client", lambda: FakeClient())
+
+    state: AgentState = {
+        "query": "How do I rotate an API key?",
+        "query_type": "rag",
+        "response": "Rotate the key in Settings [Source 1].",
+        "reranked_chunks": [{"content": "Rotate API keys in Settings."}],
+        "agent_trace": {},
+    }
+
+    result = await hallucination_agent.hallucination_agent(state)
+
+    assert result["is_hallucination"] is False
+    assert result["answers_question"] is True
+    assert result["agent_trace"]["hallucination"]["fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_hallucination_malformed_json_fail_closed_blocks_answer(monkeypatch):
+    class BadCompletions:
+        async def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
+            )
+
+    class FakeClient:
+        chat = SimpleNamespace(completions=BadCompletions())
+
+    monkeypatch.setattr(hallucination_agent.settings, "EVALUATOR_FAILURE_MODE", "fail_closed")
+    monkeypatch.setattr(hallucination_agent, "_get_client", lambda: FakeClient())
+
+    state: AgentState = {
+        "query": "How do I rotate an API key?",
+        "query_type": "rag",
+        "response": "Rotate the key in Settings [Source 1].",
+        "reranked_chunks": [{"content": "Rotate API keys in Settings."}],
+        "agent_trace": {},
+    }
+
+    result = await hallucination_agent.hallucination_agent(state)
+
+    assert result["is_hallucination"] is True
+    assert result["answers_question"] is False
+    assert result["agent_trace"]["hallucination"]["failure_mode"] == "fail_closed"
