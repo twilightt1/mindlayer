@@ -1,4 +1,4 @@
-.PHONY: dev build up down migrate seed test lint demo-smoke
+.PHONY: dev build up down migrate seed test lint demo-smoke security-check
 
 dev:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -35,3 +35,6 @@ format:
 
 demo-smoke:
 	python scripts/demo_smoke.py
+
+security-check:
+	python scripts/security_check.py

@@ -89,6 +89,8 @@ Detailed architecture and demo docs:
 
 - [DEMO_SCRIPT.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_SCRIPT.md) — 5-minute demo script
 - [DEMO_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_EVIDENCE.md) — Live demo certification evidence
+- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md) — Security readiness checklist
+- [SECURITY_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_EVIDENCE.md) — Automated security audit evidence
 - [ARCHITECTURE_OVERVIEW.md](file:///d:/DL/rag-backend/rag-backend/docs/ARCHITECTURE_OVERVIEW.md) — Portfolio-friendly architecture overview
 - [architecture.md](file:///d:/DL/rag-backend/rag-backend/docs/architecture.md)
 
