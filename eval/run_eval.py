@@ -24,6 +24,13 @@ from eval.reporting import (  # noqa: E402
     write_markdown_report,
 )
 
+try:  # RAGAS is optional
+    from eval.ragas_metrics import ragas_evaluate  # type: ignore
+    _HAS_RAGAS = True
+except Exception:  # pragma: no cover
+    _HAS_RAGAS = False
+
+
 DEFAULT_DATASET = ROOT / "eval" / "supportmind_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "results"
@@ -91,6 +98,7 @@ def evaluate_case(
     item: dict[str, Any],
     documents: dict[str, str],
     top_k: int,
+    enable_ragas: bool = False,
 ) -> dict[str, Any]:
     started = perf_counter()
     retrieved = retrieve_offline(item, documents, top_k)
@@ -113,10 +121,10 @@ def evaluate_case(
         and (citation_present or item.get("should_fallback", False))
     )
 
-    return {
+    result: dict[str, Any] = {
         "id": item["id"],
         "query": item["query"],
-        "category": item["category"],
+        "category": item.get("category", "uncategorized"),
         "expected_sources": expected_sources,
         "returned_sources": returned_sources,
         "expected_keywords": item.get("expected_keywords", []),
@@ -132,6 +140,21 @@ def evaluate_case(
         "passed": passed,
     }
 
+    if enable_ragas and _HAS_RAGAS:
+        try:
+            result["ragas"] = ragas_evaluate(
+                question=item["query"],
+                answer=answer,
+                context=source_text,
+                retrieved_sources=returned_sources,
+                ground_truth_answer=item.get("ground_truth_answer", ""),
+                expected_sources=expected_sources,
+                k=top_k,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            result["ragas_error"] = str(exc)
+    return result
+
 
 def run_evaluation(
     dataset_path: Path,
@@ -140,10 +163,14 @@ def run_evaluation(
     top_k: int,
     fail_under_source_hit: float,
     fail_under_keyword_coverage: float,
+    enable_ragas: bool = False,
 ) -> dict[str, Any]:
     dataset = load_dataset(dataset_path)
     documents = load_sample_docs(sample_docs_dir)
-    results = [evaluate_case(item, documents, top_k) for item in dataset]
+    results = [
+        evaluate_case(item, documents, top_k, enable_ragas=enable_ragas)
+        for item in dataset
+    ]
     summary = summarize_results(results)
     report = build_report(
         results=results,
@@ -192,6 +219,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--fail-under-source-hit", type=float, default=0.0)
     parser.add_argument("--fail-under-keyword-coverage", type=float, default=0.0)
+    parser.add_argument(
+        "--enable-ragas",
+        action="store_true",
+        help="Compute RAGAS-style metrics (semantic similarity, MRR, NDCG, faithfulness, etc.)",
+    )
+    parser.add_argument("--embed-model", type=str, default="all-MiniLM-L6-v2")
     parser.add_argument("--api-base-url", default="http://localhost:8000")
     parser.add_argument("--email", default=None)
     parser.add_argument("--password", default=None)
@@ -228,6 +261,7 @@ def main() -> int:
         top_k=args.top_k,
         fail_under_source_hit=args.fail_under_source_hit,
         fail_under_keyword_coverage=args.fail_under_keyword_coverage,
+        enable_ragas=args.enable_ragas,
     )
     return 0
 

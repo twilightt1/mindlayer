@@ -72,6 +72,23 @@ def build_markdown_report(report: dict[str, Any]) -> str:
             f"{sources} |"
         )
 
+    ragas = summary.get("ragas") or {}
+    if ragas:
+        lines.extend(
+            [
+                "## RAGAS-Style Metrics",
+                "",
+                "| Metric | Value |",
+                "|---|---:|",
+            ]
+        )
+        for key, value in ragas.items():
+            if isinstance(value, float):
+                lines.append(f"| {key} | {value:.3f} |")
+            else:
+                lines.append(f"| {key} | {value} |")
+        lines.append("")
+
     lines.extend(["", "## Failed / Warning Cases", ""])
     if not failed:
         lines.append("All cases passed the deterministic evaluation thresholds.")
@@ -88,9 +105,15 @@ def build_markdown_report(report: dict[str, Any]) -> str:
                     f"- Keyword coverage: {_format_percent(result['keyword_coverage'])}",
                     f"- Citation present: {'yes' if result['has_citation'] else 'no'}",
                     f"- Fallback accuracy: {_format_percent(result['fallback_accuracy'])}",
-                    "",
                 ]
             )
+            if "ragas" in result:
+                ragas_pairs = ", ".join(
+                    f"{k}={v:.3f}" for k, v in result["ragas"].items() if isinstance(v, float)
+                )
+                if ragas_pairs:
+                    lines.append(f"- RAGAS: {ragas_pairs}")
+            lines.append("")
 
     lines.extend(
         [
