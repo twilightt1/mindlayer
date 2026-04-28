@@ -85,9 +85,11 @@ graph TD
     Validate --> SSE[SSE Tokens + Sources + Trace]
 ```
 
-Detailed architecture docs:
+Detailed architecture and demo docs:
 
-- [ARCHITECTURE_OVERVIEW.md](file:///d:/DL/rag-backend/rag-backend/docs/ARCHITECTURE_OVERVIEW.md)
+- [DEMO_SCRIPT.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_SCRIPT.md) — 5-minute demo script
+- [DEMO_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_EVIDENCE.md) — Live demo certification evidence
+- [ARCHITECTURE_OVERVIEW.md](file:///d:/DL/rag-backend/rag-backend/docs/ARCHITECTURE_OVERVIEW.md) — Portfolio-friendly architecture overview
 - [architecture.md](file:///d:/DL/rag-backend/rag-backend/docs/architecture.md)
 
 ---
