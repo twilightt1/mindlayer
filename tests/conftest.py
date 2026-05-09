@@ -1,5 +1,7 @@
 """Pytest configuration and shared fixtures."""
 import asyncio
+import os
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -9,7 +11,10 @@ from sqlalchemy.pool import NullPool
 from app.main import app
 from app.database import Base, get_db
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/ragdb_test"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:123456@localhost:5432/ragdb_test",
+)
 
 test_engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
@@ -34,7 +39,7 @@ async def setup_db():
         yield
     except Exception as e:
         print(f"Error connecting to test database. Please ensure postgres is running at {TEST_DATABASE_URL}: {e}")
-                                                                             
+
         pytest.skip(f"Database not available: {e}")
     finally:
         try:

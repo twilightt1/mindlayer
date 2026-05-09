@@ -13,8 +13,6 @@ import hashlib
 import json
 import os
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -224,6 +222,9 @@ PromptRegistry.register_from_versions_module()
 def get_active_variant(agent: str, conversation_id: str | None = None) -> str:
     """Return the variant name to use for the given agent + conversation."""
     if not conversation_id:
+        # Lazy import to avoid cycle
+        from app.agents.prompts.versions import get_default_variants  # type: ignore
+
         return get_default_variants().get(agent, f"{agent}_v1")
     return PromptRegistry.assign(agent, conversation_id)
 
