@@ -1,26 +1,47 @@
 import logging
+
 from openai import AsyncOpenAI, OpenAI
+
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
-async_client = AsyncOpenAI(
-    api_key=settings.OPENAI_API_KEY,
-    base_url=settings.OPENROUTER_BASE_URL,
-    default_headers={
-        "HTTP-Referer": settings.FRONTEND_URL,
-        "X-Title": "SupportMind",
-    },
-)
+_async_client: AsyncOpenAI | None = None
+_sync_client: OpenAI | None = None
 
-sync_client = OpenAI(
-    api_key=settings.OPENAI_API_KEY,
-    base_url=settings.OPENROUTER_BASE_URL,
-    default_headers={
-        "HTTP-Referer": settings.FRONTEND_URL,
-        "X-Title": "SupportMind",
-    },
-)
+
+def _get_async_client() -> AsyncOpenAI:
+    """Lazily construct the async OpenAI client.
+
+    Delayed initialization keeps the module importable in test/CLI contexts
+    that do not have LLM credentials available.
+    """
+    global _async_client
+    if _async_client is None:
+        _async_client = AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+            default_headers={
+                "HTTP-Referer": settings.FRONTEND_URL,
+                "X-Title": "SupportMind",
+            },
+        )
+    return _async_client
+
+
+def _get_sync_client() -> OpenAI:
+    """Lazily construct the sync OpenAI client."""
+    global _sync_client
+    if _sync_client is None:
+        _sync_client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+            default_headers={
+                "HTTP-Referer": settings.FRONTEND_URL,
+                "X-Title": "SupportMind",
+            },
+        )
+    return _sync_client
 
 
 def _batches(texts: list[str]) -> list[list[str]]:
@@ -34,8 +55,9 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
 
     embeddings: list[list[float]] = []
     try:
+        client = _get_async_client()
         for batch in _batches(texts):
-            response = await async_client.embeddings.create(
+            response = await client.embeddings.create(
                 model=settings.EMBED_MODEL,
                 input=batch,
                 encoding_format="float",
@@ -58,8 +80,9 @@ def embed_texts_sync(texts: list[str]) -> list[list[float]]:
 
     embeddings: list[list[float]] = []
     try:
+        client = _get_sync_client()
         for batch in _batches(texts):
-            response = sync_client.embeddings.create(
+            response = client.embeddings.create(
                 model=settings.EMBED_MODEL,
                 input=batch,
                 encoding_format="float",

@@ -144,12 +144,14 @@ async def test_embed_texts_batches_and_preserves_order(monkeypatch):
             data=[SimpleNamespace(embedding=[float(text[-1])]) for text in input]
         )
 
+    class FakeEmbeddings:
+        create = staticmethod(fake_create)
+
+    class FakeAsyncClient:
+        embeddings = FakeEmbeddings()
+
     monkeypatch.setattr(embedder.settings, "EMBED_BATCH_SIZE", 2)
-    monkeypatch.setattr(
-        embedder.async_client,
-        "embeddings",
-        SimpleNamespace(create=fake_create),
-    )
+    monkeypatch.setattr(embedder, "_get_async_client", lambda: FakeAsyncClient())
 
     embeddings = await embedder.embed_texts(["text-1", "text-2", "text-3"])
 
