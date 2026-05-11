@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers common SupportMind production-like operations.
+This runbook covers common MindLayer production-like operations.
 
 ## Quick Status
 

@@ -1,4 +1,4 @@
-# SupportMind — AI/ML Architecture Overview
+# MindLayer — AI/ML Architecture Overview
 
 > A deep-dive for technical interviewers, peer reviews, and AI/ML portfolio
 > reviewers. Covers the RAG pipeline, agent graph, evaluation framework, and
@@ -133,7 +133,7 @@ and are loaded by the [`PromptRegistry`](app/agents/prompts/registry.py).
 
 ### Two modes
 - **Offline** ([`eval/run_eval.py`](eval/run_eval.py)) — deterministic, no
-  LLM calls. Runs against [`eval/supportmind_eval_dataset.json`](eval/supportmind_eval_dataset.json)
+  LLM calls. Runs against [`eval/MindLayer_eval_dataset.json`](eval/MindLayer_eval_dataset.json)
   (18 cases across 6 categories).
 - **Live** — exercises the FastAPI endpoint, captures real latency.
 

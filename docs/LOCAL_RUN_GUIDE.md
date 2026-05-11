@@ -1,6 +1,6 @@
 # 💻 Local Development Guide
 
-This guide explains how to run **SupportMind** locally with Docker-backed
+This guide explains how to run **MindLayer** locally with Docker-backed
 infrastructure and how to diagnose the most common dependency failures.
 
 ## 🛠️ Prerequisites

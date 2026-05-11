@@ -1,11 +1,11 @@
 # Deployment Guide
 
-This guide describes a production-like Docker Compose deployment for SupportMind.
+This guide describes a production-like Docker Compose deployment for MindLayer.
 Local development should continue using [docker-compose.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.yml). Production-like deployments should combine it with [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml).
 
 ## Required Services
 
-SupportMind expects these services to be available:
+MindLayer expects these services to be available:
 
 - FastAPI app
 - Celery worker for ingestion/email jobs
@@ -43,7 +43,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 ## Build Image
 
 ```bash
-docker build -t supportmind-api:latest .
+docker build -t MindLayer-api:latest .
 ```
 
 The [Dockerfile](file:///d:/DL/rag-backend/rag-backend/Dockerfile) runs the app as a non-root user and defaults to a production `uvicorn` command. Development Compose can still override this with `--reload`.

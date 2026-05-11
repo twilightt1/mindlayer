@@ -1,7 +1,7 @@
 # Demo Script
 
 This script is designed for a 5-minute portfolio/interview walkthrough of
-SupportMind.
+MindLayer.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ events.
 Talking point:
 
 > Support teams often answer the same API, billing, webhook, and incident
-> questions from scattered docs. SupportMind turns those docs into cited,
+> questions from scattered docs. MindLayer turns those docs into cited,
 > traceable answers and exposes enough diagnostics to operate the system.
 
 ## 2. Show Health and Readiness
@@ -91,7 +91,7 @@ Talking point:
 curl.exe -sS -X POST http://localhost:8000/api/v1/chat/conversations `
   -H "Authorization: Bearer $env:ACCESS_TOKEN" `
   -H "Content-Type: application/json" `
-  -d '{"title":"SupportMind demo"}'
+  -d '{"title":"MindLayer demo"}'
 ```
 
 Save the id:

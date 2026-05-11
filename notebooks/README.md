@@ -1,6 +1,6 @@
 # Jupyter notebooks — analysis & visualization
 
-This directory contains exploratory notebooks for SupportMind.
+This directory contains exploratory notebooks for MindLayer.
 
 ## `rag_analysis.ipynb`
 

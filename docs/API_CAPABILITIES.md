@@ -1,6 +1,6 @@
 # API Capabilities Matrix
 
-This matrix summarizes the main backend capabilities exposed by SupportMind.
+This matrix summarizes the main backend capabilities exposed by MindLayer.
 All application endpoints are versioned under `/api/v1` unless noted otherwise.
 
 ## Public Health and Readiness

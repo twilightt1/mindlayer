@@ -1,7 +1,7 @@
 # Security Evidence — Phase 16 Readiness Audit
 
 This document captures the Phase 16 security and production-hardening audit for
-SupportMind.
+MindLayer.
 
 ## Scope
 

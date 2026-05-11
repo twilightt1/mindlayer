@@ -1,7 +1,7 @@
 # Architecture Overview
 
 This document summarizes the production-style backend architecture for
-SupportMind. For detailed LangGraph node behavior, see
+MindLayer. For detailed LangGraph node behavior, see
 [architecture.md](file:///d:/DL/rag-backend/rag-backend/docs/architecture.md).
 
 ## System Context

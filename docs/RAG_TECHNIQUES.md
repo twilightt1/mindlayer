@@ -1,6 +1,6 @@
 # RAG Techniques Deep-Dive
 
-Implementation notes for the techniques used in SupportMind. Each section
+Implementation notes for the techniques used in MindLayer. Each section
 links to the source file, explains the trade-off, and points at the tests
 that exercise it.
 

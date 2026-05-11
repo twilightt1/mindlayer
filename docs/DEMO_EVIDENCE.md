@@ -1,6 +1,6 @@
 # Demo Evidence — Phase 15 Live Certification
 
-This document captures the live local certification run for the SupportMind demo
+This document captures the live local certification run for the MindLayer demo
 workflow.
 
 ## Environment
@@ -84,7 +84,7 @@ The reusable smoke script completed successfully.
 
 | Step | Result |
 | --- | --- |
-| Ensure demo user | `supportmind-demo@example.com` verified and onboarded |
+| Ensure demo user | `MindLayer-demo@example.com` verified and onboarded |
 | Login | access token received |
 | Conversation | `b456faf1-cb01-4341-a820-7b02bc390d89` |
 
