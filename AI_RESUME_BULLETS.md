@@ -1,4 +1,4 @@
-# AI/ML Resume Bullets — SupportMind RAG
+# AI/ML Resume Bullets — MindLayer RAG
 
 Copy-paste-ready bullets you can drop into your CV for **AI Engineer**,
 **ML Engineer**, **LLM Engineer**, or **Applied ML** roles.
@@ -112,7 +112,7 @@ Copy-paste-ready bullets you can drop into your CV for **AI Engineer**,
 
 ## Project summary (one-liner for CV header)
 
-> **SupportMind** — a production RAG backend (Python/FastAPI/LangGraph) with
+> **MindLayer** — a production RAG backend (Python/FastAPI/LangGraph) with
 > hybrid retrieval, LLM self-correction, versioned prompt A/B testing, and
 > an offline+live evaluation harness. Eval-driven, observability-first,
 > Dockerized. Code: [link].

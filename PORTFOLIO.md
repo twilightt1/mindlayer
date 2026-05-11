@@ -1,8 +1,8 @@
-# SupportMind Portfolio Summary
+# MindLayer Portfolio Summary
 
 ## One-liner
 
-**SupportMind** is a production-grade RAG backend for SaaS support teams that
+**MindLayer** is a production-grade RAG backend for SaaS support teams that
 streams cited answers from internal knowledge-base documents using hybrid
 retrieval, reranking, LangGraph self-correction, and admin diagnostics.
 
@@ -19,7 +19,7 @@ problems:
 
 ## Solution
 
-SupportMind provides a backend that lets teams upload knowledge-base documents,
+MindLayer provides a backend that lets teams upload knowledge-base documents,
 ingest them asynchronously, and ask natural-language questions. The system
 retrieves relevant context with lexical + semantic search, reranks it, generates
 a grounded answer, streams the answer over SSE, and returns citations plus an
@@ -157,7 +157,7 @@ Then asks:
 - “How do I troubleshoot failed Stripe integration?”
 - “What should I check when Redis latency spikes?”
 
-SupportMind responds with a streamed, grounded answer and source snippets.
+MindLayer responds with a streamed, grounded answer and source snippets.
 Operators can also show `/api/v1/admin/diagnostics` to demonstrate production
 observability.
 

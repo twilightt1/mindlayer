@@ -1,4 +1,4 @@
-# SupportMind — Production-Grade RAG Backend for SaaS Support
+# MindLayer — Production-Grade RAG Backend for SaaS Support
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python" alt="Python" />
@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Docker-Production_Readiness-2496ED?style=for-the-badge&logo=docker" alt="Docker" />
 </p>
 
-**SupportMind** is a production-oriented backend for support teams that need
+**MindLayer** is a production-oriented backend for support teams that need
 fast, cited answers from internal knowledge-base documents. It combines
 FastAPI, PostgreSQL, Redis, Celery, MinIO, ChromaDB, hybrid retrieval,
 reranking, LangGraph self-correction, token-level SSE streaming, evaluations,
@@ -26,7 +26,7 @@ SaaS support teams answer repeated product, API, billing, integration, webhook,
 and incident questions across scattered documentation. The usual failure modes
 are slow lookup, inconsistent answers, and no source traceability.
 
-SupportMind solves this by letting teams upload support knowledge-base documents
+MindLayer solves this by letting teams upload support knowledge-base documents
 and ask natural-language questions. The backend retrieves relevant context,
 ranks it, generates a grounded answer, streams the response, and returns source
 metadata plus an `agent_trace` for debugging retrieval quality.
@@ -179,7 +179,7 @@ event: status
 data: {"type":"status","stage":"retrieval","retry_count":0}
 
 event: token
-data: {"type":"token","content":"SupportMind","retry_count":0}
+data: {"type":"token","content":"MindLayer","retry_count":0}
 
 event: sources
 data: {"type":"sources","sources":[...]}
