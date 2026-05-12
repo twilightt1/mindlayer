@@ -1,5 +1,5 @@
 """
-Prompt version registry for SupportMind agents.
+Prompt version registry for MindLayer agents.
 
 All agent prompts are loaded from this registry, which:
   - Provides versioned, named variants (e.g. `router_v1`, `router_v2`)

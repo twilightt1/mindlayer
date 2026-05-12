@@ -1,5 +1,5 @@
 """
-Versioned prompt definitions for SupportMind agents.
+Versioned prompt definitions for MindLayer agents.
 
 Each prompt variant is registered as a `PromptVariant` (see registry.py).
 Variants are grouped by agent (`router`, `answer`, `evaluator`, `hallucination`).
@@ -22,15 +22,15 @@ ROUTER_V1 = PromptVariant(
     agent="router",
     description="Default router: classify as chitchat/summarize/rag; rewrite the query.",
     template=(
-        "You are SupportMind's intent router.\n"
-        "Classify the user message into exactly one of: chitchat, summarize, rag.\n"
-        "If unsure, default to 'rag'.\n"
+        "You are MindLayer's intent router.\n"
+        "Classify the user message into exactly one of: chitchat, summarize, recall, save_note, web_search.\n"
+        "If unsure, default to 'recall'.\n"
         "Then rewrite the user message to be self-contained (replace pronouns, "
         "add missing context). Respond as JSON: "
         '{"query_type": "...", "rewritten_query": "...", "rationale": "..."}\n\n'
         "User: {query}"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.1.0"},
+    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
 )
 
 ROUTER_V2 = PromptVariant(
@@ -38,16 +38,17 @@ ROUTER_V2 = PromptVariant(
     agent="router",
     description="Slightly stricter: forces JSON keys, requires confident rationale.",
     template=(
-        "You are the SupportMind intent router. Choose the most appropriate "
+        "You are the MindLayer intent router. Choose the most appropriate "
         "intent for the user's message.\n"
-        "Allowed intents: chitchat, summarize, rag.\n"
-        "Pick 'rag' if the question is about a product, document, or account.\n"
+        "Allowed intents: chitchat, summarize, recall, save_note, web_search.\n"
+        "Pick 'recall' if the question is about something the user may have "
+        "previously stored or learned.\n"
         "Respond STRICTLY as JSON with keys: query_type, rewritten_query, "
         "rationale. The rationale must mention one concrete reason for the choice.\n"
         "User: {query}\n"
         "JSON:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.4.0", "experiment": "stricter-json"},
+    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "stricter-json"},
 )
 
 
@@ -60,17 +61,18 @@ ANSWER_V1 = PromptVariant(
     agent="answer",
     description="Default answer: cite [Source N] markers, follow citation rules.",
     template=(
-        "You are SupportMind's support assistant.\n"
+        "You are MindLayer, a personal AI second brain that helps the user "
+        "recall and reason about their own memories.\n"
         "Answer the user's question using ONLY the context below.\n"
         "If the answer is not in the context, reply: "
-        "\"I don't know based on the available SupportMind documentation.\"\n"
+        "\"I don't recall that in your memories. Would you like me to save a note about it?\"\n"
         "Cite sources inline as [Source 1], [Source 2], etc. "
         "Match numbers to the order the sources appear below.\n\n"
         "Question: {query}\n\n"
         "Context:\n{context}\n\n"
         "Answer:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.1.0"},
+    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
 )
 
 ANSWER_V2 = PromptVariant(
@@ -78,19 +80,19 @@ ANSWER_V2 = PromptVariant(
     agent="answer",
     description="Adds chain-of-thought: extract facts first, then answer.",
     template=(
-        "You are SupportMind's support assistant. Be precise and cite sources.\n"
+        "You are MindLayer, a personal AI second brain. Be precise and cite sources.\n"
         "Step 1: From the context, list 2-5 bullet points of facts relevant to the question.\n"
         "Step 2: Compose a concise final answer using only those facts. "
         "Cite each fact as [Source N] matching the order below.\n"
         "If no relevant facts exist, reply: "
-        "\"I don't know based on the available SupportMind documentation.\"\n\n"
+        "\"I don't recall that in your memories. Would you like me to save a note about it?\"\n\n"
         "Question: {query}\n\n"
         "Context:\n{context}\n\n"
         "Facts:\n"
         "- \n\n"
         "Answer:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.4.0", "experiment": "cot-extract"},
+    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "cot-extract"},
 )
 
 
@@ -111,7 +113,7 @@ EVALUATOR_V1 = PromptVariant(
         "Chunk:\n{chunk}\n\n"
         "JSON:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.1.0"},
+    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
 )
 
 EVALUATOR_V2 = PromptVariant(
@@ -128,7 +130,7 @@ EVALUATOR_V2 = PromptVariant(
         "Chunk:\n{chunk}\n\n"
         "JSON:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.4.0", "experiment": "graded-relevance"},
+    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "graded-relevance"},
 )
 
 
@@ -149,7 +151,7 @@ HALLUCINATION_V1 = PromptVariant(
         "Question: {query}\n\n"
         "JSON:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.1.0"},
+    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
 )
 
 HALLUCINATION_V2 = PromptVariant(
@@ -167,7 +169,7 @@ HALLUCINATION_V2 = PromptVariant(
         "Question: {query}\n\n"
         "JSON:"
     ),
-    metadata={"author": "supportmind", "introduced_in": "0.4.0", "experiment": "citation-check"},
+    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "citation-check"},
 )
 
 
