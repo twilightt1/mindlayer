@@ -18,15 +18,21 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-                  
+                   
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     API_BASE_URL: str = "http://localhost:8000"
 
-              
+    # ── App identity ──────────────────────────────────────────────────────────────
+    # MindLayer — Personal AI Second Brain
+    APP_NAME: str = "MindLayer"
+    APP_TAGLINE: str = "Personal AI Second Brain"
+    CONTACT_EMAIL: str = "hello@mindlayer.local"
+
+    # ── Email ─────────────────────────────────────────────────────────────────────
     SENDGRID_API_KEY: str = ""
-    EMAIL_FROM: str = "noreply@supportmind.local"
-    EMAIL_FROM_NAME: str = "SupportMind"
+    EMAIL_FROM: str = "noreply@mindlayer.local"
+    EMAIL_FROM_NAME: str = "MindLayer"
 
            
     MINIO_ENDPOINT: str = "localhost:9000"
