@@ -1,6 +1,6 @@
 # Product Release Notes
 
-These release notes describe recent SupportMind product changes that support
+These release notes describe recent MindLayer product changes that support
 agents may need to reference.
 
 ## Version 2.4.0 — SSO and Audit Logs

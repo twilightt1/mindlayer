@@ -1,7 +1,7 @@
 # Incident Response Runbook
 
 This runbook helps support and engineering teams respond to production incidents
-that affect SupportMind customers.
+that affect MindLayer customers.
 
 ## Severity Levels
 

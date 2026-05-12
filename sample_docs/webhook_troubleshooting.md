@@ -1,11 +1,11 @@
 # Webhook Troubleshooting Guide
 
-SupportMind can send webhooks for document ingestion, conversation events, and
+MindLayer can send webhooks for document ingestion, conversation events, and
 billing changes. This guide helps support teams troubleshoot delivery issues.
 
 ## Webhook Retry Rules
 
-Webhook delivery uses exponential backoff. SupportMind retries failed webhook
+Webhook delivery uses exponential backoff. MindLayer retries failed webhook
 requests up to 8 times over 24 hours.
 
 A webhook attempt is considered failed when the destination returns a non-2xx
@@ -13,14 +13,14 @@ status code or does not respond within 10 seconds.
 
 ## Signature Verification
 
-Every webhook includes an `X-SupportMind-Signature` header. The receiving service
+Every webhook includes an `X-MindLayer-Signature` header. The receiving service
 should compute an HMAC SHA-256 signature using the workspace webhook secret and
 compare it with the header value.
 
 ## Common Failure Causes
 
 - The destination endpoint returns `401` or `403`.
-- The endpoint blocks SupportMind IP ranges.
+- The endpoint blocks MindLayer IP ranges.
 - TLS certificates are expired or misconfigured.
 - The server responds after the 10-second timeout.
 - Signature verification uses the wrong webhook secret.

@@ -1,11 +1,11 @@
 # Billing and Plans FAQ
 
-This FAQ explains SupportMind subscription plans, limits, billing behavior, and
+This FAQ explains MindLayer subscription plans, limits, billing behavior, and
 upgrade rules for SaaS support teams.
 
 ## Plans
 
-SupportMind has three plans:
+MindLayer has three plans:
 
 | Plan | Monthly conversations | Documents | SSO | Webhooks |
 | --- | ---: | ---: | --- | --- |

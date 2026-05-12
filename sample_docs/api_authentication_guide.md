@@ -1,6 +1,6 @@
 # API Authentication Guide
 
-SupportMind APIs use bearer tokens for authenticated requests. Support agents,
+MindLayer APIs use bearer tokens for authenticated requests. Support agents,
 admins, and integrations must authenticate before uploading documents or asking
 support questions.
 

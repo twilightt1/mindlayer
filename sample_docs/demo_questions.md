@@ -20,7 +20,7 @@ Use these questions after uploading the sample documents to a conversation.
 ## Suggested Demo Flow
 
 1. Register and login.
-2. Create a conversation named `SupportMind Demo`.
+2. Create a conversation named `MindLayer Demo`.
 3. Upload every markdown file in this directory except `demo_questions.md`.
 4. Wait until document status becomes `ready`.
 5. Ask the questions above.

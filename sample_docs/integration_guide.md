@@ -1,23 +1,23 @@
 # Integration Guide
 
-This guide describes common third-party integrations for SupportMind workspaces,
+This guide describes common third-party integrations for MindLayer workspaces,
 including Slack, Zendesk, Stripe, and CRM systems.
 
 ## Slack Integration
 
 Admins can connect Slack from **Admin → Integrations → Slack**. After connection,
-support agents can ask SupportMind questions directly from selected channels.
+support agents can ask MindLayer questions directly from selected channels.
 
 Required Slack permissions:
 
 - Read messages in selected channels.
-- Post answers as the SupportMind bot.
+- Post answers as the MindLayer bot.
 - Open modals for citation previews.
 
 ## Zendesk Integration
 
 The Zendesk integration allows agents to search support knowledge while replying
-to tickets. SupportMind can attach cited answers as internal notes or public
+to tickets. MindLayer can attach cited answers as internal notes or public
 replies.
 
 ## Stripe Integration
@@ -30,7 +30,7 @@ Troubleshooting failed Stripe integration:
 1. Confirm the Stripe restricted key has read access to customers, prices, and
    subscriptions.
 2. Verify the webhook endpoint is enabled in Stripe.
-3. Check that the signing secret matches the SupportMind configuration.
+3. Check that the signing secret matches the MindLayer configuration.
 4. Replay the latest Stripe event from the Stripe dashboard.
 
 ## CRM Integration
