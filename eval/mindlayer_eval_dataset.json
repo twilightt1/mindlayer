@@ -68,7 +68,7 @@
     "query": "Which header is used for webhook signature verification?",
     "category": "webhooks",
     "expected_sources": ["webhook_troubleshooting.md"],
-    "expected_keywords": ["X-SupportMind-Signature", "HMAC SHA-256", "webhook secret"],
+    "expected_keywords": ["X-MindLayer-Signature", "HMAC SHA-256", "webhook secret"],
     "should_fallback": false
   },
   {

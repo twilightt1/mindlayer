@@ -1,4 +1,4 @@
-"""Lightweight offline evaluation for the SupportMind demo dataset.
+"""Lightweight offline evaluation for the MindLayer Demo dataset.
 
 This script checks whether each expected source document contains the keywords
 that should support the demo answer. It does not require the API, database, LLM,
@@ -14,7 +14,7 @@ from time import perf_counter
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_DOCS = ROOT / "sample_docs"
-DATASET = Path(__file__).resolve().parent / "supportmind_eval_dataset.json"
+DATASET = Path(__file__).resolve().parent / "mindlayer_eval_dataset.json"
 
 
 def load_dataset() -> list[dict]:
@@ -82,7 +82,7 @@ def run() -> int:
     avg_coverage = sum(row["keyword_coverage"] for row in rows) / total if total else 0.0
     latency_ms = (perf_counter() - started) * 1000
 
-    print("SupportMind Offline Eval")
+    print("MindLayer Offline Eval")
     print("=" * 28)
     print(f"Questions:          {total}")
     print(f"Expected doc hit:   {doc_hit:.2%}")
