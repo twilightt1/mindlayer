@@ -10,7 +10,7 @@ Example:
 
     exp = Experiment(
         name="router_topk_sweep",
-        dataset_path="eval/supportmind_eval_dataset.json",
+        dataset_path="eval/mindlayer_eval_dataset.json",
         sample_docs_dir="sample_docs",
         output_dir="eval/experiments",
     )

@@ -1,5 +1,5 @@
 """
-MLflow-style experiment tracking for SupportMind.
+MLflow-style experiment tracking for MindLayer.
 
 Lightweight, SQLite-backed run logger. No external services required.
 

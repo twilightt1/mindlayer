@@ -1,5 +1,5 @@
 """
-Artifact storage for SupportMind experiments.
+Artifact storage for MindLayer experiments.
 
 Lightweight wrapper around local filesystem for storing prompt versions,
 datasets, and config snapshots attached to experiment runs.

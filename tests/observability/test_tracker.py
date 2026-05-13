@@ -214,7 +214,7 @@ class TestExperiment:
         sample_docs = root / "sample_docs"
         if not sample_docs.exists():  # pragma: no cover - skip if env lacks docs
             pytest.skip("sample_docs not available")
-        dataset = root / "eval" / "supportmind_eval_dataset.json"
+        dataset = root / "eval" / "mindlayer_eval_dataset.json"
         exp = Experiment(
             name="topk_sweep_test",
             dataset_path=dataset,

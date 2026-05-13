@@ -1,4 +1,4 @@
-"""Observability & experiment tracking package for SupportMind.
+"""Observability & experiment tracking package for MindLayer.
 
 Provides:
   - `tracker.RunTracker`        MLflow-style run logger (SQLite-backed)
