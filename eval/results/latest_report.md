@@ -1,4 +1,4 @@
-# SupportMind RAG Evaluation Report
+# MindLayer RAG Evaluation Report
 
 Generated at: `2026-06-14T17:05:29.409415+00:00`
 

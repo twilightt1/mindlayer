@@ -24,15 +24,15 @@ def _base_settings(**overrides):
 
 def _production_settings(**overrides):
     values = {
-        "DATABASE_URL": "postgresql+asyncpg://supportmind:strong-db-password@postgres:5432/ragdb",
+        "DATABASE_URL": "postgresql+asyncpg://mindlayer:strong-db-password@postgres:5432/ragdb",
         "REDIS_URL": "redis://redis:6379/0",
         "JWT_SECRET_KEY": "production-secret-key-with-more-than-32-characters",
-        "MINIO_ACCESS_KEY": "supportmind-prod-minio",
-        "MINIO_SECRET_KEY": "supportmind-prod-minio-secret",
+        "MINIO_ACCESS_KEY": "mindlayer-prod-minio",
+        "MINIO_SECRET_KEY": "mindlayer-prod-minio-secret",
         "OPENROUTER_API_KEY": "sk-or-production",
         "OPENAI_API_KEY": "sk-production",
         "JINA_API_KEY": "jina-production",
-        "ALLOWED_ORIGINS": "https://app.supportmind.example",
+        "ALLOWED_ORIGINS": "https://app.mindlayer.example",
         "ENVIRONMENT": "production",
     }
     values.update(overrides)
@@ -77,7 +77,7 @@ def test_production_accepts_complete_safe_settings():
 
     assert settings.ENVIRONMENT == "production"
     assert settings.is_production is True
-    assert settings.ALLOWED_ORIGINS == "https://app.supportmind.example"
+    assert settings.ALLOWED_ORIGINS == "https://app.mindlayer.example"
 
 
 def test_rejects_invalid_embedding_batch_size():

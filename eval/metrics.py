@@ -10,7 +10,7 @@ FALLBACK_MARKERS = (
     "không tìm thấy",
     "không có thông tin",
     "outside the available support documentation",
-    "not covered by the supportmind knowledge base",
+    "not covered by the mindlayer knowledge base",
 )
 
 CITATION_PATTERNS = (

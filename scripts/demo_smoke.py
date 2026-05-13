@@ -295,7 +295,7 @@ async def run_smoke(args: argparse.Namespace) -> None:
     base_url = args.base_url.rstrip("/")
     docs = _parse_doc_paths(args.docs)
     questions = _load_questions(args.questions)
-    title = f"SupportMind smoke {time.strftime('%Y-%m-%d %H:%M:%S')}"
+    title = f"MindLayer smoke {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
     if args.seed_user:
         _print_step(f"Ensuring demo user exists: {args.email}")
@@ -354,12 +354,12 @@ async def run_smoke(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run a production-like SupportMind demo smoke workflow.",
+        description="Run a production-like MindLayer Demo smoke workflow.",
     )
     parser.add_argument("--base-url", default=_env("DEMO_BASE_URL", "http://localhost:8000"))
-    parser.add_argument("--email", default=_env("DEMO_USER_EMAIL", "supportmind-demo@example.com"))
+    parser.add_argument("--email", default=_env("DEMO_USER_EMAIL", "mindlayer-demo@example.com"))
     parser.add_argument("--password", default=_env("DEMO_USER_PASSWORD", "DemoPassword123!"))
-    parser.add_argument("--display-name", default=_env("DEMO_DISPLAY_NAME", "SupportMind Demo"))
+    parser.add_argument("--display-name", default=_env("DEMO_DISPLAY_NAME", "MindLayer Demo"))
     parser.add_argument("--doc", dest="docs", action="append", help="Document path to upload. Repeatable.")
     parser.add_argument("--question", dest="questions", action="append", help="Question to ask. Repeatable.")
     parser.add_argument("--ingestion-timeout", type=int, default=int(_env("DEMO_INGESTION_TIMEOUT", "180")))

@@ -1,5 +1,5 @@
 """
-LLM / embedding / reranker benchmark utilities for SupportMind.
+LLM / embedding / reranker benchmark utilities for MindLayer.
 
 This package contains reusable benchmark harnesses:
 

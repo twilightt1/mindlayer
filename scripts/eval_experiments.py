@@ -1,12 +1,12 @@
 """
-CLI for running experiment sweeps with the SupportMind eval suite.
+CLI for running experiment sweeps with the MindLayer eval suite.
 
 Examples:
 
   # Compare two top-k values with the offline evaluator
   python scripts/eval_experiments.py \\
       --experiment topk_sweep \\
-      --dataset eval/supportmind_eval_dataset.json \\
+      --dataset eval/mindlayer_eval_dataset.json \\
       --sample-docs sample_docs \\
       --output-dir eval/experiments \\
       --variants topk_3,topk_5,topk_8
@@ -34,14 +34,14 @@ if str(ROOT) not in sys.path:
 
 from app.observability.experiments import Experiment, Variant  # noqa: E402
 
-DEFAULT_DATASET = ROOT / "eval" / "supportmind_eval_dataset.json"
+DEFAULT_DATASET = ROOT / "eval" / "mindlayer_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "experiments"
 DEFAULT_TRACKER_DB = ROOT / "eval" / "experiments.db"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run a SupportMind experiment sweep.")
+    parser = argparse.ArgumentParser(description="Run a MindLayer experiment sweep.")
     parser.add_argument("--experiment", required=True, help="Experiment name (used for run naming and output dir).")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--sample-docs", type=Path, default=DEFAULT_SAMPLE_DOCS)

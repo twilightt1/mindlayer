@@ -1,6 +1,6 @@
 # RAG Evaluation Framework
 
-This directory contains evaluation tooling for the SupportMind RAG demo.
+This directory contains evaluation tooling for the MindLayer RAG demo.
 
 - **Offline mode** is deterministic and CI-safe. It uses `sample_docs/` directly
   and does not require the API server, database, ChromaDB, Redis, MinIO, or LLM
@@ -12,16 +12,16 @@ This directory contains evaluation tooling for the SupportMind RAG demo.
 
 | File | Purpose |
 |---|---|
-| `supportmind_eval_dataset.json` | Golden dataset of questions, expected sources, keywords, and fallback expectations. |
+| `MindLayer_eval_dataset.json` | Golden dataset of questions, expected sources, keywords, and fallback expectations. |
 | `metrics.py` | Deterministic metric helpers for source hit, keyword coverage, citations, fallback accuracy, and summaries. |
 | `reporting.py` | Markdown and JSON report generation helpers. |
 | `run_eval.py` | CLI entrypoint for offline and live API evaluation modes. |
 | `live_api_eval.py` | Live API evaluator, SSE parser, response collector, and live scoring helpers. |
-| `supportmind_offline_eval.py` | Legacy lightweight keyword sanity check kept for reference. |
+| `MindLayer_offline_eval.py` | Legacy lightweight keyword sanity check kept for reference. |
 
 ## Dataset Schema
 
-Each item in `supportmind_eval_dataset.json` uses this shape:
+Each item in `MindLayer_eval_dataset.json` uses this shape:
 
 ```json
 {

@@ -1,5 +1,5 @@
 """
-CLI orchestrator for SupportMind benchmark suite.
+CLI orchestrator for MindLayer benchmark suite.
 
 Examples:
   # Compare 3 LLM models (requires OPENROUTER_API_KEY)
@@ -132,7 +132,7 @@ def _write_report(args: argparse.Namespace, report: dict, md: str) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="SupportMind benchmark suite.")
+    parser = argparse.ArgumentParser(description="MindLayer benchmark suite.")
     parser.add_argument(
         "--mode",
         required=True,

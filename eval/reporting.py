@@ -32,7 +32,7 @@ def build_markdown_report(report: dict[str, Any]) -> str:
     failed = [result for result in results if not result.get("passed", False)]
 
     lines = [
-        "# SupportMind RAG Evaluation Report",
+        "# MindLayer RAG Evaluation Report",
         "",
         f"Generated at: `{report['generated_at']}`",
         "",

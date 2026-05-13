@@ -31,12 +31,12 @@ except Exception:  # pragma: no cover
     _HAS_RAGAS = False
 
 
-DEFAULT_DATASET = ROOT / "eval" / "supportmind_eval_dataset.json"
+DEFAULT_DATASET = ROOT / "eval" / "mindlayer_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "results"
 FALLBACK_ANSWER = (
-    "I don't know based on the available SupportMind documentation. "
-    "This question appears to be outside the available support documentation."
+    "I don't recall that in your memories. "
+    "This question appears to be outside what you've stored with MindLayer."
 )
 
 
@@ -89,7 +89,7 @@ def generate_offline_answer(item: dict[str, Any], retrieved: list[dict[str, Any]
     keyword_sentence = ", ".join(expected_keywords[:5])
     source_excerpt = " ".join(primary["content"].split())[:450]
     return (
-        f"Based on the SupportMind documentation, relevant details include: "
+        f"Based on your stored memories, relevant details include: "
         f"{keyword_sentence}. {source_excerpt} [Source 1]"
     )
 
@@ -187,7 +187,7 @@ def run_evaluation(
     write_json_report(report, output_dir / "latest_report.json")
     write_markdown_report(report, output_dir / "latest_report.md")
 
-    print("SupportMind RAG Evaluation")
+    print("MindLayer RAG Evaluation")
     print("=" * 30)
     print(f"Cases:             {summary['total_cases']}")
     print(f"Source hit rate:   {summary['source_hit_rate']:.1%}")
@@ -211,7 +211,7 @@ def run_evaluation(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run SupportMind RAG evaluation.")
+    parser = argparse.ArgumentParser(description="Run MindLayer RAG evaluation.")
     parser.add_argument("--mode", choices=("offline", "live-api"), default="offline")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--sample-docs", type=Path, default=DEFAULT_SAMPLE_DOCS)

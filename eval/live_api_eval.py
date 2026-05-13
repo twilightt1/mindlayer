@@ -321,7 +321,7 @@ class LiveApiEvaluator:
 def run_live_api_evaluation(config: LiveApiEvalConfig) -> dict[str, Any]:
     report = asyncio.run(LiveApiEvaluator(config).run())
     summary = report["summary"]
-    print("SupportMind Live API RAG Evaluation")
+    print("MindLayer Live API RAG Evaluation")
     print("=" * 36)
     print(f"Cases:             {summary['total_cases']}")
     print(f"Source hit rate:   {summary['source_hit_rate']:.1%}")

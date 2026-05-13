@@ -1,5 +1,5 @@
 """
-Per-query cost estimation for SupportMind.
+Per-query cost estimation for MindLayer.
 
 The agent graph typically makes 3-5 LLM calls per request:
   - router, evaluator, hallucination, answer
