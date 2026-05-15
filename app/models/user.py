@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from app.models.email_verification import EmailVerification
     from app.models.password_reset_session import PasswordResetSession
     from app.models.user_quota import UserQuota
+    from app.models.memory import Memory
+    from app.models.entity import Entity
+    from app.models.source import Source
 
 
 class User(Base):
@@ -36,3 +39,6 @@ class User(Base):
     password_reset_sessions: Mapped[list["PasswordResetSession"]]  = relationship(back_populates="user", cascade="all, delete-orphan")
     conversations:           Mapped[list["Conversation"]]          = relationship(back_populates="user", cascade="all, delete-orphan")
     quota:                   Mapped["UserQuota"]                   = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
+    memories:                Mapped[list["Memory"]]                = relationship(back_populates="user", cascade="all, delete-orphan")
+    entities:                Mapped[list["Entity"]]                = relationship(back_populates="user", cascade="all, delete-orphan")
+    sources:                 Mapped[list["Source"]]                = relationship(back_populates="user", cascade="all, delete-orphan")
