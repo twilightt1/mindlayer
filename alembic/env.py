@@ -9,6 +9,10 @@ from alembic import context
 from app.database import Base
 from app.models import user, email_verification, password_reset_session
 from app.models import conversation, document, document_chunk, message, user_quota
+# MindLayer second-brain models
+from app.models import memory, entity, source
+from app.models.admin_audit import AdminActionLog
+from app.models.system_setting import SystemSetting
 
 from app.config import settings
 
