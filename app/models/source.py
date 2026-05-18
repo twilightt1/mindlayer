@@ -110,9 +110,9 @@ class MemorySource(Base):
     memory_id:      Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False, index=True)
     source_id:      Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    source_item_id: Mapped[str | None] = mapped_column(String(500), nullable=True)  # the remote id of the item
-    source_url:     Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    source_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)        # short snippet from the source
+    item_ref:     Mapped[str | None] = mapped_column(String(500), nullable=True)  # the remote id of the item
+    item_url:     Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    item_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)        # short snippet from the source
 
     fetched_at:     Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     extra_metadata: Mapped[dict]       = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
