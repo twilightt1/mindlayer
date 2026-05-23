@@ -32,13 +32,22 @@ REGISTRY: dict[str, Type[BaseConnector]] = {
 }
 
 
-def get_connector_for_source(source_type: str, config: dict | None = None) -> BaseConnector:
+def get_connector_for_source(
+    source_type: str,
+    config: dict | None = None,
+    initial_cursor: str | None = None,
+) -> BaseConnector:
     """
     Return a connector instance for the given source_type.
     Raises `KeyError` if no connector is registered for that type.
+
+    `initial_cursor` is the pagination token from the last sync (from
+    `Source.sync_cursor`). Remote connectors (Drive/Notion/Gmail) use
+    it to resume where the previous sync left off. Local connectors
+    (manual/file_upload/web_clipper) ignore it.
     """
     try:
         cls = REGISTRY[source_type]
     except KeyError as e:
         raise KeyError(f"No connector registered for source_type='{source_type}'") from e
-    return cls(config=config)
+    return cls(config=config, initial_cursor=initial_cursor)
