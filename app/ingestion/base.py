@@ -34,13 +34,29 @@ class BaseConnector(ABC):
         await connector.validate_config()         # raises if config bad
         items = await connector.fetch_items()     # network/IO happens here
         # dispatcher turns each item into a Memory + MemorySource
+
+    Cursor support (Phase 2.6):
+        Connectors that paginate (Drive/Notion/Gmail) read
+        ``self.initial_cursor`` at the start of ``fetch_items()`` and
+        set ``self.last_cursor`` to the final pagination token (or
+        ``None`` if exhausted). The dispatcher reads
+        ``connector.last_cursor`` and saves it to
+        ``Source.sync_cursor`` for the next sync.
     """
 
     # Concrete subclasses set this to a value from SOURCE_TYPES.
     source_type: str = ""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        initial_cursor: str | None = None,
+    ) -> None:
         self.config: dict[str, Any] = dict(config or {})
+        # Where to RESUME from (set by dispatcher from Source.sync_cursor).
+        self.initial_cursor: str | None = initial_cursor
+        # Where the NEXT sync should resume from (set by connector).
+        self.last_cursor: str | None = None
 
     # ── To be overridden ──────────────────────────────────────────────────────
 
