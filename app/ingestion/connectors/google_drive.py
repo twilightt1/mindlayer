@@ -28,6 +28,7 @@ import httpx
 import pdfplumber
 
 from app.ingestion.base import BaseConnector
+from app.ingestion.backoff import with_retry
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import google_token_refresher
 
@@ -56,9 +57,18 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB safety cap for text content
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 async def _list_all_files(
-    client: httpx.AsyncClient, access_token: str, query: str
-) -> list[dict[str, Any]]:
-    """List all Drive files matching `query`, following nextPageToken."""
+    client: httpx.AsyncClient, access_token: str, query: str,
+    initial_cursor: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """List all Drive files matching `query`, following nextPageToken.
+
+    Phase 2.6 incremental sync:
+      - If `initial_cursor` is provided, resume from that pageToken.
+      - Returns ``(files, last_cursor)`` where ``last_cursor`` is the
+        final nextPageToken seen (or None if exhausted).
+
+    Each request is wrapped in ``with_retry`` to handle 429/5xx.
+    """
     url = f"{DRIVE_API_BASE}/files"
     headers = {"Authorization": f"Bearer {access_token}"}
     params: dict[str, Any] = {
@@ -66,18 +76,31 @@ async def _list_all_files(
         "fields": "nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink)",
         "q": query,
     }
+    cursor: str | None = initial_cursor
     files: list[dict] = []
+    last_cursor: str | None = None
+    
     while True:
-        resp = await client.get(url, headers=headers, params=params, timeout=30.0)
-        resp.raise_for_status()
+        if cursor:
+            params["pageToken"] = cursor
+        
+        resp = await with_retry(
+            lambda: client.get(url, headers=headers, params=params, timeout=30.0)
+        )
         data = resp.json()
         files.extend(data.get("files", []))
+        
         page_token = data.get("nextPageToken")
         if not page_token:
+            # Exhausted → next sync restarts from beginning
+            # (dispatcher dedupes by source_ref)
+            last_cursor = None
             break
-        params["pageToken"] = page_token
-    return files
-
+            
+        last_cursor = page_token
+        cursor = page_token
+        
+    return files, last_cursor
 
 async def _fetch_text_content(
     client: httpx.AsyncClient, access_token: str, file_meta: dict
@@ -101,8 +124,9 @@ async def _fetch_text_content(
         url = f"{DRIVE_API_BASE}/files/{file_id}"
         params = {"alt": "media"}
 
-    resp = await client.get(url, headers=headers, params=params, timeout=60.0)
-    resp.raise_for_status()
+    resp = await with_retry(
+        lambda: client.get(url, headers=headers, params=params, timeout=60.0)
+    )
 
     if mime == "application/pdf":
         with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
@@ -115,8 +139,10 @@ async def _fetch_text_content(
 class GoogleDriveConnector(BaseConnector):
     source_type = "google_drive"
 
-    def __init__(self, config: dict) -> None:
-        self.config = config or {}
+    def __init__(
+        self, config: dict, initial_cursor: str | None = None,
+    ) -> None:
+        super().__init__(config=config, initial_cursor=initial_cursor)
 
     def validate_config(self) -> None:
         creds = (self.config.get("credentials") or {})
@@ -144,10 +170,16 @@ class GoogleDriveConnector(BaseConnector):
         items: list[ConnectorItem] = []
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                files = await _list_all_files(client, access_token, query)
+                files, last_cursor = await _list_all_files(
+                    client, access_token, query,
+                    initial_cursor=self.initial_cursor,
+                )
             except httpx.HTTPError:
                 log.exception("Drive: list files failed")
                 raise
+
+            # Phase 2.6: remember where the next sync should resume.
+            self.last_cursor = last_cursor
 
             for f in files:
                 file_id = f.get("id", "unknown")
