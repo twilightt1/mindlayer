@@ -46,9 +46,12 @@ class SourceSyncService:
             finished_at=started_at,  # updated at the end
         )
 
-        # 1. Pick the connector
+        # 1. Pick the connector (Phase 2.6: pass initial_cursor for incremental sync)
         try:
-            connector = get_connector_for_source(source.source_type, source.config or {})
+            connector = get_connector_for_source(
+                source.source_type, source.config or {},
+                initial_cursor=source.sync_cursor,
+            )
         except KeyError as e:
             result.errors.append(ItemError(message=str(e)))
             result.notes.append("No connector registered for this source_type.")
@@ -75,6 +78,13 @@ class SourceSyncService:
             return await self._finalize(source, result)
 
         result.items_yielded = len(items)
+
+        # Phase 2.6: save the last pagination token so the next sync
+        # resumes here instead of re-fetching everything.
+        # Only update if the connector set one (None means exhausted
+        # or not applicable — keep existing cursor in that case).
+        if connector.last_cursor is not None:
+            source.sync_cursor = connector.last_cursor
 
         # 4. Persist each item, deduping by (source_id, source_ref)
         for item in items:
@@ -155,11 +165,26 @@ class SourceSyncService:
         """Update the Source row to reflect the sync result."""
         source.last_sync_at = result.finished_at
         source.memories_synced = (source.memories_synced or 0) + result.memories_added
-        source.sync_error = result.errors[0].message if result.errors else None
+        first_err = result.errors[0].message if result.errors else None
+        source.sync_error = first_err
         if result.errors:
             source.status = "error"
+            # Phase 2.6: also store last error inside the JSONB config
+            # so the admin UI / future webhook can inspect it without
+            # a separate column. Reassign (not in-place) so SQLAlchemy
+            # always sees the change.
+            source.config = {
+                **(source.config or {}),
+                "last_error":    first_err,
+                "last_error_at": result.finished_at.isoformat(),
+            }
         else:
             source.status = "connected"
+            # Clear any previous error from config
+            cfg = dict(source.config or {})
+            cfg.pop("last_error", None)
+            cfg.pop("last_error_at", None)
+            source.config = cfg
         result.finished_at = datetime.utcnow()
         try:
             await self.db.commit()
