@@ -27,6 +27,7 @@ from typing import Any
 import httpx
 
 from app.ingestion.base import BaseConnector
+from app.ingestion.backoff import with_retry
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import google_token_refresher
 
@@ -40,22 +41,36 @@ GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 async def _list_message_ids(
     client: httpx.AsyncClient, access_token: str,
     query: str, max_results: int,
-) -> list[str]:
-    """List Gmail message ids matching query, following pageToken."""
+    initial_cursor: str | None = None,
+) -> tuple[list[str], str | None]:
+    """List Gmail message ids matching query, following pageToken.
+
+    Phase 2.6 incremental sync:
+      - If `initial_cursor` is provided, resume from that pageToken.
+      - Returns ``(ids, last_cursor)`` (last_cursor = last nextPageToken
+        seen, or None if exhausted).
+    """
     url = f"{GMAIL_API_BASE}/messages"
     headers = {"Authorization": f"Bearer {access_token}"}
     params: dict[str, Any] = {"q": query, "maxResults": max_results}
+    if initial_cursor:
+        params["pageToken"] = initial_cursor
     ids: list[str] = []
+    last_cursor: str | None = None
     while True:
-        resp = await client.get(url, headers=headers, params=params, timeout=30.0)
-        resp.raise_for_status()
+        resp = await with_retry(
+            lambda: client.get(url, headers=headers, params=params, timeout=30.0)
+        )
         data = resp.json()
         ids.extend(m["id"] for m in data.get("messages", []))
         page_token = data.get("nextPageToken")
         if not page_token:
+            # Exhausted → next sync restarts from beginning
+            last_cursor = None
             break
+        last_cursor = page_token
         params["pageToken"] = page_token
-    return ids
+    return ids, last_cursor
 
 
 def _get_header(headers: list[dict], name: str) -> str:
@@ -117,8 +132,9 @@ async def _fetch_message(
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {"format": "full"}
 
-    resp = await client.get(url, headers=headers, params=params, timeout=30.0)
-    resp.raise_for_status()
+    resp = await with_retry(
+        lambda: client.get(url, headers=headers, params=params, timeout=30.0)
+    )
     data = resp.json()
     payload = data.get("payload", {})
 
@@ -172,8 +188,10 @@ async def _fetch_message(
 class GmailConnector(BaseConnector):
     source_type = "gmail"
 
-    def __init__(self, config: dict) -> None:
-        self.config = config or {}
+    def __init__(
+        self, config: dict, initial_cursor: str | None = None,
+    ) -> None:
+        super().__init__(config=config, initial_cursor=initial_cursor)
 
     def validate_config(self) -> None:
         creds = (self.config.get("credentials") or {})
@@ -196,10 +214,16 @@ class GmailConnector(BaseConnector):
         items: list[ConnectorItem] = []
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                msg_ids = await _list_message_ids(client, access_token, query, max_results)
+                msg_ids, last_cursor = await _list_message_ids(
+                    client, access_token, query, max_results,
+                    initial_cursor=self.initial_cursor,
+                )
             except httpx.HTTPError:
                 log.exception("Gmail: list messages failed")
                 raise
+
+            # Phase 2.6: remember where the next sync should resume.
+            self.last_cursor = last_cursor
 
             for msg_id in msg_ids:
                 try:
