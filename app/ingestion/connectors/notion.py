@@ -23,6 +23,7 @@ from typing import Any
 import httpx
 
 from app.ingestion.base import BaseConnector
+from app.ingestion.backoff import with_retry
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import (
     NOTION_API_BASE,
@@ -56,11 +57,12 @@ async def _get_all_block_children(
         if cursor:
             params["start_cursor"] = cursor
 
-        resp = await client.get(
-            f"{NOTION_API_BASE}/blocks/{block_id}/children",
-            headers=headers, params=params, timeout=30.0,
+        resp = await with_retry(
+            lambda: client.get(
+                f"{NOTION_API_BASE}/blocks/{block_id}/children",
+                headers=headers, params=params, timeout=30.0,
+            )
         )
-        resp.raise_for_status()
         data = resp.json()
 
         for block in data.get("results", []):
@@ -169,33 +171,51 @@ def _page_title(page: dict[str, Any]) -> str:
 
 async def _query_database(
     client: httpx.AsyncClient, headers: dict[str, str], database_id: str,
-) -> list[dict[str, Any]]:
-    """POST /v1/databases/{id}/query with pagination."""
+    initial_cursor: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """POST /v1/databases/{id}/query with pagination.
+
+    Phase 2.6 incremental sync:
+      - If `initial_cursor` is provided, resume from that start_cursor.
+      - Returns ``(pages, last_cursor)`` (last_cursor = last next_cursor
+        seen, or None if exhausted).
+    """
     url = f"{NOTION_API_BASE}/databases/{database_id}/query"
     pages: list[dict] = []
-    cursor: str | None = None
+    cursor: str | None = initial_cursor
+    last_cursor: str | None = None
     while True:
         body: dict[str, Any] = {"page_size": 100}
         if cursor:
             body["start_cursor"] = cursor
 
-        resp = await client.post(url, headers=headers, json=body, timeout=30.0)
-        resp.raise_for_status()
+        resp = await with_retry(
+            lambda: client.post(url, headers=headers, json=body, timeout=30.0)
+        )
         data = resp.json()
         pages.extend(data.get("results", []))
-        if not data.get("has_more") or not data.get("next_cursor"):
+        next_cursor = data.get("next_cursor")
+        if not data.get("has_more") or not next_cursor:
+            # Exhausted → next sync restarts from beginning
+            last_cursor = None
             break
-        cursor = data["next_cursor"]
-    return pages
+        last_cursor = next_cursor
+        cursor = next_cursor
+    return pages, last_cursor
 
 
 async def _search_workspace(
     client: httpx.AsyncClient, headers: dict[str, str], query: str | None = None,
-) -> list[dict[str, Any]]:
-    """POST /v1/search — list all pages in the integration's workspace."""
+    initial_cursor: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """POST /v1/search — list all pages in the integration's workspace.
+
+    Phase 2.6: same cursor behavior as `_query_database`.
+    """
     url = f"{NOTION_API_BASE}/search"
     pages: list[dict] = []
-    cursor: str | None = None
+    cursor: str | None = initial_cursor
+    last_cursor: str | None = None
     while True:
         body: dict[str, Any] = {
             "page_size": 100,
@@ -206,14 +226,19 @@ async def _search_workspace(
         if cursor:
             body["start_cursor"] = cursor
 
-        resp = await client.post(url, headers=headers, json=body, timeout=30.0)
-        resp.raise_for_status()
+        resp = await with_retry(
+            lambda: client.post(url, headers=headers, json=body, timeout=30.0)
+        )
         data = resp.json()
         pages.extend(data.get("results", []))
-        if not data.get("has_more") or not data.get("next_cursor"):
+        next_cursor = data.get("next_cursor")
+        if not data.get("has_more") or not next_cursor:
+            # Exhausted → next sync restarts from beginning
+            last_cursor = None
             break
-        cursor = data["next_cursor"]
-    return pages
+        last_cursor = next_cursor
+        cursor = next_cursor
+    return pages, last_cursor
 
 
 # ── connector ────────────────────────────────────────────────────────────────
@@ -221,8 +246,10 @@ async def _search_workspace(
 class NotionConnector(BaseConnector):
     source_type = "notion"
 
-    def __init__(self, config: dict) -> None:
-        self.config = config or {}
+    def __init__(
+        self, config: dict, initial_cursor: str | None = None,
+    ) -> None:
+        super().__init__(config=config, initial_cursor=initial_cursor)
 
     def validate_config(self) -> None:
         if not self.config.get("token"):
@@ -245,14 +272,21 @@ class NotionConnector(BaseConnector):
             # 1) List pages
             try:
                 if self.config.get("database_id"):
-                    pages = await _query_database(client, headers, self.config["database_id"])
+                    pages, last_cursor = await _query_database(
+                        client, headers, self.config["database_id"],
+                        initial_cursor=self.initial_cursor,
+                    )
                 else:
-                    pages = await _search_workspace(
+                    pages, last_cursor = await _search_workspace(
                         client, headers, self.config.get("search_query"),
+                        initial_cursor=self.initial_cursor,
                     )
             except httpx.HTTPError:
                 log.exception("Notion: list pages failed")
                 raise
+
+            # Phase 2.6: remember where the next sync should resume.
+            self.last_cursor = last_cursor
 
             # 2) For each page, fetch its block tree and convert to text
             for page in pages:
