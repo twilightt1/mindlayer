@@ -128,3 +128,39 @@ class GraphSnapshot(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
     generated_at: datetime
+
+
+# ─── Recall (Phase 3) ───────────────────────────────────────────────────────
+
+
+class RecallRequest(BaseModel):
+    """Request body for ``POST /api/v1/memories/recall``."""
+    query:                   str   = Field(min_length=1, max_length=2000)
+    top_k:                   int   = Field(default=10, ge=1, le=50)
+    include_personal_context: bool = True
+
+
+class MemoryWithScore(MemoryResponse):
+    """A memory plus its retrieval score and the reasons it ranked."""
+    score:         float
+    match_reasons: list[str] = Field(default_factory=list)
+
+
+class RecallTrace(BaseModel):
+    """Debug info returned alongside recall results."""
+    rewritten_query:    str
+    entities:           list[dict[str, str]]  # [{name, type}]
+    latency_ms:         float
+    num_candidates:     int
+    num_results:        int
+    used_personal_context: bool
+    llm_fallback:       bool
+    llm_reasoning:      str | None = None
+    half_life_days:     float = 30.0
+
+
+class RecallResponse(BaseModel):
+    """Response body for ``POST /api/v1/memories/recall``."""
+    results:          list[MemoryWithScore]
+    personal_context: list[MemoryResponse] | None = None
+    trace:            RecallTrace

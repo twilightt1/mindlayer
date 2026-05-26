@@ -18,6 +18,8 @@ from uuid import UUID
 from datetime import datetime
 from typing import Annotated, Literal
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,15 +27,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.models.memory import Memory
+from app.retrieval.memory.retriever import MemoryRetriever
 from app.utils.dependencies import get_current_verified_user
 from app.schemas.mindlayer import (
     MemoryCreate,
     MemoryUpdate,
     MemoryResponse,
     MemoryListResponse,
+    RecallRequest,
+    RecallResponse,
 )
 
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/memories", tags=["memories"])
+
+
+# ── write-through sync helpers (added in commit 31) ────────────────────────
 
 
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)
@@ -157,3 +167,37 @@ async def delete_memory(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Memory not found.")
     await db.delete(memory)
     await db.commit()
+
+
+# ── Phase 3.7: recall endpoint ──────────────────────────────────────────────
+
+
+@router.post("/recall", response_model=RecallResponse)
+async def recall_memory(
+    body: RecallRequest,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RecallResponse:
+    """Personal-context recall: find memories matching the query.
+
+    Pipeline (see :class:`MemoryRetriever` for details):
+
+        1. Fetch personal context (pinned + recent).
+        2. LLM rewrite the query + extract entities.
+        3. Vector search in ChromaDB.
+        4. Hydrate + apply entity boost + time decay.
+        5. Return top_k with trace (rewritten query, entities, latency).
+
+    Every step degrades gracefully: an empty ``results`` list plus a
+    ``trace`` describing what was attempted is returned even if LLM,
+    ChromaDB, or the DB read is partially down.
+    """
+    retriever = MemoryRetriever(
+        db=db,
+        user_id=current_user.id,
+    )
+    return await retriever.recall(
+        query=body.query,
+        top_k=body.top_k,
+        include_personal_context=body.include_personal_context,
+    )
