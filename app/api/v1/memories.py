@@ -28,6 +28,10 @@ from app.database import get_db
 from app.models.user import User
 from app.models.memory import Memory
 from app.retrieval.memory.retriever import MemoryRetriever
+from app.retrieval.memory.vector_store import (
+    delete_memory as delete_memory_from_chroma,
+    upsert_memory,
+)
 from app.utils.dependencies import get_current_verified_user
 from app.schemas.mindlayer import (
     MemoryCreate,
@@ -43,7 +47,37 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/memories", tags=["memories"])
 
 
-# ── write-through sync helpers (added in commit 31) ────────────────────────
+# ── write-through sync helpers (Phase 3.7) ────────────────────────────────
+
+
+async def _safe_upsert_to_chroma(memory: Memory) -> None:
+    """Best-effort write-through to ChromaDB.
+
+    The Postgres ``Memory`` row is the source of truth. If ChromaDB
+    is down or the write fails for any reason, we log a warning and
+    continue — the recall pipeline can still rebuild the index from
+    Postgres later (see Phase 3.5 backlog: bulk reindex task).
+    """
+    try:
+        await upsert_memory(memory)
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "ChromaDB upsert failed for memory %s: %s",
+            memory.id, e,
+            extra={"memory_id": str(memory.id), "user_id": str(memory.user_id)},
+        )
+
+
+async def _safe_delete_from_chroma(memory_id: UUID) -> None:
+    """Best-effort removal from ChromaDB. Never raises."""
+    try:
+        await delete_memory_from_chroma(str(memory_id))
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "ChromaDB delete failed for memory %s: %s",
+            memory_id, e,
+            extra={"memory_id": str(memory_id)},
+        )
 
 
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)
@@ -70,6 +104,8 @@ async def create_memory(
     db.add(memory)
     await db.commit()
     await db.refresh(memory)
+    # Write-through to ChromaDB (best-effort, see _safe_upsert_to_chroma)
+    await _safe_upsert_to_chroma(memory)
     return MemoryResponse.model_validate(memory)
 
 
@@ -153,6 +189,8 @@ async def update_memory(
 
     await db.commit()
     await db.refresh(memory)
+    # Write-through to ChromaDB (best-effort)
+    await _safe_upsert_to_chroma(memory)
     return MemoryResponse.model_validate(memory)
 
 
@@ -167,6 +205,8 @@ async def delete_memory(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Memory not found.")
     await db.delete(memory)
     await db.commit()
+    # Write-through: remove from ChromaDB (best-effort)
+    await _safe_delete_from_chroma(memory_id)
 
 
 # ── Phase 3.7: recall endpoint ──────────────────────────────────────────────
