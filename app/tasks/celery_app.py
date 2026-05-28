@@ -10,6 +10,7 @@ celery_app = Celery(
         "app.tasks.email_tasks",
         "app.tasks.ingestion_tasks",
         "app.tasks.quota_tasks",
+        "app.tasks.graph_tasks",
     ],
 )
 
@@ -27,6 +28,7 @@ celery_app.conf.update(
         "tasks.send_password_reset_email":  {"queue": "email"},
         "tasks.process_document":           {"queue": "ingestion"},
         "tasks.reset_daily_quotas":         {"queue": "default"},
+        "tasks.build_memory_graph":         {"queue": "default"},
     },
     beat_schedule={
         "reset-daily-quotas": {
