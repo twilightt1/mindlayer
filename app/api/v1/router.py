@@ -12,5 +12,6 @@ api_router.include_router(system_settings.router)
 # MindLayer second-brain routes
 api_router.include_router(memories.router)
 api_router.include_router(entities.router)
+api_router.include_router(entities.relations_router)  # /relations
 api_router.include_router(entities.graph_router)   # /graph/snapshot, /graph/related/...
 api_router.include_router(sources.router)
