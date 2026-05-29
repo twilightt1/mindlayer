@@ -45,6 +45,7 @@ class SourceSyncService:
             started_at=started_at,
             finished_at=started_at,  # updated at the end
         )
+        graph_memory_ids: list[str] = []
 
         # 1. Pick the connector (Phase 2.6: pass initial_cursor for incremental sync)
         try:
@@ -89,9 +90,11 @@ class SourceSyncService:
         # 4. Persist each item, deduping by (source_id, source_ref)
         for item in items:
             try:
-                outcome = await self._persist_item(source, item)
+                outcome, memory_id = await self._persist_item(source, item)
                 if outcome == "added":
                     result.memories_added += 1
+                    if memory_id:
+                        graph_memory_ids.append(memory_id)
                 elif outcome == "updated":
                     result.memories_updated += 1
                 elif outcome == "skipped":
@@ -100,14 +103,18 @@ class SourceSyncService:
                 log.exception("Persist failed for item %r", item.source_ref)
                 result.errors.append(ItemError(source_ref=item.source_ref, message=str(e)))
 
-        return await self._finalize(source, result)
+        finalized = await self._finalize(source, result)
+        if graph_memory_ids and not any((err.message or "").startswith("Commit failed") for err in finalized.errors):
+            for memory_id in graph_memory_ids:
+                _safe_enqueue_graph_build(memory_id)
+        return finalized
 
     # ── internals ────────────────────────────────────────────────────────────
 
-    async def _persist_item(self, source: Source, item: ConnectorItem) -> str:
+    async def _persist_item(self, source: Source, item: ConnectorItem) -> tuple[str, str | None]:
         """
         Create or update a Memory + MemorySource pair for one item.
-        Returns 'added' | 'updated' | 'skipped'.
+        Returns (outcome, memory_id), where outcome is 'added' | 'updated' | 'skipped'.
         """
         # Find an existing memory linked to this (source, ref)
         existing_link = await self.db.scalar(
@@ -124,7 +131,7 @@ class SourceSyncService:
             if (memory.title == item.title and
                 memory.content == item.content and
                 memory.summary == item.summary):
-                return "skipped"
+                return "skipped", str(memory.id)
             # Update
             memory.title = item.title
             memory.content = item.content
@@ -133,7 +140,7 @@ class SourceSyncService:
             memory.extra_metadata = {**(memory.extra_metadata or {}), **item.metadata}
             existing_link.item_excerpt = item.source_excerpt
             existing_link.item_url = item.source_url
-            return "updated"
+            return "updated", str(memory.id)
 
         # Create new memory
         memory = Memory(
@@ -159,7 +166,7 @@ class SourceSyncService:
             item_excerpt=item.source_excerpt,
         )
         self.db.add(link)
-        return "added"
+        return "added", str(memory.id)
 
     async def _finalize(self, source: Source, result: SyncResult) -> SyncResult:
         """Update the Source row to reflect the sync result."""
@@ -213,3 +220,17 @@ def _memory_source_type_for(connector_source_type: str) -> str:
         "gmail":       "gmail",
     }
     return mapping.get(connector_source_type, "other")
+
+
+def _safe_enqueue_graph_build(memory_id: str) -> None:
+    """Best-effort enqueue for graph extraction after source sync commits."""
+    try:
+        from app.tasks.graph_tasks import build_memory_graph_task
+
+        build_memory_graph_task.delay(memory_id)
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "Graph build enqueue failed for source memory %s: %s",
+            memory_id, e,
+            extra={"memory_id": memory_id},
+        )

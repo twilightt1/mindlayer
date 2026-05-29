@@ -80,6 +80,20 @@ async def _safe_delete_from_chroma(memory_id: UUID) -> None:
         )
 
 
+async def _safe_enqueue_graph_build(memory_id: UUID) -> None:
+    """Best-effort Celery enqueue for Phase 4 graph extraction."""
+    try:
+        from app.tasks.graph_tasks import build_memory_graph_task
+
+        build_memory_graph_task.delay(str(memory_id))
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "Graph build enqueue failed for memory %s: %s",
+            memory_id, e,
+            extra={"memory_id": str(memory_id)},
+        )
+
+
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_memory(
     body: MemoryCreate,
@@ -106,6 +120,8 @@ async def create_memory(
     await db.refresh(memory)
     # Write-through to ChromaDB (best-effort, see _safe_upsert_to_chroma)
     await _safe_upsert_to_chroma(memory)
+    # Phase 4 graph extraction is async/best-effort; CRUD remains source-of-truth.
+    await _safe_enqueue_graph_build(memory.id)
     return MemoryResponse.model_validate(memory)
 
 
