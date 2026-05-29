@@ -93,6 +93,22 @@ class EntityListResponse(BaseModel):
     offset: int
 
 
+class EntityCreate(BaseModel):
+    name:        str       = Field(min_length=1, max_length=255)
+    entity_type: str       = Field(default="other", max_length=32)
+    aliases:     list[str] = Field(default_factory=list, max_length=50)
+    description: str | None = Field(default=None, max_length=4000)
+    metadata:    dict      = Field(default_factory=dict)
+
+
+class EntityUpdate(BaseModel):
+    name:        str | None       = Field(default=None, min_length=1, max_length=255)
+    entity_type: str | None       = Field(default=None, max_length=32)
+    aliases:     list[str] | None = Field(default=None, max_length=50)
+    description: str | None       = Field(default=None, max_length=4000)
+    metadata:    dict | None      = None
+
+
 # ─── Relation ───────────────────────────────────────────────────────────────
 
 class RelationResponse(BaseModel):
@@ -111,6 +127,20 @@ class RelationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class RelationCreate(BaseModel):
+    source_entity_id: UUID
+    target_entity_id: UUID
+    relation:         str   = Field(default="related_to", max_length=64)
+    weight:           float = Field(default=0.5, ge=0.0, le=1.0)
+    metadata:         dict  = Field(default_factory=dict)
+
+
+class RelationUpdate(BaseModel):
+    relation: str | None = Field(default=None, max_length=64)
+    weight:   float | None = Field(default=None, ge=0.0, le=1.0)
+    metadata: dict | None = None
+
+
 class GraphEdge(BaseModel):
     source: str           # entity name
     target: str           # entity name
@@ -127,6 +157,18 @@ class GraphNode(BaseModel):
 class GraphSnapshot(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+    generated_at: datetime
+
+
+class GraphCluster(BaseModel):
+    id:    str
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    score: float
+
+
+class GraphClustersResponse(BaseModel):
+    clusters:     list[GraphCluster]
     generated_at: datetime
 
 
