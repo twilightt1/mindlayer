@@ -1,7 +1,7 @@
 from __future__ import annotations
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConversationCreate(BaseModel):
@@ -56,4 +56,9 @@ class ConversationDetail(ConversationResponse):
 
 
 class ChatRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1)
+    include_personal_context: bool = True
+    include_graph_context: bool = True
+    personal_memory_top_k: int = Field(default=5, ge=0, le=10)
+
+    model_config = ConfigDict(str_strip_whitespace=True)

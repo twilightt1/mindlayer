@@ -19,6 +19,12 @@ class AgentState(TypedDict, total=False):
     fused_chunks: list[dict[str, Any]]
 
     reranked_chunks: list[dict[str, Any]]
+    doc_context_chunks: list[dict[str, Any]]
+    personal_memory_chunks: list[dict[str, Any]]
+    graph_context_chunks: list[dict[str, Any]]
+    grounding_context_chunks: list[dict[str, Any]]
+    personal_recall_trace: dict[str, Any]
+    graph_context_trace: dict[str, Any]
 
     response: str
     token_count: int
@@ -28,6 +34,9 @@ class AgentState(TypedDict, total=False):
     should_stream: bool
     has_documents: bool
     document_count: int
+    personal_memory_enabled: bool
+    graph_context_enabled: bool
+    personal_memory_top_k: int
 
     context_relevant: bool
     is_hallucination: bool
