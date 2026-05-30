@@ -170,7 +170,7 @@ class MemoryRetriever:
         # 8) Build response
         results: list[MemoryWithScore] = []
         for memory, score, reasons in top:
-            base = MemoryResponse.model_validate(memory)
+            base = _memory_response(memory)
             results.append(
                 MemoryWithScore(
                     **base.model_dump(),
@@ -193,7 +193,7 @@ class MemoryRetriever:
         )
         return RecallResponse(
             results=results,
-            personal_context=[MemoryResponse.model_validate(m) for m in context]
+            personal_context=[_memory_response(m) for m in context]
                              if include_personal_context else None,
             trace=trace,
         )
@@ -238,7 +238,29 @@ class MemoryRetriever:
         )
         return RecallResponse(
             results=[],
-            personal_context=[MemoryResponse.model_validate(m) for m in context]
+            personal_context=[_memory_response(m) for m in context]
                              if context else None,
             trace=trace,
         )
+
+
+def _memory_response(memory: Memory) -> MemoryResponse:
+    """Map ORM Memory.extra_metadata to API field `metadata`."""
+    return MemoryResponse(
+        id=memory.id,
+        user_id=memory.user_id,
+        parent_id=memory.parent_id,
+        source_type=memory.source_type,
+        source_ref=memory.source_ref,
+        source_url=memory.source_url,
+        title=memory.title,
+        content=memory.content,
+        summary=memory.summary,
+        tags=memory.tags or [],
+        salience=memory.salience,
+        pinned=memory.pinned,
+        captured_at=memory.captured_at,
+        indexed_at=memory.indexed_at,
+        updated_at=memory.updated_at,
+        metadata=getattr(memory, "extra_metadata", getattr(memory, "metadata", {})) or {},
+    )
