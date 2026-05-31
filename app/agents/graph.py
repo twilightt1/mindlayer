@@ -2,14 +2,20 @@ from langgraph.graph import StateGraph, END, START
 from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.answer_agent import answer_agent
+from app.agents.context_merge_agent import context_merge_agent
 from app.agents.evaluator_agent import evaluator_agent
+from app.agents.graph_context_agent import graph_context_agent
 from app.agents.hallucination_agent import hallucination_agent
 from app.agents.memory_agent import memory_load_agent, memory_save_agent
+from app.agents.personal_context_agent import personal_context_agent
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.router_agent import router_agent
+from app.agents.routing import (
+    route_after_grade_docs as _route_after_grade_docs,
+    route_after_grade_gen as _route_after_grade_gen,
+    route_from_router as _route,
+)
 from app.agents.state import AgentState
-
-MAX_RETRIES = 3
 
 
 def _record_correction(state: AgentState, reason: str, next_node: str) -> None:
@@ -52,46 +58,8 @@ def _record_generation_retry_limit(state: AgentState) -> AgentState:
     return state
 
 
-def _route(state: AgentState) -> str:
-    return state.get("query_type") or "rag"
-
-
-def _route_after_grade_docs(state: AgentState) -> str:
-    if state.get("query_type") != "rag":
-        return "answer"
-
-    if not state.get("has_documents", False):
-        return "answer"
-
-    if state.get("context_relevant", True):
-        return "answer"
-
-    if state.get("retry_count", 0) < MAX_RETRIES:
-        return "retry_retrieval_for_irrelevant_context"
-
-    return "record_irrelevant_context_retry_limit"
-
-
-def _route_after_grade_gen(state: AgentState) -> str:
-    if state.get("query_type") != "rag":
-        return "save"
-
-    if state.get("has_documents") is False:
-        return "save"
-
-    is_hallucination = state.get("is_hallucination", False)
-    answers_question = state.get("answers_question", True)
-
-    if not is_hallucination and answers_question:
-        return "save"
-
-    if state.get("retry_count", 0) >= MAX_RETRIES:
-        return "record_generation_retry_limit"
-
-    if is_hallucination:
-        return "retry_answer_for_hallucination"
-
-    return "retry_retrieval_for_unanswered_question"
+# Route helpers are pure functions in app.agents.routing so they can be tested
+# without importing retrieval/vector dependencies required by the full graph.
 
 
 def build_graph() -> CompiledStateGraph:
@@ -99,7 +67,10 @@ def build_graph() -> CompiledStateGraph:
 
     g.add_node("router", router_agent)
     g.add_node("memory", memory_load_agent)
+    g.add_node("personal_context", personal_context_agent)
+    g.add_node("graph_context", graph_context_agent)
     g.add_node("retrieval", retrieval_agent)
+    g.add_node("merge_context", context_merge_agent)
     g.add_node("grade_docs", evaluator_agent)
     g.add_node("retry_retrieval_for_irrelevant_context", _retry_retrieval_for_irrelevant_context)
     g.add_node("retry_answer_for_hallucination", _retry_answer_for_hallucination)
@@ -122,8 +93,11 @@ def build_graph() -> CompiledStateGraph:
         },
     )
 
-    g.add_edge("memory", "retrieval")
-    g.add_edge("retrieval", "grade_docs")
+    g.add_edge("memory", "personal_context")
+    g.add_edge("personal_context", "graph_context")
+    g.add_edge("graph_context", "retrieval")
+    g.add_edge("retrieval", "merge_context")
+    g.add_edge("merge_context", "grade_docs")
     g.add_conditional_edges(
         "grade_docs",
         _route_after_grade_docs,
