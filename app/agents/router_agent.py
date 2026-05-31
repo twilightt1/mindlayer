@@ -65,7 +65,8 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 
 def _router_fallback(state: AgentState, query: str, error: str, raw_preview: str | None = None) -> None:
-    fallback_intent = "rag" if state.get("has_documents") else "chitchat"
+    has_grounding_source = bool(state.get("has_documents") or state.get("personal_memory_enabled", False))
+    fallback_intent = "rag" if has_grounding_source else "chitchat"
     state["query_type"] = fallback_intent
     state["rewritten_query"] = query
     state["search_variants"] = [query] if fallback_intent == "rag" else []
