@@ -54,6 +54,16 @@ def _safe_generation_error(query: str) -> str:
     return "Sorry, I couldn't generate an answer right now. Please try again."
 
 
+def _source_label(chunk: dict) -> str:
+    source_type = (chunk.get("metadata") or {}).get("source_type") or "document"
+    labels = {
+        "document": "document",
+        "personal_memory": "personal memory",
+        "knowledge_graph": "knowledge graph",
+    }
+    return labels.get(str(source_type), str(source_type).replace("_", " "))
+
+
 def _record_citation_trace(state: AgentState) -> None:
     response = state.get("response", "")
     source_count = len(state.get("reranked_chunks", []))
@@ -73,14 +83,16 @@ async def answer_agent(state: AgentState) -> AgentState:
         context_parts = []
         for chunk in state["reranked_chunks"]:
             fname = chunk.get("metadata", {}).get("filename", "unknown")
-            context_parts.append(f"=== DOCUMENT: {fname} ===\n{chunk['content']}\n=== END OF {fname} ===")
+            source_label = _source_label(chunk)
+            context_parts.append(f"=== {source_label.upper()}: {fname} ===\n{chunk['content']}\n=== END OF {fname} ===")
         context = "\n\n".join(context_parts)
         system = f"You are an expert analyst. The user has provided the full text of one or more documents below. Please provide a comprehensive, well-structured summary of these documents. DO NOT complain about the text being disjointed, because it is the full document text reconstructed. Just summarize it.\nIMPORTANT: You MUST respond in the EXACT SAME LANGUAGE as the user's request.\n\n{context}"
     elif state.get("query_type") == "rag" and state.get("reranked_chunks"):
         context_parts = []
         for i, chunk in enumerate(state["reranked_chunks"], 1):
             fname = chunk.get("metadata", {}).get("filename", "unknown")
-            context_parts.append(f"[Source {i} - {fname}]\n{chunk['content']}")
+            source_label = _source_label(chunk)
+            context_parts.append(f"[Source {i}] ({source_label} - {fname})\n{chunk['content']}")
         context = "\n\n---\n\n".join(context_parts)
         system = f"{SYSTEM_PROMPT}\n\nContext:\n{context}"
     else:
