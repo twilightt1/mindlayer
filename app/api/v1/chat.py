@@ -24,7 +24,6 @@ from app.schemas.conversation import (
 )
 from app.services import document_service
 from app.services.quota_service import check_and_increment
-from app.agents.graph import rag_graph
 from app.agents.state import AgentState
 from app.middleware.rate_limiter import check_rate_limit
 from app.config import settings
@@ -32,6 +31,18 @@ from app.api.v1.sse import format_sse
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 log    = logging.getLogger(__name__)
+
+
+def _source_event_payload(chunk: dict[str, Any]) -> dict[str, Any]:
+    metadata = chunk.get("metadata") or {}
+    return {
+        "content": chunk.get("content", "")[:200],
+        "filename": metadata.get("filename", ""),
+        "score": round(chunk.get("rerank_score", chunk.get("score", 0)), 4),
+        "source_type": metadata.get("source_type"),
+        "memory_id": metadata.get("memory_id"),
+        "entity_names": metadata.get("entity_names"),
+    }
 
 
                                                                                 
@@ -170,6 +181,13 @@ async def send_message(
         should_stream=True,
         has_documents=conversation.document_count > 0,
         document_count=conversation.document_count,
+        personal_memory_enabled=body.include_personal_context,
+        graph_context_enabled=body.include_graph_context,
+        personal_memory_top_k=body.personal_memory_top_k,
+        doc_context_chunks=[],
+        personal_memory_chunks=[],
+        graph_context_chunks=[],
+        grounding_context_chunks=[],
     )
 
     async def event_stream():
@@ -188,6 +206,8 @@ async def send_message(
         async def run_graph() -> None:
             nonlocal final_response_emitted
             try:
+                from app.agents.graph import rag_graph
+
                 await emit({"type": "status", "stage": "started"}, event="status")
                 async for event in rag_graph.astream(state):
                     node, data = next(iter(event.items()))
@@ -222,11 +242,7 @@ async def send_message(
                             )
 
                         sources = [
-                            {
-                                "content": c.get("content", "")[:200],
-                                "filename": c.get("metadata", {}).get("filename", ""),
-                                "score": round(c.get("rerank_score", 0), 4),
-                            }
+                            _source_event_payload(c)
                             for c in final_state.get("reranked_chunks", [])
                         ]
                         await emit({"type": "sources", "sources": sources}, event="sources")
