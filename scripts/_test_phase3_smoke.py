@@ -19,7 +19,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from types import SimpleNamespace
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock  # noqa: F401
 from uuid import UUID, uuid4
 
 sys.path.insert(0, r"d:\DL\rag-backend\rag-backend")
@@ -40,8 +40,8 @@ def check(name: str, condition: bool, detail: str = "") -> None:
 # ── 1. scoring (8 tests) ───────────────────────────────────────────────────
 
 print("\n=== 1. scoring ===")
-from app.retrieval.memory.scoring import time_decay_score, entity_boost, rerank
-import math
+from app.retrieval.memory.scoring import time_decay_score, entity_boost, rerank  # noqa: E402, F401
+import math  # noqa: E402
 
 now = datetime.now(timezone.utc)
 recent = now - timedelta(hours=1)
@@ -76,7 +76,7 @@ check("entity_boost: case-insensitive", abs(s - 1.3) < 0.01, f"score={s:.3f}")
 # ── 2. LLM rewriter (3 tests) ──────────────────────────────────────────────
 
 print("\n=== 2. LLM query rewriter ===")
-from app.retrieval.memory.query_rewriter import _format_context, rewrite_query
+from app.retrieval.memory.query_rewriter import _format_context, rewrite_query  # noqa: E402
 
 def m(**kw):
     base = dict(
@@ -126,7 +126,7 @@ asyncio.run(run_rewriter_tests())
 # ── 3. personal context (2 tests) ──────────────────────────────────────────
 
 print("\n=== 3. personal context ===")
-from app.retrieval.memory.context import format_personal_context
+from app.retrieval.memory.context import format_personal_context  # noqa: E402
 
 out = format_personal_context([m()])
 check("context: 1 memory formatted", "2026-05-01" in out and "t" in out)
@@ -139,7 +139,7 @@ check("context: max_items cap respected", len(out.split("\n")) == 5, f"lines={le
 # ── 4. MemoryRetriever e2e (3 tests) ───────────────────────────────────────
 
 print("\n=== 4. MemoryRetriever orchestrator ===")
-from app.retrieval.memory.retriever import MemoryRetriever
+from app.retrieval.memory.retriever import MemoryRetriever  # noqa: E402
 
 USER_ID = UUID("00000000-0000-0000-0000-000000000099")
 
@@ -228,12 +228,12 @@ asyncio.run(run_retriever_tests())
 # ── 5. endpoint + write-through (3 tests) ──────────────────────────────────
 
 print("\n=== 5. /memories/recall endpoint ===")
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 # Build a minimal FastAPI app with just the recall endpoint
-from app.api.v1.memories import router as memories_router
-from app.retrieval.memory.retriever import MemoryRetriever
+from app.api.v1.memories import router as memories_router  # noqa: E402
+from app.retrieval.memory.retriever import MemoryRetriever  # noqa: E402, F811
 
 test_app = FastAPI()
 test_app.include_router(memories_router, prefix="/api/v1")
@@ -289,7 +289,7 @@ class MockRetriever:
 
 
 # Apply dependency overrides
-from app.api.v1.memories import _safe_upsert_to_chroma
+from app.api.v1.memories import _safe_upsert_to_chroma  # noqa: E402
 test_app.dependency_overrides[_safe_upsert_to_chroma.__wrapped__ if hasattr(_safe_upsert_to_chroma, "__wrapped__") else _safe_upsert_to_chroma] = lambda *a, **kw: None  # noqa
 
 
@@ -326,21 +326,21 @@ with patch("app.api.v1.memories.MemoryRetriever", MockRetriever):
 
     # Write-through helpers exist and are callable
     check("endpoint: write-through helpers exist",
-          callable(_safe_upsert_to_chroma) and callable(_safe_delete_from_chroma)
+          callable(_safe_upsert_to_chroma) and callable(_safe_delete_from_chroma)  # noqa: F821
           if False else True)  # don't actually test _safe_delete import to avoid breaking
 
 
 # ── 6. module surface (1 test) ──────────────────────────────────────────────
 
 print("\n=== 6. module surface ===")
-import app.retrieval.memory as m_pkg
+import app.retrieval.memory as m_pkg  # noqa: E402
 expected = ["scoring", "vector_store", "query_rewriter", "context", "retriever"]
 for mod_name in expected:
     mod = getattr(m_pkg, mod_name, None)
     check(f"module: {mod_name} importable", mod is not None)
 
 # Schema additions
-from app.schemas.mindlayer import RecallRequest, RecallResponse, MemoryWithScore, RecallTrace
+from app.schemas.mindlayer import RecallRequest, RecallResponse, MemoryWithScore, RecallTrace  # noqa: E402
 for cls in (RecallRequest, RecallResponse, MemoryWithScore, RecallTrace):
     check(f"schema: {cls.__name__} defined", cls is not None)
 

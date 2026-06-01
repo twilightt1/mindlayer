@@ -10,7 +10,7 @@ import logging
 import sys
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch  # noqa: F401
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -51,7 +51,7 @@ def memory(**overrides):
 
 
 print("\n=== 1. request schema ===")
-from app.schemas.conversation import ChatRequest
+from app.schemas.conversation import ChatRequest  # noqa: E402
 
 req = ChatRequest(query="What did Mom say?")
 check("ChatRequest defaults personal context", req.include_personal_context is True)
@@ -75,8 +75,8 @@ except ValidationError:
 
 
 print("\n=== 2. personal memory chunks ===")
-from app.agents.personal_context_agent import memory_to_chunk, recall_to_chunks, personal_context_agent
-from app.schemas.mindlayer import MemoryResponse, MemoryWithScore, RecallResponse, RecallTrace
+from app.agents.personal_context_agent import memory_to_chunk, recall_to_chunks, personal_context_agent  # noqa: E402
+from app.schemas.mindlayer import MemoryResponse, MemoryWithScore, RecallResponse, RecallTrace  # noqa: E402
 
 base_memory = MemoryResponse(**memory().__dict__)
 scored_memory = MemoryWithScore(**base_memory.model_dump(), score=0.91, match_reasons=["entity:mom"])
@@ -120,7 +120,7 @@ asyncio.run(run_personal_agent_tests())
 
 
 print("\n=== 3. graph context chunks ===")
-from app.agents.graph_context_agent import (
+from app.agents.graph_context_agent import (  # noqa: E402
     _entity_matches_text,
     _memory_ids_from_chunks,
     build_graph_context_chunk,
@@ -154,7 +154,7 @@ check("memory ids from chunks filters invalid", ids == [mem_id])
 
 
 print("\n=== 4. context merge ===")
-from app.agents.context_merge_agent import chunk_identity, merge_context_chunks, normalize_chunk
+from app.agents.context_merge_agent import chunk_identity, merge_context_chunks, normalize_chunk  # noqa: E402
 
 doc = {"id": "doc-1", "content": "doc", "metadata": {"filename": "doc.txt"}, "rerank_score": 0.9}
 mem = {"id": "mem-1", "content": "mem", "metadata": {"memory_id": "m1", "source_type": "personal_memory"}, "rerank_score": 0.7}
@@ -179,7 +179,7 @@ check("merge cap", len(merge_context_chunks(state_cap, max_chunks=3)) == 3)
 
 
 print("\n=== 5. graph routing helpers ===")
-from app.agents.routing import has_grounding_context, route_after_grade_docs, route_after_grade_gen
+from app.agents.routing import has_grounding_context, route_after_grade_docs, route_after_grade_gen  # noqa: E402
 
 check("has grounding via personal", has_grounding_context({"personal_memory_chunks": [mem]}))
 check("route docs no context answer", route_after_grade_docs({"query_type": "rag"}) == "answer")
@@ -203,8 +203,8 @@ check(
 
 
 print("\n=== 6. router and source metadata ===")
-from app.agents.answer_agent import _source_label
-from app.agents.router_agent import _router_fallback
+from app.agents.answer_agent import _source_label  # noqa: E402
+from app.agents.router_agent import _router_fallback  # noqa: E402
 
 router_state = {"agent_trace": {}, "has_documents": False, "personal_memory_enabled": True}
 _router_fallback(router_state, "who is Mom?", "llm down")
