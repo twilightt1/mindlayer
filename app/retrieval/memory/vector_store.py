@@ -20,7 +20,7 @@ import httpx
 
 from app.config import settings
 from app.models.memory import Memory
-from app.retrieval.embedder import embed_query, embed_texts, embed_texts_sync
+from app.retrieval.embedder import embed_texts, embed_texts_sync
 
 # Lazily imported so this module is importable in test/CLI contexts
 # that don't have ChromaDB running.
@@ -203,7 +203,6 @@ async def upsert_memory(memory: Memory) -> None:
 
 def upsert_memory_sync(memory: Memory) -> None:
     """Synchronous variant — used by Celery / CLI contexts."""
-    import chromadb  # lazy: only needed at runtime
     cli = _get_sync_client()
     collection = cli.get_or_create_collection(
         COLLECTION_NAME,
