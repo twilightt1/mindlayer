@@ -11,11 +11,27 @@ from app.agents.personal_context_agent import personal_context_agent
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.router_agent import router_agent
 from app.agents.routing import (
+    MAX_RETRIES,
     route_after_grade_docs as _route_after_grade_docs,
+    route_after_grade_docs,
     route_after_grade_gen as _route_after_grade_gen,
+    route_after_grade_gen,
     route_from_router as _route,
+    route_from_router,
 )
 from app.agents.state import AgentState
+
+# Re-exports for backward compatibility. Pure routing helpers live in
+# ``app.agents.routing`` so they can be unit-tested without importing the
+# full graph (which transitively imports retrieval/vector dependencies).
+__all__ = [
+    "MAX_RETRIES",
+    "rag_graph",
+    "build_graph",
+    "route_from_router",
+    "route_after_grade_docs",
+    "route_after_grade_gen",
+]
 
 
 def _record_correction(state: AgentState, reason: str, next_node: str) -> None:
