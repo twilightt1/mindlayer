@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -12,7 +11,6 @@ from app.observability.artifacts import ArtifactStore, sha256_text
 from app.observability.cost import (
     CallCost,
     CostTracker,
-    PRICING,
     budget_window_iso,
     calculate_cost,
     estimate_max_budget_alert,

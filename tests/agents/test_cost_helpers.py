@@ -1,9 +1,6 @@
 """Tests for agent cost/latency helpers."""
 from __future__ import annotations
 
-import json
-import sqlite3
-from pathlib import Path
 
 from app.agents.cost_helpers import (
     Stopwatch,
