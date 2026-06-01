@@ -163,18 +163,24 @@ def test_gmail_helpers() -> None:
 def test_validate_config() -> None:
     section("TEST 4: validate_config for all 3 connectors")
 
-    try: GoogleDriveConnector(config={}).validate_config()
-    except ValueError as e: print(f"  Drive empty: rejected ({e})")
+    try:
+        GoogleDriveConnector(config={}).validate_config()
+    except ValueError as e:
+        print(f"  Drive empty: rejected ({e})")
     GoogleDriveConnector(config={"credentials": {"access_token": "x"}}).validate_config()
     print("  Drive with access_token: OK")
 
-    try: GmailConnector(config={}).validate_config()
-    except ValueError as e: print(f"  Gmail empty: rejected ({e})")
+    try:
+        GmailConnector(config={}).validate_config()
+    except ValueError as e:
+        print(f"  Gmail empty: rejected ({e})")
     GmailConnector(config={"credentials": {"refresh_token": "x"}}).validate_config()
     print("  Gmail with refresh_token: OK")
 
-    try: NotionConnector(config={}).validate_config()
-    except ValueError as e: print(f"  Notion empty: rejected ({e})")
+    try:
+        NotionConnector(config={}).validate_config()
+    except ValueError as e:
+        print(f"  Notion empty: rejected ({e})")
     NotionConnector(config={"token": "secret_xyz"}).validate_config()
     print("  Notion with token: OK")
 

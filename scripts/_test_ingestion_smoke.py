@@ -57,7 +57,7 @@ async def main() -> None:
         try:
             empty.validate_config()
             print(f"  {name}: empty config NOT rejected (BUG)")
-        except ValueError as e:
+        except ValueError:
             print(f"  {name}: empty config rejected OK")
 
         if name == "Notion":
