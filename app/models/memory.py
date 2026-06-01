@@ -26,12 +26,10 @@ from sqlalchemy import (
     String,
     Text,
     Float,
-    Integer,
     Boolean,
     TIMESTAMP,
     ForeignKey,
     Index,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
