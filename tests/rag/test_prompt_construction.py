@@ -54,7 +54,7 @@ async def test_prompt_construction_rag(mock_get_client):
 
     assert len(messages) == 2
     assert messages[0]["role"] == "system"
-    assert "Context:\n[Source 1 - warranty.pdf]\nThe warranty period is 12 months." in messages[0]["content"]
+    assert "Context:\n[Source 1] (document - warranty.pdf)\nThe warranty period is 12 months." in messages[0]["content"]
     assert SYSTEM_PROMPT in messages[0]["content"]
 
     assert messages[1]["role"] == "user"
