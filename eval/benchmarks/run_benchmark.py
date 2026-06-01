@@ -98,7 +98,6 @@ def cmd_embedding(args: argparse.Namespace) -> int:
 
 
 def cmd_reranker(args: argparse.Namespace) -> int:
-    models = parse_models(args.models)
     # Synthetic queries
     queries = [
         (f"query {i}", [f"doc_{i}.md"], [f"doc_{j}.md" for j in range(5)])

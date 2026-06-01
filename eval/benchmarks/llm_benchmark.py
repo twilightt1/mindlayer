@@ -22,7 +22,6 @@ import statistics
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from app.observability.cost import calculate_cost
