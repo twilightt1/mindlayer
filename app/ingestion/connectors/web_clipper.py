@@ -30,14 +30,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 
 from app.ingestion.base import BaseConnector
-from app.ingestion.types import ConnectorItem, ItemError
+from app.ingestion.types import ConnectorItem
 
 log = logging.getLogger(__name__)
 

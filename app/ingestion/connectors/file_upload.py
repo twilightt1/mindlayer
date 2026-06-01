@@ -20,7 +20,6 @@ Behavior:
 from __future__ import annotations
 
 import logging
-import io
 from typing import Any
 
 from app.ingestion.base import BaseConnector
