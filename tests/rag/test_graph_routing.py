@@ -20,6 +20,7 @@ def test_grade_docs_routes_relevant_context_to_answer():
         "has_documents": True,
         "context_relevant": True,
         "retry_count": 0,
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_docs(state) == "answer"
@@ -32,6 +33,7 @@ def test_grade_docs_routes_irrelevant_context_to_retrieval_retry_node():
         "context_relevant": False,
         "retry_count": 0,
         "agent_trace": {},
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_docs(state) == "retry_retrieval_for_irrelevant_context"
@@ -55,6 +57,7 @@ def test_grade_docs_records_retry_limit_before_answering():
         "context_relevant": False,
         "retry_count": MAX_RETRIES,
         "agent_trace": {},
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_docs(state) == "record_irrelevant_context_retry_limit"
@@ -76,6 +79,7 @@ def test_grade_gen_routes_valid_generation_to_save():
         "is_hallucination": False,
         "answers_question": True,
         "retry_count": 0,
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_gen(state) == "save"
@@ -88,6 +92,7 @@ def test_grade_gen_retries_answer_for_hallucination():
         "answers_question": True,
         "retry_count": 0,
         "agent_trace": {},
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_gen(state) == "retry_answer_for_hallucination"
@@ -111,6 +116,7 @@ def test_grade_gen_retries_retrieval_when_answer_does_not_resolve_question():
         "answers_question": False,
         "retry_count": 0,
         "agent_trace": {},
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_gen(state) == "retry_retrieval_for_unanswered_question"
@@ -134,6 +140,7 @@ def test_grade_gen_records_generation_retry_limit_before_save():
         "answers_question": False,
         "retry_count": MAX_RETRIES,
         "agent_trace": {},
+        "grounding_context_chunks": [{"id": "x", "content": "ctx"}],
     }
 
     assert _route_after_grade_gen(state) == "record_generation_retry_limit"
