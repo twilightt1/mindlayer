@@ -118,8 +118,12 @@ class TestRerankerBenchmark:
         ]
         # Identity: doc_0 first, MRR=1
         # Reverse: doc_4 first, doc_0 last, MRR=1/k
-        identity = lambda q, cs: cs
-        reverse = lambda q, cs: list(reversed(cs))
+        def identity(q, cs):
+            return cs
+
+        def reverse(q, cs):
+            return list(reversed(cs))
+
         bench = RerankerBenchmark(
             rerankers=[("identity", identity), ("reverse", reverse)],
             queries=queries,
