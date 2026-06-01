@@ -6,6 +6,23 @@ from app.config import settings
 
 log = logging.getLogger(__name__)
 
+
+# Lazily-resolved module-level aliases.
+# Tests commonly ``monkeypatch.setattr(embedder, "async_client", fake)`` or
+# patch ``embedder.async_client.embeddings`` to inject fakes. By exposing
+# these names through a module __getattr__, callers can treat them as
+# normal module attributes while we still defer client construction until
+# the first real access. Patching the module attribute via setattr will
+# shadow the lazy resolver for the patched value, just as with a regular
+# module attribute.
+def __getattr__(name):
+    if name == "async_client":
+        return _get_async_client()
+    if name == "sync_client":
+        return _get_sync_client()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 _async_client: AsyncOpenAI | None = None
 _sync_client: OpenAI | None = None
 
@@ -42,6 +59,13 @@ def _get_sync_client() -> OpenAI:
             },
         )
     return _sync_client
+
+
+# Module-level aliases. Resolution is lazy via __getattr__ above; we do not
+# eagerly bind names so that test code can also ``setattr(embedder,
+# "async_client", fake)`` to fully override the client. The first real
+# access constructs and caches the singleton via _get_async_client() /
+# _get_sync_client().
 
 
 def _batches(texts: list[str]) -> list[list[str]]:
