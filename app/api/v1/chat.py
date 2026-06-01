@@ -33,6 +33,28 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 log    = logging.getLogger(__name__)
 
 
+def _load_rag_graph():
+    """Lazy loader for the compiled RAG graph.
+
+    The graph is exposed as a module-level symbol (``rag_graph``) so that
+    integration tests can ``monkeypatch.setattr(chat, "rag_graph", fake)``.
+    We resolve it lazily on first access (and re-resolve if a test patches
+    it) to avoid pulling the full LangGraph stack at import time.
+    """
+    from app.agents.graph import rag_graph as _compiled
+    return _compiled
+
+
+# Module-level binding. Tests may monkeypatch this attribute.
+# Initialize to the compiled graph so non-patched callers still work.
+rag_graph = _load_rag_graph()
+
+
+def _get_rag_graph():
+    """Return the current rag_graph (allows monkeypatching in tests)."""
+    return rag_graph
+
+
 def _source_event_payload(chunk: dict[str, Any]) -> dict[str, Any]:
     metadata = chunk.get("metadata") or {}
     return {
@@ -206,10 +228,9 @@ async def send_message(
         async def run_graph() -> None:
             nonlocal final_response_emitted
             try:
-                from app.agents.graph import rag_graph
-
+                graph = _get_rag_graph()
                 await emit({"type": "status", "stage": "started"}, event="status")
-                async for event in rag_graph.astream(state):
+                async for event in graph.astream(state):
                     node, data = next(iter(event.items()))
                     if isinstance(data, dict):
                         final_state.update(data)
