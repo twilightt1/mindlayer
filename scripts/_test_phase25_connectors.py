@@ -28,9 +28,9 @@ import httpx
 # themselves (because `svc.httpx IS httpx` and we patch the same attribute).
 _REAL_ASYNC_CLIENT = httpx.AsyncClient
 
-from app.ingestion.connectors.google_drive import GoogleDriveConnector
-from app.ingestion.connectors.gmail import GmailConnector
-from app.ingestion.connectors.notion import NotionConnector
+from app.ingestion.connectors.google_drive import GoogleDriveConnector  # noqa: E402
+from app.ingestion.connectors.gmail import GmailConnector  # noqa: E402
+from app.ingestion.connectors.notion import NotionConnector  # noqa: E402
 
 
 def make_patched_client(transport: httpx.MockTransport):
