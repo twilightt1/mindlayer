@@ -1,12 +1,12 @@
 """Authentication business logic."""
 from __future__ import annotations
+import hashlib
 import logging
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import bcrypt
-import hashlib
 
 from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,16 @@ OTP_MAX = 5
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _hash_refresh_token(token: str) -> str:
+    """Hash a refresh token before it is used as a Redis key.
+
+    Storing only the SHA-256 hex of the token means the raw token string
+    is never used as a key (defense in depth) while still allowing O(1)
+    lookup with the same value derived from the client-supplied token.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
                                                                                 
 def _hash(pw: str) -> str:
@@ -361,21 +371,47 @@ async def change_password(db: AsyncSession, user: User, current: str, new_pw: st
 
                                                                                 
 async def _create_refresh(user_id: UUID | str) -> str:
+    """Create a refresh token and persist it hashed in Redis.
+
+    The raw token is returned to the client once. Redis only ever sees the
+    SHA-256 hash of the token plus a per-user set index used for O(1)
+    invalidation (e.g. on password change).
+    """
     redis = await get_redis()
     token = secrets.token_urlsafe(64)
     ttl   = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
-    await redis.setex(f"refresh:{token}", ttl, str(user_id))
+    token_hash = _hash_refresh_token(token)
+    pipe = redis.pipeline()
+    pipe.setex(f"refresh:{token_hash}", ttl, str(user_id))
+    pipe.sadd(f"refresh_user:{user_id}", token_hash)
+    pipe.expire(f"refresh_user:{user_id}", ttl)
+    await pipe.execute()
     return token
 
 
 async def _invalidate_all_refresh(user_id: UUID | str) -> None:
-    redis  = await get_redis()
-    cursor = 0
-    while True:
-        cursor, keys = await redis.scan(cursor, match="refresh:*", count=100)
-        for key in keys:
-            val = await redis.get(key)
-            if val and val == str(user_id):
-                await redis.delete(key)
-        if cursor == 0:
-            break
+    """Invalidate every refresh token issued to ``user_id``.
+
+    Looks up the per-user index set, deletes each hashed token key, and
+    finally removes the index itself. O(N_user_tokens) instead of an
+    O(total_tokens) keyspace scan.
+    """
+    redis = await get_redis()
+    user_key = f"refresh_user:{user_id}"
+    token_hashes = await redis.smembers(user_key)
+    if token_hashes:
+        keys = [f"refresh:{th}" for th in token_hashes]
+        await redis.delete(*keys)
+    await redis.delete(user_key)
+
+
+async def _invalidate_one_refresh(refresh_token: str) -> None:
+    """Invalidate a single refresh token (logout, rotation).
+
+    Hashes the supplied token and removes the corresponding key. The
+    index set is not modified here because the token is expected to be
+    removed in the same atomic pair as creation during rotation.
+    """
+    redis = await get_redis()
+    token_hash = _hash_refresh_token(refresh_token)
+    await redis.delete(f"refresh:{token_hash}")
