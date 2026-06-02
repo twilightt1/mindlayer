@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str = ""
     EMAIL_FROM: str = "noreply@mindlayer.local"
     EMAIL_FROM_NAME: str = "MindLayer"
+    # When SendGrid is not configured, emails are mocked. By default we log
+    # only metadata (recipient, subject, body length) to avoid leaking OTP /
+    # reset tokens into stdout. Set to True in development to log the full
+    # body at DEBUG level.
+    EMAIL_MOCK_VERBOSE: bool = False
 
            
     MINIO_ENDPOINT: str = "localhost:9000"
