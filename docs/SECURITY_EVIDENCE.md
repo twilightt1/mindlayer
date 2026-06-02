@@ -56,6 +56,19 @@ All security readiness checks passed.
 | API docs | FastAPI docs are disabled when `ENVIRONMENT=production`. |
 | Env template | `.env.example` keeps demo placeholders explicit and non-production. |
 
+## Phase 1-3 Remediation (2026-06)
+
+The following guardrails landed in the Phase 1-3 remediation pass and
+are now part of the security posture of the codebase.
+
+| Area | Evidence |
+| --- | --- |
+| Refresh token storage | `app.services.auth_service._hash_refresh_token` returns the SHA-256 hex of the token; Redis only ever sees the hash as a key suffix. |
+| Refresh revocation | `_invalidate_all_refresh` looks up the per-user index set (`refresh_user:{user_id}`) instead of scanning the full `refresh:*` keyspace. |
+| Refresh endpoints | `/api/v1/auth/refresh` and `/api/v1/auth/logout` hash the incoming token before any Redis call. |
+| Email mock | `app.services.email_service` only logs metadata (recipient, subject, body length) by default; full body is opt-in via `EMAIL_MOCK_VERBOSE=True`. |
+| Source sync | `POST /api/v1/sources/{id}/sync` no longer returns a stub. Errors surface as `Source.status = "error"` with `sync_error` populated. |
+
 ## Manual Deploy Checks Still Required
 
 Some items must be verified in the target deployment environment and cannot be

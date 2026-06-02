@@ -93,6 +93,50 @@ jobs:
       - name: Validate production Docker Compose config
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 
+  lint-full:
+    name: Full-repo ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run full-repo ruff
+        run: python -m ruff check app tests eval scripts
+
+  security-check:
+    name: Security readiness gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run security_check.py
+        run: python scripts/security_check.py
+
   integration:
     name: Live service integration tests
     runs-on: ubuntu-latest

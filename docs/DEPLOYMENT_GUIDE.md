@@ -33,6 +33,22 @@ Production must use:
 
 The app validates these guardrails at startup in production mode.
 
+## Refresh Token Rotation
+
+Refresh tokens are stored in Redis as SHA-256 hashes under
+`refresh:{hash}`. A per-user index set (`refresh_user:{user_id}`)
+lets the application revoke every active session for a user in
+O(N_user_tokens) without scanning the full `refresh:*` keyspace.
+Confirm the Redis instance you point at:
+
+- has `REFRESH_TOKEN_EXPIRE_DAYS` consistent with your product
+  expectations (default 30 days in `Settings`).
+- is reachable from the API process and the worker process (if the
+  worker ever needs to revoke on behalf of an admin).
+- is backed up with the rest of the persistent data — a Redis
+  wipe forces every user to re-authenticate, which is the correct
+  behaviour for a secret-bearing store.
+
 ## Validate Compose Config
 
 ```bash

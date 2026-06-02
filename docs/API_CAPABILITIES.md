@@ -49,6 +49,17 @@ All application endpoints are versioned under `/api/v1` unless noted otherwise.
 | `GET` | `/chat/conversations/{conversation_id}/messages` | Active user | List conversation messages. |
 | `POST` | `/chat/conversations/{conversation_id}/message` | Active user | Ask a question and receive `text/event-stream` response events. |
 
+## Sources
+
+| Method | Endpoint | Auth | Purpose |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/sources` | Active user | Register a connected source. |
+| `GET` | `/sources` | Active user | List sources with optional `source_type` and `status` filters. |
+| `GET` | `/sources/{source_id}` | Active user | Get one source. |
+| `PATCH` | `/sources/{source_id}` | Active user | Update source settings. |
+| `DELETE` | `/sources/{source_id}` | Active user | Disconnect and remove a source. |
+| `POST` | `/sources/{source_id}/sync` | Active user | Trigger a real sync via `SourceSyncService`. Returns added/updated counts and any errors; sets `Source.status = "error"` on failure. |
+
 ## Documents
 
 | Method | Endpoint | Auth | Purpose |

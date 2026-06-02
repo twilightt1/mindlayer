@@ -65,14 +65,20 @@ sequenceDiagram
 
     Client->>API: POST /api/v1/auth/register
     API->>DB: Create user + verification session
-    API->>Email: Queue/send verification code
+    API->>Email: Queue/send verification code (mock logs metadata only)
     Client->>API: POST /api/v1/auth/verify-email/otp
     API->>DB: Mark user verified
     API-->>Client: Onboarding-scoped access token
     Client->>API: POST /api/v1/auth/onboarding
     API->>DB: Save profile state
-    API->>Redis: Store refresh token/session state
+    API->>Redis: SETEX refresh:{sha256(token)} ttl user_id
+    API->>Redis: SADD refresh_user:{user_id} sha256(token)
     API-->>Client: Access + refresh tokens
+    Note over API,Redis: Raw refresh token is never written<br/>to a Redis key — only its SHA-256 hash.
+    Client->>API: POST /api/v1/auth/refresh
+    API->>Redis: HASH(token) → read + rotate
+    Client->>API: POST /api/v1/auth/logout
+    API->>Redis: DEL refresh:{sha256(token)}
 ```
 
 ### Document Ingestion Flow
@@ -176,6 +182,23 @@ sequenceDiagram
 - Admin APIs require `require_admin`.
 - Diagnostics excludes secrets such as JWT keys, provider API keys, database
   URLs, Redis URLs, MinIO secrets, access tokens, and refresh tokens.
+- Refresh tokens are never written to Redis in raw form: the key suffix is
+  always the SHA-256 hash of the token, and a per-user index set is the
+  source of truth for revocation.
+- The email mock only logs metadata (recipient, subject, body length). The
+  full HTML body — which contains OTP and password-reset tokens — is
+  opt-in via `EMAIL_MOCK_VERBOSE=True` for dev environments.
+
+## Sources
+
+- A `Source` row describes a connected account or feed (`google_drive`,
+  `notion`, `gmail`, `web_clipper`, `rss`, ...).
+- `POST /api/v1/sources/{id}/sync` delegates to
+  `SourceSyncService.sync(source)`, which dispatches the registered
+  connector, dedupes items by `(source_id, source_ref)`, persists new
+  Memory rows, and updates `Source.status` / `last_sync_at`.
+- Failures surface as `Source.status = "error"` with
+  `Source.sync_error` populated, never as an unhandled 500.
 
 ## Reliability and Deployment Boundaries
 

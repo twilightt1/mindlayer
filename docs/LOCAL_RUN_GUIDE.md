@@ -238,16 +238,33 @@ pytest tests/ -v
 
 ### Linting and formatting
 
-Targeted lint used by CI:
+Targeted lint (matches CI):
 
 ```powershell
 .\.venv\Scripts\python.exe -m ruff check app/main.py app/config.py app/agents app/services/health_service.py app/services/diagnostics_service.py app/storage.py app/tasks/ingestion_tasks.py app/retrieval app/api/v1/chat.py app/api/v1/sse.py app/api/v1/admin.py eval/run_eval.py eval/live_api_eval.py eval/metrics.py eval/reporting.py tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py tests/api/conftest.py tests/rag/test_graph_routing.py tests/rag/test_evaluation.py tests/rag/test_integration.py tests/rag/test_ai_hardening.py tests/rag/conftest.py tests/services/test_health_service.py tests/services/test_diagnostics_service.py tests/services/conftest.py tests/eval/test_eval_metrics.py tests/eval/test_live_api_eval.py tests/config/test_settings_validation.py tests/integration
 ```
 
-Full-repo lint is still stricter and may expose legacy style issues:
+Full-repo lint (stricter, mirrors the Phase 1-3 remediation pass):
 
 ```powershell
-ruff check app tests
+.\.venv\Scripts\python.exe -m ruff check app tests eval scripts
+```
+
+Auto-fix safe issues:
+
+```powershell
+.\.venv\Scripts\python.exe -m ruff check app tests eval scripts --fix
+```
+
+Run the security readiness gate (CI-executable):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\security_check.py
+```
+
+Format:
+
+```powershell
 ruff format app tests
 ```
 
@@ -256,6 +273,7 @@ Or:
 ```powershell
 make lint
 make format
+make security-check
 ```
 
 ---

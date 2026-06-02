@@ -86,6 +86,32 @@ curl -fsS http://localhost:9000/minio/health/live
 
 In the production overlay, ChromaDB and MinIO ports are internal by default. Temporarily expose them only when direct host checks are needed.
 
+## Source Sync Failures
+
+Symptoms:
+
+- `POST /api/v1/sources/{id}/sync` returns errors > 0
+- `Source.status` flips to `error` instead of returning to `connected`
+- Newly ingested memories do not show up in chat retrieval
+
+Checklist:
+
+1. Inspect `Source.sync_error` from the admin diagnostics endpoint or a
+   direct DB read — the message includes the failing connector or stage
+   (config validation, fetch, persist, etc.).
+2. Confirm the source config still matches the registered connector
+   requirements (e.g. OAuth token is not expired, RSS URL is reachable).
+3. Re-run a sync through the API or admin endpoint after the fix:
+
+```bash
+curl -fsS -X POST -H "Authorization: Bearer $ACCESS_TOKEN" \
+  http://localhost:8000/api/v1/sources/$SOURCE_ID/sync
+```
+
+4. The dispatcher (`SourceSyncService`) is idempotent on
+   `(source_id, source_ref)`: re-running the same sync after a fix
+   updates rather than duplicates items.
+
 ## Stuck Document Ingestion
 
 Symptoms:

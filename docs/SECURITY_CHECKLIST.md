@@ -32,7 +32,14 @@ Legend:
 - [ ] **Manual deploy check**: Confirm admin accounts are limited and intentional.
 - [ ] **Manual deploy check**: Confirm Google OAuth redirect URLs match deployed URLs.
 - [ ] **Manual deploy check**: Confirm password reset and email verification links use production URLs.
-- [ ] **Manual deploy check**: Confirm refresh token storage/expiration policy matches product expectations.
+- [x] **Automated / runtime guardrail**: Refresh tokens are stored in Redis
+      as SHA-256 hashes; the raw token is never used as a key. Each user
+      has a per-user index set so revocation is O(1).
+- [x] **Automated / runtime guardrail**: `/refresh` and `/logout` hash the
+      incoming token before any Redis interaction.
+- [x] **Automated / runtime guardrail**: The email mock never logs the
+      full HTML body. `EMAIL_MOCK_VERBOSE=True` is the only way to opt
+      back in (dev environments only).
 - [x] **Automated**: Confirm `/api/v1/admin/diagnostics` requires admin authorization.
 
 ## API and Rate Limiting
