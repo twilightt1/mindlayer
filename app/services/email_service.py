@@ -17,11 +17,15 @@ class EmailService:
 
     def _send(self, to: str, subject: str, html: str) -> None:
         if not settings.SENDGRID_API_KEY:
-            log.warning("SENDGRID_API_KEY is not set. Mocking email send.", extra={"to": to, "subject": subject})
-            print(f"\n--- MOCK EMAIL TO {to} ---")
-            print(f"Subject: {subject}")
-            print(html)
-            print("--------------------------\n")
+            # Mock path: never leak OTP / reset tokens into stdout. Log a
+            # redacted summary and the body length instead. Full body is
+            # only emitted when ``EMAIL_MOCK_VERBOSE`` is enabled (dev).
+            log.warning(
+                "SENDGRID_API_KEY is not set. Mocking email send.",
+                extra={"to": to, "subject": subject, "html_length": len(html)},
+            )
+            if getattr(settings, "EMAIL_MOCK_VERBOSE", False):
+                log.debug("MOCK EMAIL BODY", extra={"to": to, "subject": subject, "html": html})
             return
 
         msg = Mail(
