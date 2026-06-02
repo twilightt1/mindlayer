@@ -385,6 +385,15 @@ async def graph_snapshot(
         .limit(limit)
     )).scalars().all()
     entity_ids = {e.id for e in entity_rows}
+    if not entity_ids:
+        # No entities yet → no relations can match. Return early with an
+        # empty snapshot to avoid issuing a Relation query with an empty
+        # IN(...) clause (dialect-dependent behavior).
+        return GraphSnapshot(
+            nodes=[],
+            edges=[],
+            generated_at=datetime.utcnow(),
+        )
 
     relation_rows = (await db.execute(
         select(Relation)
