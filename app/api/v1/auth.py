@@ -186,13 +186,19 @@ async def exchange_auth_code(body: AuthRedirectExchangeRequest):
                                                                                 
 @router.post("/refresh")
 async def refresh_token(body: RefreshTokenRequest):
-    redis     = await get_redis()
-    user_id_b = await redis.get(f"refresh:{body.refresh_token}")
+    redis = await get_redis()
+    token_hash = auth_service._hash_refresh_token(body.refresh_token)
+    user_id_b = await redis.get(f"refresh:{token_hash}")
     if not user_id_b:
         raise HTTPException(401, detail="Refresh token invalid or expired.")
 
     user_id = user_id_b
-    await redis.delete(f"refresh:{body.refresh_token}")
+    # Remove the old (now-hashed) token before issuing a new one. The
+    # rotation also drops the entry from the per-user index on the
+    # ``_create_refresh`` side via SADD overwrite semantics — the old
+    # hash simply expires with the old key.
+    await redis.delete(f"refresh:{token_hash}")
+    await redis.srem(f"refresh_user:{user_id}", token_hash)
 
     from app.database import AsyncSessionLocal
     from app.models.user import User
@@ -208,7 +214,7 @@ async def refresh_token(body: RefreshTokenRequest):
     return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
 
 
-                                                                                
+                                                                                 
 @router.post("/logout", status_code=200)
 async def logout(
     request: Request,
@@ -217,7 +223,7 @@ async def logout(
 ):
     redis = await get_redis()
     if body and body.refresh_token:
-        await redis.delete(f"refresh:{body.refresh_token}")
+        await auth_service._invalidate_one_refresh(body.refresh_token)
 
                                         
     auth_header = request.headers.get("Authorization")
