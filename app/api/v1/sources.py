@@ -7,13 +7,12 @@ Endpoints:
     GET    /api/v1/sources/{id}           fetch one source
     PATCH  /api/v1/sources/{id}           update source settings
     DELETE /api/v1/sources/{id}           disconnect a source
-    POST   /api/v1/sources/{id}/sync      trigger a (mock) sync — Phase 2 will wire
-                                          to real connectors (Drive, Notion, Gmail)
+    POST   /api/v1/sources/{id}/sync      trigger a sync via SourceSyncService
+                                          (real connector dispatch)
 
-The actual OAuth flow and connector implementations arrive in Phase 2
-(multi-source connectors). For now this endpoint is the user-facing
-control surface; the sync endpoint returns a stubbed result so the
-end-to-end flow can be exercised.
+The actual OAuth flow lives in Phase 2.5+; the sync endpoint delegates to
+``SourceSyncService`` which runs the registered connector for the
+source's ``source_type`` and persists results as Memory rows.
 """
 from __future__ import annotations
 
@@ -145,30 +144,41 @@ async def sync_source(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SourceSyncResponse:
     """
-    Trigger a (mock) sync for the source. Phase 2 will dispatch to the
-    real connector (Drive, Notion, Gmail, ...). For now this just
-    updates last_sync_at and returns zero counts so the UI flow works.
+    Trigger a real sync for the source via ``SourceSyncService``.
+
+    The dispatcher looks up the connector registered for
+    ``source.source_type`` and runs fetch + persist. We expose the
+    counts back to the caller so the UI can render progress.
     """
+    from app.ingestion.dispatcher import SourceSyncService
+
     source = await db.get(Source, source_id)
     if not source or source.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Source not found.")
     if source.status == "disconnected":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Source is disconnected.")
 
-    now = datetime.utcnow()
     source.status = "syncing"
     await db.commit()
 
-    # Stub: in Phase 2 this becomes a Celery job that calls the connector.
-    source.status = "connected"
-    source.last_sync_at = now
-    source.sync_error = None
-    await db.commit()
+    try:
+        result = await SourceSyncService(db).sync(source)
+    except Exception as exc:  # defensive: never bubble 500 to the UI on a sync
+        source.status = "error"
+        source.sync_error = str(exc)
+        await db.commit()
+        return SourceSyncResponse(
+            source_id=source_id,
+            memories_added=0,
+            memories_updated=0,
+            errors=1,
+            finished_at=datetime.utcnow(),
+        )
 
     return SourceSyncResponse(
         source_id=source_id,
-        memories_added=0,
-        memories_updated=0,
-        errors=0,
-        finished_at=now,
+        memories_added=result.memories_added,
+        memories_updated=result.memories_updated,
+        errors=len(result.errors),
+        finished_at=result.finished_at,
     )
