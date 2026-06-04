@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, BigInteger, Integer, Text, TIMESTAMP, ForeignKey, text
+from sqlalchemy import String, BigInteger, Integer, Text, TIMESTAMP, ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
@@ -29,3 +29,7 @@ class Document(Base):
 
     conversation: Mapped["Conversation"]        = relationship(back_populates="documents")
     chunks:       Mapped[list["DocumentChunk"]] = relationship(back_populates="document", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_documents_conversation_status", "conversation_id", "status"),
+    )

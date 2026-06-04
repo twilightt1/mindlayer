@@ -14,7 +14,7 @@ class MemoryCreate(BaseModel):
     content:       str               = Field(min_length=1, max_length=100_000)
     summary:       str | None        = Field(default=None, max_length=4000)
     source_type:   Literal["manual_note", "file_upload", "google_drive", "notion",
-                            "gmail", "web_clipper", "conversation_excerpt", "other"] = "manual_note"
+                            "gmail", "web_clipper", "rss", "conversation_excerpt", "other"] = "manual_note"
     source_ref:    str | None        = Field(default=None, max_length=500)
     source_url:    str | None        = Field(default=None, max_length=1000)
     tags:          list[str]         = Field(default_factory=list, max_length=50)
@@ -53,6 +53,8 @@ class MemoryResponse(BaseModel):
     tags:        list[str]
     salience:    float
     pinned:      bool
+    recall_count: int
+    last_used_at: datetime | None
     captured_at: datetime
     indexed_at:  datetime
     updated_at:  datetime
@@ -66,6 +68,30 @@ class MemoryListResponse(BaseModel):
     total:  int
     limit:  int
     offset: int
+
+
+# ─── Digest (proactive surfacing, P2.2) ──────────────────────────────────────
+
+class DigestThemeCount(BaseModel):
+    """A theme (tag) and how many recent memories carry it."""
+    theme: str
+    count: int
+
+
+class DigestResurfacedMemory(BaseModel):
+    """A memory resurfaced from the past ('N months/years ago today')."""
+    memory:    MemoryResponse
+    age_label: str   # e.g. "1 year ago", "6 months ago"
+    age_days:  int
+
+
+class DigestResponse(BaseModel):
+    generated_at:     datetime
+    window_days:      int
+    recent_count:     int                      # memories captured in the window
+    top_themes:       list[DigestThemeCount]   # most common tags in the window
+    recent_memories:  list[MemoryResponse]     # newest captures in the window
+    resurfaced:       list[DigestResurfacedMemory]  # 'on this day' from the past
 
 
 # ─── Entity ─────────────────────────────────────────────────────────────────

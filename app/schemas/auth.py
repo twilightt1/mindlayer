@@ -1,10 +1,25 @@
 from __future__ import annotations
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, model_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 
 
-class RegisterRequest(BaseModel):
+class _EmailNormalizingModel(BaseModel):
+    """Base for requests carrying an ``email`` field.
+
+    ``EmailStr`` only normalizes the domain part, so ``User@x.com`` and
+    ``user@x.com`` would be treated as different accounts (the users table has
+    a unique index on the raw string). We lowercase the whole address at the
+    boundary so storage and lookups are consistent everywhere.
+    """
+
+    @field_validator("email", check_fields=False)
+    @classmethod
+    def _normalize_email(cls, v: str) -> str:
+        return v.strip().lower() if isinstance(v, str) else v
+
+
+class RegisterRequest(_EmailNormalizingModel):
     email:    EmailStr
     password: str = Field(min_length=8, max_length=128)
 
@@ -13,7 +28,7 @@ class RegisterResponse(BaseModel):
     message: str
 
 
-class OTPVerifyRequest(BaseModel):
+class OTPVerifyRequest(_EmailNormalizingModel):
     email:    EmailStr
     otp_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
@@ -24,7 +39,7 @@ class OTPVerifyResponse(BaseModel):
     next:         str = "onboarding"
 
 
-class ResendVerificationRequest(BaseModel):
+class ResendVerificationRequest(_EmailNormalizingModel):
     email: EmailStr
 
 
@@ -38,7 +53,7 @@ class OnboardingResponse(BaseModel):
     user:          "UserResponse"
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(_EmailNormalizingModel):
     email:    EmailStr
     password: str
 
@@ -50,7 +65,7 @@ class LoginResponse(BaseModel):
     user:          "UserResponse"
 
 
-class ForgotPasswordRequest(BaseModel):
+class ForgotPasswordRequest(_EmailNormalizingModel):
     email: EmailStr
 
 
@@ -58,7 +73,7 @@ class ForgotPasswordResponse(BaseModel):
     message: str
 
 
-class ForgotPasswordOTPVerifyRequest(BaseModel):
+class ForgotPasswordOTPVerifyRequest(_EmailNormalizingModel):
     email:    EmailStr
     otp_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 

@@ -56,7 +56,7 @@ class ConversationDetail(ConversationResponse):
 
 
 class ChatRequest(BaseModel):
-    query: str = Field(min_length=1)
+    query: str = Field(min_length=1, max_length=10_000)
     include_personal_context: bool = True
     include_graph_context: bool = True
     personal_memory_top_k: int = Field(default=5, ge=0, le=10)

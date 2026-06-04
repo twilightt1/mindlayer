@@ -12,11 +12,17 @@ class Settings(BaseSettings):
     REDIS_URL: str
     REDIS_POOL_MAX: int = 20
 
-         
+
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Symmetric key for encrypting connector secrets (Source.config) at rest.
+    # Must be a urlsafe-base64 32-byte Fernet key. When empty in non-production
+    # a key is derived from JWT_SECRET_KEY so local dev works out of the box;
+    # production requires an explicit value (see _validate_production_settings).
+    CONFIG_ENCRYPTION_KEY: str = ""
 
                    
     GOOGLE_CLIENT_ID: str = ""
@@ -55,7 +61,14 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "openai/gpt-4o-mini"
     LLM_TEMPERATURE: float = 0.7
+    # Factual RAG answers should be near-deterministic; the global 0.7 is for
+    # other/creative uses. The answer agent uses this lower value to reduce
+    # hallucination and verbosity.
+    ANSWER_TEMPERATURE: float = 0.0
     LLM_MAX_TOKENS: int = 2048
+    # Approx character budget for the assembled LLM context (~4 chars/token).
+    # Guards against silently overflowing the model context window.
+    CONTEXT_CHAR_BUDGET: int = 24000
 
 
 
@@ -120,6 +133,14 @@ class Settings(BaseSettings):
         self._require_explicit_cors_origins()
         self._require_provider_keys()
         self._require_secure_minio_credentials()
+        self._require_config_encryption_key()
+
+    def _require_config_encryption_key(self) -> None:
+        if not self.CONFIG_ENCRYPTION_KEY.strip():
+            raise ValueError(
+                "CONFIG_ENCRYPTION_KEY must be set in production "
+                "(generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")"
+            )
 
     def _require_strong_jwt_secret(self) -> None:
         placeholders = {

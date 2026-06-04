@@ -9,8 +9,11 @@ MindLayer to pull memories from. Examples:
     - Web clipper bookmarked list
     - Manual (when the user just types a note in MindLayer)
 
-`config` stores connection-specific settings (encrypted at rest in a
-later phase). For Phase 1 we just keep it as JSONB.
+`config` stores connection-specific settings (auth tokens, folder ids,
+etc.). It is encrypted at rest via ``EncryptedJSONB``: the dict is
+JSON-serialized and Fernet-encrypted before being written to the JSONB
+column, and transparently decrypted on read. Legacy plaintext rows are
+read back unchanged, so no data migration is required.
 
 `status` tracks the connector health: connected, syncing, error, paused.
 """
@@ -34,6 +37,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.types import EncryptedJSONB
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -72,9 +76,9 @@ class Source(Base):
     display_name:  Mapped[str]       = mapped_column(String(255), nullable=False)
     description:   Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Connector configuration (auth tokens, folder ids, etc.)
-    # Phase 1: stored as plain JSONB. Phase 7+: encrypted at rest.
-    config:        Mapped[dict]      = mapped_column(JSONB, server_default="{}", nullable=False)
+    # Connector configuration (auth tokens, folder ids, etc.) — encrypted at
+    # rest via EncryptedJSONB. Reads/writes stay plain dicts to callers.
+    config:        Mapped[dict]      = mapped_column(EncryptedJSONB, server_default="{}", nullable=False)
 
     # Sync state
     status:        Mapped[str]       = mapped_column(String(20), nullable=False, server_default="connected")
@@ -123,6 +127,7 @@ class MemorySource(Base):
     __table_args__ = (
         UniqueConstraint("memory_id", "source_id", name="uq_memory_source"),
         Index("ix_memory_sources_source", "source_id"),
+        Index("ix_memory_sources_source_item", "source_id", "item_ref"),
     )
 
 

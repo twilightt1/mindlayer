@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Text, Integer, TIMESTAMP, ForeignKey, text
+from sqlalchemy import String, Text, Integer, TIMESTAMP, ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from app.database import Base
@@ -23,3 +23,7 @@ class Message(Base):
     created_at:      Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_messages_role_created", "role", "created_at"),
+    )

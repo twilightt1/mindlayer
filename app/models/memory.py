@@ -27,6 +27,7 @@ from sqlalchemy import (
     Text,
     Float,
     Boolean,
+    Integer,
     TIMESTAMP,
     ForeignKey,
     Index,
@@ -65,6 +66,11 @@ class Memory(Base):
     salience:      Mapped[float]      = mapped_column(Float, server_default="0.5", nullable=False)
     pinned:        Mapped[bool]        = mapped_column(Boolean(), server_default="false", nullable=False)
 
+    # Usage feedback (P2.1): bumped when a memory is recalled & used in an
+    # answer; decayed periodically when untouched. Drives the salience loop.
+    recall_count:  Mapped[int]        = mapped_column(Integer(), server_default="0", nullable=False)
+    last_used_at:  Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
     # Time
     captured_at:   Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     indexed_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
@@ -83,6 +89,8 @@ class Memory(Base):
         Index("ix_memories_user_captured", "user_id", "captured_at"),
         Index("ix_memories_user_salience", "user_id", "salience"),
         Index("ix_memories_source", "user_id", "source_type"),
+        Index("ix_memories_user_last_used", "user_id", "last_used_at"),
+        Index("ix_memories_tags", "tags", postgresql_using="gin"),
     )
 
 

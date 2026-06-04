@@ -50,6 +50,7 @@ class SourceResponse(BaseModel):
     source_type:     str
     display_name:    str
     description:     str | None
+    config:          dict
     status:          str
     last_sync_at:    datetime | None
     sync_error:      str | None
