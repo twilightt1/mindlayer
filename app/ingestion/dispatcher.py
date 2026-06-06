@@ -44,7 +44,9 @@ class SourceSyncService:
             started_at=started_at,
             finished_at=started_at,  # updated at the end
         )
-        graph_memory_ids: list[str] = []
+        # Memories whose content was created or changed this sync — they need
+        # (re)indexing (embed + graph) after the transaction commits.
+        index_memory_ids: list[str] = []
 
         # 1. Pick the connector (Phase 2.6: pass initial_cursor for incremental sync)
         try:
@@ -79,6 +81,11 @@ class SourceSyncService:
 
         result.items_yielded = len(items)
 
+        # Surface any per-item fetch failures the connector collected (failed
+        # URLs, unparseable feed entries) without failing the whole sync.
+        if getattr(connector, "fetch_errors", None):
+            result.errors.extend(connector.fetch_errors)
+
         # Phase 2.6: save the last pagination token so the next sync
         # resumes here instead of re-fetching everything.
         # Only update if the connector set one (None means exhausted
@@ -93,9 +100,12 @@ class SourceSyncService:
                 if outcome == "added":
                     result.memories_added += 1
                     if memory_id:
-                        graph_memory_ids.append(memory_id)
+                        index_memory_ids.append(memory_id)
                 elif outcome == "updated":
                     result.memories_updated += 1
+                    # Content changed → vector + graph are now stale, reindex.
+                    if memory_id:
+                        index_memory_ids.append(memory_id)
                 elif outcome == "skipped":
                     result.memories_skipped += 1
             except Exception as e:
@@ -103,10 +113,29 @@ class SourceSyncService:
                 result.errors.append(ItemError(source_ref=item.source_ref, message=str(e)))
 
         finalized = await self._finalize(source, result)
-        if graph_memory_ids and not any((err.message or "").startswith("Commit failed") for err in finalized.errors):
-            for memory_id in graph_memory_ids:
-                _safe_enqueue_graph_build(memory_id)
+        commit_failed = any((err.message or "").startswith("Commit failed") for err in finalized.errors)
+        if index_memory_ids and not commit_failed:
+            await self._index_memories(index_memory_ids)
         return finalized
+
+    async def _index_memories(self, memory_ids: list[str]) -> None:
+        """Embed + enqueue graph extraction for committed memories.
+
+        Best-effort: the memories are already durable in Postgres, so an
+        embedding/enqueue failure is logged and replayable via the reindex
+        task rather than failing the sync.
+        """
+        from app.retrieval.memory.write_back import (
+            safe_enqueue_graph_build,
+            safe_upsert_to_chroma,
+        )
+
+        rows = (
+            await self.db.execute(select(Memory).where(Memory.id.in_(memory_ids)))
+        ).scalars().all()
+        for memory in rows:
+            await safe_upsert_to_chroma(memory)
+            safe_enqueue_graph_build(memory.id)
 
     # ── internals ────────────────────────────────────────────────────────────
 
@@ -214,22 +243,9 @@ def _memory_source_type_for(connector_source_type: str) -> str:
         "manual":      "manual_note",
         "file_upload": "file_upload",
         "web_clipper": "web_clipper",
+        "rss":         "rss",
         "google_drive": "google_drive",
         "notion":      "notion",
         "gmail":       "gmail",
     }
     return mapping.get(connector_source_type, "other")
-
-
-def _safe_enqueue_graph_build(memory_id: str) -> None:
-    """Best-effort enqueue for graph extraction after source sync commits."""
-    try:
-        from app.tasks.graph_tasks import build_memory_graph_task
-
-        build_memory_graph_task.delay(memory_id)
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "Graph build enqueue failed for source memory %s: %s",
-            memory_id, e,
-            extra={"memory_id": memory_id},
-        )

@@ -16,6 +16,7 @@ from app.ingestion.base import BaseConnector
 from app.ingestion.connectors.manual import ManualNoteConnector
 from app.ingestion.connectors.file_upload import FileUploadConnector
 from app.ingestion.connectors.web_clipper import WebClipperConnector
+from app.ingestion.connectors.rss import RSSConnector
 from app.ingestion.connectors.google_drive import GoogleDriveConnector
 from app.ingestion.connectors.notion import NotionConnector
 from app.ingestion.connectors.gmail import GmailConnector
@@ -26,6 +27,7 @@ REGISTRY: dict[str, Type[BaseConnector]] = {
     "manual":        ManualNoteConnector,
     "file_upload":   FileUploadConnector,
     "web_clipper":   WebClipperConnector,
+    "rss":           RSSConnector,
     "google_drive":  GoogleDriveConnector,
     "notion":        NotionConnector,
     "gmail":         GmailConnector,

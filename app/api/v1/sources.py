@@ -35,8 +35,59 @@ from app.schemas.source import (
     SourceListResponse,
     SourceSyncResponse,
 )
+from app.ingestion.connectors.registry import get_connector_for_source
 
 router = APIRouter(prefix="/sources", tags=["sources"])
+
+CONFIG_VALIDATED_SOURCE_TYPES = {"rss", "web_clipper"}
+SENSITIVE_CONFIG_KEYS = {
+    "api_key",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "credentials",
+    "password",
+    "secret",
+    "token",
+}
+
+
+def _safe_source_config(config: dict | None) -> dict:
+    """Return source config safe for UI display, redacting secret-like keys."""
+    safe: dict = {}
+    for key, value in (config or {}).items():
+        key_lc = str(key).lower()
+        if key_lc in SENSITIVE_CONFIG_KEYS or key_lc.endswith("_token") or key_lc.endswith("_secret"):
+            safe[key] = "••••••••" if value else None
+        elif isinstance(value, dict):
+            safe[key] = _safe_source_config(value)
+        elif isinstance(value, list):
+            safe[key] = [
+                _safe_source_config(item) if isinstance(item, dict) else item
+                for item in value[:25]
+            ]
+        else:
+            safe[key] = value
+    return safe
+
+
+def _source_response(source: Source) -> SourceResponse:
+    response = SourceResponse.model_validate(source)
+    return response.model_copy(update={"config": _safe_source_config(source.config)})
+
+
+def _validate_source_config_or_422(source_type: str, config: dict | None) -> None:
+    """Validate configs for practical no-OAuth connectors at create/update time."""
+    if source_type not in CONFIG_VALIDATED_SOURCE_TYPES:
+        return
+    try:
+        connector = get_connector_for_source(source_type, config or {})
+        connector.validate_config()
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.post("", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
@@ -45,6 +96,7 @@ async def create_source(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SourceResponse:
+    _validate_source_config_or_422(body.source_type, body.config)
     source = Source(
         user_id=current_user.id,
         source_type=body.source_type,
@@ -56,7 +108,7 @@ async def create_source(
     db.add(source)
     await db.commit()
     await db.refresh(source)
-    return SourceResponse.model_validate(source)
+    return _source_response(source)
 
 
 @router.get("", response_model=SourceListResponse)
@@ -85,7 +137,7 @@ async def list_sources(
     )).scalars().all()
 
     return SourceListResponse(
-        items=[SourceResponse.model_validate(s) for s in rows],
+        items=[_source_response(s) for s in rows],
         total=total,
         limit=limit,
         offset=offset,
@@ -101,7 +153,7 @@ async def get_source(
     source = await db.get(Source, source_id)
     if not source or source.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Source not found.")
-    return SourceResponse.model_validate(source)
+    return _source_response(source)
 
 
 @router.patch("/{source_id}", response_model=SourceResponse)
@@ -116,12 +168,15 @@ async def update_source(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Source not found.")
 
     data = body.model_dump(exclude_unset=True)
+    if "config" in data:
+        data["config"] = data["config"] or {}
+        _validate_source_config_or_422(source.source_type, data["config"])
     for field, value in data.items():
         setattr(source, field, value)
 
     await db.commit()
     await db.refresh(source)
-    return SourceResponse.model_validate(source)
+    return _source_response(source)
 
 
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)

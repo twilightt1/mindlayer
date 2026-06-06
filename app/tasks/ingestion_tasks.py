@@ -49,15 +49,10 @@ def _stage_error(stage: str, exc: Exception) -> IngestionStageError:
 )
 def process_document(self, document_id: str) -> None:
     from celery.exceptions import MaxRetriesExceededError, Retry
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
 
-    from app.config import settings
+    from app.tasks.db import sync_session
 
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-
-    with Session(engine) as db:
+    with sync_session() as db:
         try:
             _ingest(db, document_id)
         except Exception as exc:
@@ -186,7 +181,7 @@ def _ingest(db, document_id: str) -> None:
         for parent in parents
     ]
     try:
-        bm25_retriever.build_from_parents(conversation_id, parent_dicts)
+        bm25_retriever.publish_build_sync(conversation_id, parent_dicts)
     except Exception as exc:
         raise _stage_error("bm25_build", exc) from exc
 
@@ -206,6 +201,18 @@ def _ingest(db, document_id: str) -> None:
             extra={"doc_id": document_id, "conversation_id": conversation_id, "error": str(exc)},
         )
 
+    # Unify (roadmap P1.1): project this document into the user's cross-
+    # conversation memory. Best-effort — the document is already "ready" and
+    # the per-conversation path works regardless; a failure here is replayable
+    # via the reindex task and must not fail ingestion.
+    try:
+        _project_document_to_memories(db, document_id, parents)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "Doc→memory projection failed",
+            extra={"doc_id": document_id, "conversation_id": conversation_id, "error": str(exc)},
+        )
+
     log.info(
         "Ingestion complete",
         extra={
@@ -215,6 +222,42 @@ def _ingest(db, document_id: str) -> None:
             "children": len(children),
         },
     )
+
+
+def _project_document_to_memories(db, document_id: str, parents) -> None:
+    """Create + embed cross-conversation memories for an ingested document.
+
+    Commits the new Memory rows, then embeds them into the shared memory
+    collection. Embedding is best-effort (replayable via reindex); the rows
+    are the durable source of truth.
+    """
+    from sqlalchemy import select
+
+    from app.ingestion.document_memory import build_document_memories_sync
+    from app.models.memory import Memory
+    from app.retrieval.memory.vector_store import (
+        delete_memories_sync,
+        upsert_memories_sync,
+    )
+
+    result = build_document_memories_sync(db, document_id, parents)
+    db.commit()
+
+    # Purge vectors from a prior projection whose Postgres rows were just
+    # deleted (re-ingest with different/fewer chunks → different ids).
+    if result.stale_vector_ids:
+        delete_memories_sync(result.stale_vector_ids)
+
+    if not result.all_ids:
+        return
+
+    rows = (
+        db.execute(select(Memory).where(Memory.source_ref == document_id))
+        .scalars()
+        .all()
+    )
+    if rows:
+        upsert_memories_sync(rows)
 
 
 def _fail(db, document_id: str, error: str) -> None:

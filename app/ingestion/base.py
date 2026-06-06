@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 import logging
 
-from app.ingestion.types import ConnectorItem
+from app.ingestion.types import ConnectorItem, ItemError
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,15 @@ class BaseConnector(ABC):
         ``None`` if exhausted). The dispatcher reads
         ``connector.last_cursor`` and saves it to
         ``Source.sync_cursor`` for the next sync.
+
+    Per-item fetch errors (Phase 2.7):
+        A connector that fetches many items (web clipper URLs, RSS
+        entries) should NOT fail the whole sync — or fabricate junk
+        memories — when one item fails. Instead it appends an
+        :class:`ItemError` to ``self.fetch_errors`` and continues. The
+        dispatcher merges ``connector.fetch_errors`` into the
+        ``SyncResult`` so the user sees what failed without polluting
+        their memories.
     """
 
     # Concrete subclasses set this to a value from SOURCE_TYPES.
@@ -57,6 +66,8 @@ class BaseConnector(ABC):
         self.initial_cursor: str | None = initial_cursor
         # Where the NEXT sync should resume from (set by connector).
         self.last_cursor: str | None = None
+        # Per-item fetch failures (set by connector, read by dispatcher).
+        self.fetch_errors: list[ItemError] = []
 
     # ── To be overridden ──────────────────────────────────────────────────────
 

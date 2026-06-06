@@ -16,15 +16,14 @@ Behavior:
     - Extract the main text with a BeautifulSoup-based heuristic
       (drop <script>, <style>, <nav>, <header>, <footer>, <aside>).
     - Title from <title> tag, fallback to URL hostname.
-    - Yields one `ConnectorItem` per URL.
-    - Soft errors: a single failed URL produces an `ItemError`
-      rather than failing the whole sync.
+    - Yields one `ConnectorItem` per URL that succeeds.
+    - A single failed URL is recorded in ``self.fetch_errors`` (surfaced
+      by the dispatcher as a sync error) and skipped — it does NOT fail
+      the whole sync and does NOT create a junk memory.
 
-This connector is the one with the most "real" behavior in Phase 2
-v0 — it lets a user wire a feed of URLs to their second brain
-without any external service. Real "save this URL now" actions
-go through the dedicated `POST /sources/{id}/web-clip` endpoint
-which is a thin wrapper around `clip_url()`.
+This connector lets a user wire a feed of URLs to their second brain
+without any external service. ``clip_url()`` is exposed as a helper for
+a one-off "save this URL" path.
 """
 from __future__ import annotations
 
@@ -36,27 +35,92 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.ingestion.base import BaseConnector
-from app.ingestion.types import ConnectorItem
+from app.ingestion.types import ConnectorItem, ItemError
 
 log = logging.getLogger(__name__)
 
 DEFAULT_MAX_CHARS = 50_000
 DEFAULT_USER_AGENT = "MindLayer/1.0 (+second-brain)"
 HTTP_TIMEOUT = 20.0
+MAX_URLS_PER_SYNC = 100
+
+
+def _is_valid_http_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except (ValueError, TypeError):
+        return False
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _merge_tags(*groups: list[str]) -> list[str]:
+    merged: list[str] = []
+    for group in groups:
+        for tag in group:
+            clean = str(tag).strip()
+            if clean and clean not in merged:
+                merged.append(clean)
+    return merged[:50]
+
+
+def _config_tags(config: dict, default: str) -> list[str]:
+    raw = config.get("tags") or []
+    tags = [default]
+    if isinstance(raw, str):
+        tags.extend(part.strip() for part in raw.split(","))
+    elif isinstance(raw, list):
+        tags.extend(str(part).strip() for part in raw)
+    return _merge_tags(tags)
 
 
 class WebClipperConnector(BaseConnector):
     source_type: str = "web_clipper"
 
+    def _urls(self) -> list[str]:
+        urls: list[str] = []
+        single = self.config.get("url")
+        if isinstance(single, str) and single.strip():
+            urls.append(single.strip())
+        many = self.config.get("urls")
+        if isinstance(many, list):
+            urls.extend(u.strip() for u in many if isinstance(u, str) and u.strip())
+
+        seen: set[str] = set()
+        out: list[str] = []
+        for url in urls:
+            if url not in seen:
+                seen.add(url)
+                out.append(url)
+        return out
+
     def validate_config(self) -> None:
-        urls = self.config.get("urls")
-        if not urls or not isinstance(urls, list):
-            raise ValueError("WebClipperConnector requires config['urls'] to be a non-empty list")
+        urls = self._urls()
+        if not urls:
+            raise ValueError("WebClipperConnector requires config['url'] or config['urls']")
+        if not any(_is_valid_http_url(u) for u in urls):
+            raise ValueError("WebClipperConnector config contains no valid http(s) URLs")
 
     async def fetch_items(self) -> list[ConnectorItem]:
-        urls: list[str] = self.config.get("urls", [])
-        max_chars: int  = int(self.config.get("max_chars", DEFAULT_MAX_CHARS))
-        ua: str         = self.config.get("user_agent", DEFAULT_USER_AGENT)
+        raw_urls = self._urls()
+        max_chars: int = int(self.config.get("max_chars", DEFAULT_MAX_CHARS))
+        ua: str = self.config.get("user_agent", DEFAULT_USER_AGENT)
+        source_title = self.config.get("title")
+        configured_tags = _config_tags(self.config, "web_clip")
+
+        # Dedup while preserving order; cap the batch size.
+        seen: set[str] = set()
+        urls: list[str] = []
+        for u in raw_urls:
+            if not isinstance(u, str) or not _is_valid_http_url(u):
+                self.fetch_errors.append(
+                    ItemError(source_ref=str(u)[:500], message="Invalid or non-http(s) URL; skipped")
+                )
+                continue
+            if u in seen:
+                continue
+            seen.add(u)
+            urls.append(u)
+        urls = urls[:MAX_URLS_PER_SYNC]
 
         items: list[ConnectorItem] = []
         async with httpx.AsyncClient(
@@ -66,28 +130,32 @@ class WebClipperConnector(BaseConnector):
         ) as client:
             for url in urls:
                 try:
-                    items.append(await _clip_url(client, url, max_chars))
-                except Exception as e:
-                    # Bubble as ItemError; dispatcher logs the rest.
+                    item = await _clip_url(client, url, max_chars)
+                    metadata = dict(item.metadata or {})
+                    if isinstance(source_title, str) and source_title.strip():
+                        metadata["source_title"] = source_title.strip()
+                    items.append(item.model_copy(update={
+                        "title": source_title.strip()[:500]
+                        if isinstance(source_title, str) and source_title.strip() and len(urls) == 1
+                        else item.title,
+                        "tags": _merge_tags(item.tags, configured_tags),
+                        "metadata": metadata,
+                    }))
+                except Exception as e:  # noqa: BLE001
+                    # Record as a sync error and skip — never fabricate a memory.
                     log.warning("WebClipperConnector: failed to clip %s — %s", url, e)
-                    # We can't return ItemError from fetch_items (it returns
-                    # items, not errors), so we surface a tiny placeholder
-                    # memory tagged with the error so the user sees it.
-                    items.append(ConnectorItem(
-                        title=f"[Failed] {url}",
-                        content=f"Could not clip this URL: {e}",
-                        source_ref=url,
-                        source_url=url,
-                        tags=["error", "web_clip_failed"],
-                        metadata={"error": str(e), "url": url},
-                    ))
+                    self.fetch_errors.append(
+                        ItemError(source_ref=url, message=f"Failed to clip: {e}")
+                    )
         return items
 
 
-# ── Public helper used by the one-off web-clip API endpoint ────────────────
+# ── Public helper used by a one-off "save this URL" path ──────────────────
 
 async def clip_url(url: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> ConnectorItem:
-    """Clip a single URL synchronously and return a ConnectorItem."""
+    """Clip a single URL and return a ConnectorItem. Raises on failure."""
+    if not _is_valid_http_url(url):
+        raise ValueError("clip_url requires an http(s) URL")
     async with httpx.AsyncClient(
         timeout=HTTP_TIMEOUT,
         follow_redirects=True,
@@ -102,6 +170,10 @@ async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> Conn
     response = await client.get(url)
     response.raise_for_status()
 
+    content_type = response.headers.get("content-type", "").lower()
+    if content_type and "html" not in content_type and "xml" not in content_type:
+        raise ValueError(f"Unsupported content-type for web clip: {content_type!r}")
+
     soup = BeautifulSoup(response.text, "html.parser")
 
     # Drop noise
@@ -113,7 +185,7 @@ async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> Conn
 
     # Title
     title_el = soup.find("title")
-    title = (title_el.get_text(strip=True) if title_el else "") or urlparse(url).netloc
+    title = (title_el.get_text(strip=True) if title_el else "") or urlparse(url).netloc or url
 
     # Collect text block-by-block so we keep some structure
     blocks: list[str] = []
@@ -121,7 +193,10 @@ async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> Conn
         txt = el.get_text(" ", strip=True)
         if txt:
             blocks.append(txt)
-    text = "\n\n".join(blocks).strip() or body_el.get_text(" ", strip=True)
+    text = "\n\n".join(blocks).strip() or body_el.get_text(" ", strip=True).strip()
+
+    if not text:
+        raise ValueError("No extractable text content on page")
 
     if len(text) > max_chars:
         text = text[:max_chars] + f"\n\n[truncated at {max_chars} chars]"
@@ -139,11 +214,11 @@ async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> Conn
 
     return ConnectorItem(
         title=title[:500],
-        content=text or "(empty page)",
-        summary=text[:500] if text else None,
+        content=text,
+        summary=text[:500],
         source_ref=url,
         source_url=url,
-        source_excerpt=text[:500] if text else None,
+        source_excerpt=text[:500],
         captured_at=captured_at,
         tags=["web_clip"],
         metadata={"url": url, "fetched_with": "httpx+bs4", "status_code": response.status_code},

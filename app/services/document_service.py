@@ -82,25 +82,32 @@ async def get_document(db: AsyncSession, document_id: UUID, conversation_id: UUI
 
 async def delete_document(db: AsyncSession, document: Document, conversation: Conversation) -> None:
     from app import storage
+    from app.ingestion.document_memory import delete_document_memories_async
     from app.retrieval.bm25_retriever import bm25_retriever
+    from app.retrieval.memory.vector_store import delete_memories as delete_memory_vectors
     from app.retrieval.retrieval_cache import invalidate_query_cache
     from app.retrieval.vector_retriever import delete_document_chunks
 
-              
+    document_id = str(document.id)
+
     try:
         await storage.remove_object(document.file_path)
     except Exception as e:
         log.warning("MinIO delete failed", extra={"error": str(e)})
 
-                 
-    await delete_document_chunks(str(conversation.id), str(document.id))
+    await delete_document_chunks(str(conversation.id), document_id)
 
-                                    
+    # Unify (P1.1): also remove the cross-conversation memories derived from
+    # this document, and their vectors. Best-effort on the vector side.
+    memory_ids = await delete_document_memories_async(db, document_id)
+
     await db.delete(document)
     conversation.document_count = max(0, conversation.document_count - 1)
     await db.commit()
 
-                     
-    await bm25_retriever.rebuild_async(db, str(conversation.id))
+    if memory_ids:
+        await delete_memory_vectors(memory_ids)
+
+    await bm25_retriever.publish_rebuild_async(db, str(conversation.id))
     await invalidate_query_cache(str(conversation.id))
-    log.info("Document deleted", extra={"doc_id": str(document.id)})
+    log.info("Document deleted", extra={"doc_id": document_id, "memories_removed": len(memory_ids)})
