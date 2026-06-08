@@ -385,13 +385,22 @@ async def get_ai_costs(
     Reads from the SQLite-backed CostTracker populated by agent calls.
     """
     try:
+        import asyncio
+
         from app.observability.cost import CostTracker, budget_window_iso
 
         tracker = CostTracker()
         since = budget_window_iso(hours=hours)
-        total = tracker.total(since_iso=since)
-        breakdown = tracker.breakdown_by_agent(since_iso=since)
-        recent = tracker.recent(limit=20)
+
+        def _read() -> tuple[float, dict, list]:
+            return (
+                tracker.total(since_iso=since),
+                tracker.breakdown_by_agent(since_iso=since),
+                tracker.recent(limit=20),
+            )
+
+        # SQLite reads are blocking; keep them off the event loop thread.
+        total, breakdown, recent = await asyncio.to_thread(_read)
         by_agent = [
             AgentCostSummary(
                 agent=agent,
@@ -416,4 +425,117 @@ async def get_ai_costs(
             by_agent=[],
             recent_calls=[],
             note=f"Cost tracker unavailable: {exc}",
+        )
+
+
+class ReindexRequest(BaseModel):
+    user_id: UUID
+    only_missing: bool = True
+
+
+class ReindexResponse(BaseModel):
+    queued: bool
+    task_id: str | None = None
+    user_id: UUID
+    only_missing: bool
+    note: str | None = None
+
+
+@router.post("/memories/reindex", response_model=ReindexResponse)
+async def reindex_memories(
+    body: ReindexRequest,
+    admin_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> ReindexResponse:
+    """Queue a backfill that re-embeds a user's memories into ChromaDB.
+
+    Replays the Postgres ``memories`` rows into the vector index. Use after a
+    Chroma data loss, or to index memories captured before write-through
+    embedding existed. ``only_missing`` (default) skips memories already
+    present in the collection; set false to rebuild every vector.
+    """
+    target = await db.get(User, body.user_id)
+    if not target:
+        raise HTTPException(404, detail="User not found.")
+
+    await AuditService.log_action(
+        db=db,
+        admin_id=admin_user.id,
+        action="reindex_memories",
+        target_entity_type="user",
+        target_entity_id=body.user_id,
+        changes={"only_missing": body.only_missing},
+    )
+    await db.commit()
+
+    try:
+        from app.tasks.reindex_tasks import reindex_user_memories
+
+        async_result = reindex_user_memories.delay(str(body.user_id), only_missing=body.only_missing)
+        return ReindexResponse(
+            queued=True,
+            task_id=getattr(async_result, "id", None),
+            user_id=body.user_id,
+            only_missing=body.only_missing,
+        )
+    except Exception as exc:  # pragma: no cover - broker unavailable
+        return ReindexResponse(
+            queued=False,
+            task_id=None,
+            user_id=body.user_id,
+            only_missing=body.only_missing,
+            note=f"Could not enqueue reindex task: {exc}",
+        )
+
+
+class QualityTrendResponse(BaseModel):
+    window_hours: int
+    generated_at: str | None = None
+    sample_size: int
+    citation_rate: float
+    citation_sample: int
+    grounded_rate: float
+    grounded_sample: int
+    hallucination_flag_rate: float
+    self_correction_rate: float
+    avg_grounding_confidence: float
+    grounding_confidence_sample: int
+    avg_answer_latency_ms: float
+    latency_sample: int
+    note: str | None = None
+
+
+@router.get("/quality/trend", response_model=QualityTrendResponse)
+async def get_quality_trend(
+    hours: int = 24,
+    _=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> QualityTrendResponse:
+    """Quality signals aggregated over the last `hours` window.
+
+    Reduces the per-message `agent_trace` blobs (citation presence, grounded
+    verdict, self-correction retries, grounding confidence, latency) into
+    rates a reviewer can watch over time. Each rate reports its own denominator
+    so a flood of chitchat doesn't silently dilute the numbers.
+    """
+    try:
+        from app.services.quality_service import build_quality_trend
+
+        metrics = await build_quality_trend(db, hours=hours)
+        return QualityTrendResponse(**metrics)
+    except Exception as exc:  # pragma: no cover - defensive
+        return QualityTrendResponse(
+            window_hours=hours,
+            sample_size=0,
+            citation_rate=0.0,
+            citation_sample=0,
+            grounded_rate=0.0,
+            grounded_sample=0,
+            hallucination_flag_rate=0.0,
+            self_correction_rate=0.0,
+            avg_grounding_confidence=0.0,
+            grounding_confidence_sample=0,
+            avg_answer_latency_ms=0.0,
+            latency_sample=0,
+            note=f"Quality trend unavailable: {exc}",
         )
