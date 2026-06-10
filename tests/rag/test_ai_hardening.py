@@ -41,7 +41,12 @@ async def test_bm25_lazy_ensure_rebuilds_missing_index(monkeypatch):
 
     result = await retriever.ensure_async(db=object(), conversation_id="conv-1")
 
-    assert result == {"had_index": False, "rebuilt": True, "has_index": True}
+    assert result == {
+        "had_index": False,
+        "rebuilt": True,
+        "stale": False,
+        "has_index": True,
+    }
     hits = await retriever.search("rotated API keys", top_k=3, conversation_id="conv-1")
     assert hits
     assert hits[0]["parent_id"] == "parent-1"

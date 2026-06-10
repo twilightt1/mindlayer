@@ -5,7 +5,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import AgentState
@@ -81,17 +81,31 @@ async def fetch_relevant_entities(db: AsyncSession, user_id: UUID, state: AgentS
         " ".join(state.get("search_variants", []) or []),
     ]).casefold()
     if query_text:
-        candidates = (await db.execute(
+        # Push the "entity name appears in the query" match into the DB instead
+        # of loading 100 rows and filtering in Python. The query text is the
+        # literal; a row matches when its name is a substring of it, i.e.
+        # :query_text ILIKE '%' || name || '%'.
+        qt = literal(query_text)
+        name_match = qt.ilike(func.concat("%", func.lower(Entity.name), "%"))
+        # Alias match, guarded so an empty alias array can't produce '%%'
+        # (which would match everything). Only applies when aliases exist.
+        alias_joined = func.lower(func.array_to_string(Entity.aliases, " "))
+        alias_match = and_(
+            func.coalesce(func.array_length(Entity.aliases, 1), 0) > 0,
+            qt.ilike(func.concat("%", alias_joined, "%")),
+        )
+        matched = (await db.execute(
             select(Entity)
-            .where(Entity.user_id == user_id)
+            .where(
+                Entity.user_id == user_id,
+                func.length(Entity.name) > 0,
+                or_(name_match, alias_match),
+            )
             .order_by(Entity.mention_count.desc())
-            .limit(100)
+            .limit(MAX_QUERY_ENTITIES)
         )).scalars().all()
-        for entity in candidates:
-            if _entity_matches_text(entity, query_text):
-                by_id[entity.id] = entity
-            if len(by_id) >= MAX_QUERY_ENTITIES:
-                break
+        for entity in matched:
+            by_id[entity.id] = entity
 
     return sorted(by_id.values(), key=lambda e: (e.mention_count or 0, e.name), reverse=True)[:MAX_QUERY_ENTITIES]
 
@@ -196,12 +210,3 @@ def _memory_ids_from_chunks(chunks: list[dict[str, Any]]) -> list[UUID]:
         except ValueError:
             continue
     return memory_ids
-
-
-def _entity_matches_text(entity: Entity, query_text: str) -> bool:
-    if entity.name and entity.name.casefold() in query_text:
-        return True
-    for alias in entity.aliases or []:
-        if alias and alias.casefold() in query_text:
-            return True
-    return False

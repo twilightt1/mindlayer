@@ -23,15 +23,10 @@ def build_memory_graph_task(self, memory_id: str, force: bool = False) -> dict:
     codebase already follow that pattern for ingestion tasks.
     """
     from celery.exceptions import MaxRetriesExceededError, Retry
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
 
-    from app.config import settings
+    from app.tasks.db import sync_session
 
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
-    engine = create_engine(sync_url, pool_pre_ping=True)
-
-    with Session(engine) as db:
+    with sync_session() as db:
         try:
             result = build_memory_graph_sync(db, memory_id, force=force)
             log.info("Graph build complete", extra=result.to_dict())

@@ -28,12 +28,14 @@ from app.database import get_db
 from app.models.user import User
 from app.models.memory import Memory
 from app.retrieval.memory.retriever import MemoryRetriever
-from app.retrieval.memory.vector_store import (
-    delete_memory as delete_memory_from_chroma,
-    upsert_memory,
+from app.retrieval.memory.write_back import (
+    index_new_memory,
+    safe_delete_from_chroma,
+    safe_upsert_to_chroma,
 )
 from app.utils.dependencies import get_current_verified_user
 from app.schemas.mindlayer import (
+    DigestResponse,
     MemoryCreate,
     MemoryUpdate,
     MemoryResponse,
@@ -47,51 +49,28 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/memories", tags=["memories"])
 
 
-# ── write-through sync helpers (Phase 3.7) ────────────────────────────────
-
-
-async def _safe_upsert_to_chroma(memory: Memory) -> None:
-    """Best-effort write-through to ChromaDB.
-
-    The Postgres ``Memory`` row is the source of truth. If ChromaDB
-    is down or the write fails for any reason, we log a warning and
-    continue — the recall pipeline can still rebuild the index from
-    Postgres later (see Phase 3.5 backlog: bulk reindex task).
-    """
-    try:
-        await upsert_memory(memory)
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "ChromaDB upsert failed for memory %s: %s",
-            memory.id, e,
-            extra={"memory_id": str(memory.id), "user_id": str(memory.user_id)},
-        )
-
-
-async def _safe_delete_from_chroma(memory_id: UUID) -> None:
-    """Best-effort removal from ChromaDB. Never raises."""
-    try:
-        await delete_memory_from_chroma(str(memory_id))
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "ChromaDB delete failed for memory %s: %s",
-            memory_id, e,
-            extra={"memory_id": str(memory_id)},
-        )
-
-
-async def _safe_enqueue_graph_build(memory_id: UUID) -> None:
-    """Best-effort Celery enqueue for Phase 4 graph extraction."""
-    try:
-        from app.tasks.graph_tasks import build_memory_graph_task
-
-        build_memory_graph_task.delay(str(memory_id))
-    except Exception as e:  # noqa: BLE001
-        log.warning(
-            "Graph build enqueue failed for memory %s: %s",
-            memory_id, e,
-            extra={"memory_id": str(memory_id)},
-        )
+def _memory_response(memory: Memory) -> MemoryResponse:
+    """Map ORM Memory.extra_metadata to API field `metadata`."""
+    return MemoryResponse(
+        id=memory.id,
+        user_id=memory.user_id,
+        parent_id=memory.parent_id,
+        source_type=memory.source_type,
+        source_ref=memory.source_ref,
+        source_url=memory.source_url,
+        title=memory.title,
+        content=memory.content,
+        summary=memory.summary,
+        tags=memory.tags or [],
+        salience=memory.salience,
+        pinned=memory.pinned,
+        recall_count=memory.recall_count,
+        last_used_at=memory.last_used_at,
+        captured_at=memory.captured_at,
+        indexed_at=memory.indexed_at,
+        updated_at=memory.updated_at,
+        metadata=memory.extra_metadata or {},
+    )
 
 
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)
@@ -118,11 +97,9 @@ async def create_memory(
     db.add(memory)
     await db.commit()
     await db.refresh(memory)
-    # Write-through to ChromaDB (best-effort, see _safe_upsert_to_chroma)
-    await _safe_upsert_to_chroma(memory)
-    # Phase 4 graph extraction is async/best-effort; CRUD remains source-of-truth.
-    await _safe_enqueue_graph_build(memory.id)
-    return MemoryResponse.model_validate(memory)
+    # Post-persist indexing (embed + graph) — best-effort, Postgres is truth.
+    await index_new_memory(memory)
+    return _memory_response(memory)
 
 
 @router.get("", response_model=MemoryListResponse)
@@ -130,10 +107,11 @@ async def list_memories(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     source_type: Literal["manual_note", "file_upload", "google_drive", "notion",
-                          "gmail", "web_clipper", "conversation_excerpt", "other"] | None = None,
+                          "gmail", "web_clipper", "rss", "conversation_excerpt", "other"] | None = None,
     tag: str | None = Query(default=None, description="Filter by tag (exact match)"),
     query: str | None = Query(default=None, description="Substring search in title/content"),
     pinned: bool | None = None,
+    sort: Literal["newest", "salience", "last_used"] = Query(default="newest"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> MemoryListResponse:
@@ -159,17 +137,40 @@ async def list_memories(
         base = base.where(or_(title_match, content_match))
         count_base = count_base.where(or_(title_match, content_match))
 
+    order_by = {
+        "salience": (Memory.pinned.desc(), Memory.salience.desc(), Memory.captured_at.desc()),
+        "last_used": (Memory.last_used_at.desc().nullslast(), Memory.captured_at.desc()),
+        "newest": (Memory.captured_at.desc(),),
+    }[sort]
+
     total = (await db.execute(count_base)).scalar_one()
     rows  = (await db.execute(
-        base.order_by(Memory.captured_at.desc()).offset(offset).limit(limit)
+        base.order_by(*order_by).offset(offset).limit(limit)
     )).scalars().all()
 
     return MemoryListResponse(
-        items=[MemoryResponse.model_validate(m) for m in rows],
+        items=[_memory_response(m) for m in rows],
         total=total,
         limit=limit,
         offset=offset,
     )
+
+
+# Declared BEFORE /{memory_id} so "digest" isn't parsed as a memory UUID.
+@router.get("/digest", response_model=DigestResponse)
+async def memory_digest(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    window_days: int = Query(default=7, ge=1, le=90),
+) -> DigestResponse:
+    """Proactive surfacing: what you saved recently + 'on this day' from the past.
+
+    Pull-based for now (the UI can render it on a home screen); a future
+    scheduled job can push it via email using the same builder.
+    """
+    from app.services.digest_service import build_digest
+
+    return await build_digest(db, current_user.id, window_days=window_days)
 
 
 @router.get("/{memory_id}", response_model=MemoryResponse)
@@ -181,7 +182,7 @@ async def get_memory(
     memory = await db.get(Memory, memory_id)
     if not memory or memory.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Memory not found.")
-    return MemoryResponse.model_validate(memory)
+    return _memory_response(memory)
 
 
 @router.patch("/{memory_id}", response_model=MemoryResponse)
@@ -206,8 +207,8 @@ async def update_memory(
     await db.commit()
     await db.refresh(memory)
     # Write-through to ChromaDB (best-effort)
-    await _safe_upsert_to_chroma(memory)
-    return MemoryResponse.model_validate(memory)
+    await safe_upsert_to_chroma(memory)
+    return _memory_response(memory)
 
 
 @router.delete("/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -222,7 +223,7 @@ async def delete_memory(
     await db.delete(memory)
     await db.commit()
     # Write-through: remove from ChromaDB (best-effort)
-    await _safe_delete_from_chroma(memory_id)
+    await safe_delete_from_chroma(memory_id)
 
 
 # ── Phase 3.7: recall endpoint ──────────────────────────────────────────────

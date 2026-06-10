@@ -27,6 +27,17 @@ CHITCHAT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Conservative fast-path for explicit "save this to my brain" imperatives.
+# Deliberately narrow: it must START with a save verb and must NOT be phrased as
+# a question (so "remember when we talked about X?" falls through to the LLM,
+# which is the authoritative classifier). The LLM still classifies anything this
+# does not match.
+SAVE_NOTE_PATTERN = re.compile(
+    r"^\s*(remember that\b|remember to\b|note that\b|save (this|a) note\b|make a note\b|take a note\b|"
+    r"jot down\b|ghi nhớ\b|ghi chú\b|lưu lại\b|lưu ý\b|nhớ giùm\b|nhớ là\b|note:|note -)",
+    re.IGNORECASE,
+)
+
 ROUTER_SYSTEM = """You are an intent classifier and query optimizer for a Vietnamese RAG chatbot.
 Given the user's query and conversation history, you must:
 1. Classify the intent
@@ -37,6 +48,7 @@ Given the user's query and conversation history, you must:
 **chitchat** — Casual conversation that requires no document lookup.
 **summarize** — A request to summarize or synthesize content from documents or the conversation.
 **rag** — A specific factual question that requires retrieving information from the knowledge base.
+**save_note** — The user is asking to STORE a piece of information into their second brain for later (e.g. "remember that...", "save this note:", "lưu lại...", "ghi nhớ..."). This is an imperative to save, NOT a question. A question that merely contains the word "remember" (e.g. "do you remember what I said about X?") is 'rag', not 'save_note'.
 
 ---
 
@@ -52,7 +64,7 @@ Given the user's query and conversation history, you must:
 Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 {{
-  "intent": "<chitchat | summarize | rag>",
+  "intent": "<chitchat | summarize | rag | save_note>",
   "confidence": <float between 0.0 and 1.0>,
   "reasoning": "<one short sentence explaining the classification>",
   "rewritten_query": "<the self-contained version of the query>",
@@ -104,6 +116,20 @@ async def router_agent(state: AgentState) -> AgentState:
         }
         return state
 
+    if SAVE_NOTE_PATTERN.match(query) and not query.rstrip().endswith("?"):
+        state["query_type"] = "save_note"
+        state["rewritten_query"] = query
+        state["search_variants"] = []
+        state["router_confidence"] = 1.0
+        state["router_reasoning"] = "Matched save_note regex fast-path"
+        state["agent_trace"]["router"] = {
+            "mode": "regex",
+            "intent": "save_note",
+            "confidence": 1.0,
+            "fallback_used": False,
+        }
+        return state
+
     history = state.get("history", [])
     recent_history = history[-3:] if history else []
     history_str = ""
@@ -139,7 +165,7 @@ async def router_agent(state: AgentState) -> AgentState:
 
         result_json = parsed.data
         intent = str(result_json.get("intent", "rag")).lower()
-        if intent not in ["rag", "chitchat", "summarize"]:
+        if intent not in ["rag", "chitchat", "summarize", "save_note"]:
             intent = "rag"
 
         rewritten_query = result_json.get("rewritten_query")

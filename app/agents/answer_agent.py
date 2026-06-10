@@ -111,7 +111,7 @@ async def answer_agent(state: AgentState) -> AgentState:
         stream = await _get_client().chat.completions.create(
             model=settings.LLM_MODEL,
             messages=messages,
-            temperature=settings.LLM_TEMPERATURE,
+            temperature=settings.ANSWER_TEMPERATURE,
             max_tokens=settings.LLM_MAX_TOKENS,
             stream=True,
             extra_headers={

@@ -147,14 +147,32 @@ async def delete_conversation(
     conversation: Conversation = Depends(_get_conversation),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.retrieval.vector_retriever import delete_conversation_collection
+    from sqlalchemy import select
+
+    from app.ingestion.document_memory import delete_document_memories_async
+    from app.models.document import Document
     from app.retrieval.bm25_retriever import bm25_retriever
+    from app.retrieval.memory.vector_store import delete_memories as delete_memory_vectors
+    from app.retrieval.vector_retriever import delete_conversation_collection
 
     conv_id = str(conversation.id)
+
+    # Unify (P1.1): the conversation cascade-deletes its documents, so first
+    # remove the cross-conversation memories those documents projected.
+    doc_ids = (
+        await db.execute(select(Document.id).where(Document.conversation_id == conversation.id))
+    ).scalars().all()
+    removed_memory_ids: list[str] = []
+    for doc_id in doc_ids:
+        removed_memory_ids.extend(await delete_document_memories_async(db, str(doc_id)))
+
     await db.delete(conversation)
     await db.commit()
+
+    if removed_memory_ids:
+        await delete_memory_vectors(removed_memory_ids)
     await delete_conversation_collection(conv_id)
-    bm25_retriever.invalidate(conv_id)
+    await bm25_retriever.publish_invalidate_async(conv_id)
 
 
                                                                                 
@@ -280,6 +298,7 @@ async def send_message(
                                 "sources": sources,
                                 "token_count": final_state.get("token_count", 0),
                                 "retry_count": final_state.get("retry_count", 0),
+                                "grounding": final_state.get("agent_trace", {}).get("grounding"),
                             },
                             event="done",
                         )

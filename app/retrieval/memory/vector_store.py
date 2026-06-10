@@ -223,6 +223,50 @@ def upsert_memory_sync(memory: Memory) -> None:
     )
 
 
+def upsert_memories_sync(memories: list[Memory]) -> int:
+    """Batch-embed and upsert many memories (sync). Returns count written.
+
+    Embeds all documents in one batched embedding pass (respecting
+    ``EMBED_BATCH_SIZE`` inside ``embed_texts_sync``) and writes them in a
+    single Chroma upsert. Used by the reindex/backfill task.
+    """
+    if not memories:
+        return 0
+    cli = _get_sync_client()
+    collection = cli.get_or_create_collection(
+        COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
+    documents = [_memory_to_document(m) for m in memories]
+    metadatas = [_memory_to_metadata(m) for m in memories]
+    ids = [str(m.id) for m in memories]
+    embeddings = embed_texts_sync(documents)
+    collection.upsert(
+        ids=ids,
+        documents=documents,
+        embeddings=embeddings,
+        metadatas=metadatas,
+    )
+    return len(ids)
+
+
+def get_existing_memory_ids_sync(memory_ids: list[str]) -> set[str]:
+    """Return the subset of ``memory_ids`` already present in the collection.
+
+    Used by the reindex task to compute which memories are missing their
+    vector without re-embedding everything.
+    """
+    if not memory_ids:
+        return set()
+    cli = _get_sync_client()
+    collection = cli.get_or_create_collection(
+        COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
+    found = collection.get(ids=memory_ids, include=[])
+    return set(found.get("ids", []) or [])
+
+
 async def delete_memory(memory_id: str) -> None:
     """Remove a memory's vector from the collection (best-effort)."""
     try:
@@ -233,6 +277,40 @@ async def delete_memory(memory_id: str) -> None:
         log.warning(
             "Failed to delete memory from ChromaDB",
             extra={"memory_id": memory_id, "error": str(e)},
+        )
+
+
+async def delete_memories(memory_ids: list[str]) -> None:
+    """Remove many memories' vectors from the collection (best-effort)."""
+    if not memory_ids:
+        return
+    try:
+        collection = await _get_collection()
+        await collection.delete(ids=memory_ids)
+        log.info("Deleted memories from ChromaDB", extra={"n": len(memory_ids)})
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "Failed to batch-delete memories from ChromaDB",
+            extra={"n": len(memory_ids), "error": str(e)},
+        )
+
+
+def delete_memories_sync(memory_ids: list[str]) -> None:
+    """Synchronous batch delete — used by Celery ingestion (best-effort)."""
+    if not memory_ids:
+        return
+    try:
+        cli = _get_sync_client()
+        collection = cli.get_or_create_collection(
+            COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"},
+        )
+        collection.delete(ids=memory_ids)
+        log.info("Deleted memories from ChromaDB (sync)", extra={"n": len(memory_ids)})
+    except Exception as e:  # noqa: BLE001
+        log.warning(
+            "Failed to batch-delete memories from ChromaDB (sync)",
+            extra={"n": len(memory_ids), "error": str(e)},
         )
 
 

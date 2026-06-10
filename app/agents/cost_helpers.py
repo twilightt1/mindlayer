@@ -8,6 +8,7 @@ don't call these helpers still work, they just don't record costs.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
@@ -26,6 +27,47 @@ def _get_tracker() -> Any:
 
         _DEFAULT_TRACKER = CostTracker()
     return _DEFAULT_TRACKER
+
+
+def _persist_cost(
+    agent: str,
+    model: str,
+    tokens_in: int,
+    tokens_out: int,
+    user_id: str | None,
+    conversation_id: str | None,
+) -> None:
+    """Persist a cost record to the SQLite ledger.
+
+    The ledger uses blocking ``sqlite3`` I/O. When called from within the
+    async request path we must not run that on the event loop thread, so we
+    offload it to the default thread pool as a best-effort, fire-and-forget
+    write. In a purely synchronous context (e.g. Celery, scripts) we write
+    inline.
+    """
+    def _write() -> None:
+        try:
+            _get_tracker().record(
+                agent=agent,
+                model=model,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+        except Exception:  # pragma: no cover - cost tracking must never break a request
+            pass
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:
+        # Fire-and-forget on the thread pool; do not block the event loop.
+        loop.run_in_executor(None, _write)
+    else:
+        _write()
 
 
 def record_cost(
@@ -56,17 +98,14 @@ def record_cost(
     state["agent_costs"][agent] = round(state["agent_costs"].get(agent, 0.0) + cost, 6)
 
     if persist:
-        try:
-            _get_tracker().record(
-                agent=agent,
-                model=model,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                user_id=state.get("user_id"),
-                conversation_id=state.get("conversation_id"),
-            )
-        except Exception:  # pragma: no cover - never let cost tracking break requests
-            pass
+        _persist_cost(
+            agent=agent,
+            model=model,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            user_id=state.get("user_id"),
+            conversation_id=state.get("conversation_id"),
+        )
 
     return {
         "agent": agent,

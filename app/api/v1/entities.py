@@ -91,6 +91,8 @@ def _memory_response(memory: Memory) -> MemoryResponse:
         tags=memory.tags or [],
         salience=memory.salience,
         pinned=memory.pinned,
+        recall_count=memory.recall_count,
+        last_used_at=memory.last_used_at,
         captured_at=memory.captured_at,
         indexed_at=memory.indexed_at,
         updated_at=memory.updated_at,

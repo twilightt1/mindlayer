@@ -6,7 +6,11 @@ from app.agents.context_merge_agent import context_merge_agent
 from app.agents.evaluator_agent import evaluator_agent
 from app.agents.graph_context_agent import graph_context_agent
 from app.agents.hallucination_agent import hallucination_agent
-from app.agents.memory_agent import memory_load_agent, memory_save_agent
+from app.agents.memory_agent import (
+    memory_load_agent,
+    memory_save_agent,
+    memory_save_note_agent,
+)
 from app.agents.personal_context_agent import personal_context_agent
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.router_agent import router_agent
@@ -95,6 +99,7 @@ def build_graph() -> CompiledStateGraph:
     g.add_node("record_generation_retry_limit", _record_generation_retry_limit)
     g.add_node("answer", answer_agent)
     g.add_node("grade_gen", hallucination_agent)
+    g.add_node("save_note", memory_save_note_agent)
     g.add_node("save", memory_save_agent)
 
     g.add_edge(START, "router")
@@ -106,8 +111,13 @@ def build_graph() -> CompiledStateGraph:
             "rag": "memory",
             "summarize": "memory",
             "chitchat": "answer",
+            "save_note": "save_note",
         },
     )
+
+    # save_note creates the memory + sets a confirmation response, then flows
+    # into `save` (message persistence + terminal SSE emit).
+    g.add_edge("save_note", "save")
 
     g.add_edge("memory", "personal_context")
     g.add_edge("personal_context", "graph_context")

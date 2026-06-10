@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
+from app.config import settings
 from app.agents.state import AgentState
 
 MAX_GROUNDING_CHUNKS = 10
@@ -12,7 +13,7 @@ MAX_GROUNDING_CHUNKS = 10
 async def context_merge_agent(state: AgentState) -> AgentState:
     """Merge all available grounding sources into `reranked_chunks`."""
     state.setdefault("agent_trace", {})
-    merged = merge_context_chunks(state)
+    merged, dropped = merge_context_chunks(state)
     state["grounding_context_chunks"] = merged
     state["reranked_chunks"] = merged
     state["agent_trace"]["context_merge"] = {
@@ -21,12 +22,30 @@ async def context_merge_agent(state: AgentState) -> AgentState:
         "graph_context_chunks": len(state.get("graph_context_chunks", []) or []),
         "merged_chunks": len(merged),
         "max_chunks": MAX_GROUNDING_CHUNKS,
+        "char_budget": settings.CONTEXT_CHAR_BUDGET,
+        "dropped_for_budget": dropped,
     }
     return state
 
 
-def merge_context_chunks(state: AgentState, *, max_chunks: int = MAX_GROUNDING_CHUNKS) -> list[dict[str, Any]]:
-    """Merge context chunks by priority: documents, memories, graph facts."""
+def merge_context_chunks(
+    state: AgentState,
+    *,
+    max_chunks: int = MAX_GROUNDING_CHUNKS,
+    char_budget: int | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """Merge context chunks by priority: documents, memories, graph facts.
+
+    Caps the merged set by BOTH a chunk count and an approximate character
+    budget (~4 chars/token), so a few very large chunks can't silently
+    overflow the model's context window. Priority order is preserved, so the
+    highest-value chunks are kept and lower-priority ones are dropped first.
+
+    Returns ``(merged, dropped_for_budget)``.
+    """
+    if char_budget is None:
+        char_budget = settings.CONTEXT_CHAR_BUDGET
+
     doc_chunks = state.get("reranked_chunks", []) or []
     state["doc_context_chunks"] = doc_chunks
 
@@ -38,17 +57,26 @@ def merge_context_chunks(state: AgentState, *, max_chunks: int = MAX_GROUNDING_C
 
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
+    used_chars = 0
+    dropped_for_budget = 0
     for default_source_type, chunks in ordered_groups:
         for chunk in chunks:
             normalized = normalize_chunk(chunk, default_source_type=default_source_type, rank=len(merged) + 1)
             key = chunk_identity(normalized)
             if key in seen:
                 continue
+            chunk_chars = len(normalized.get("content") or "")
+            # Always allow the first chunk so we never send an empty context;
+            # otherwise enforce the budget.
+            if merged and used_chars + chunk_chars > char_budget:
+                dropped_for_budget += 1
+                continue
             seen.add(key)
+            used_chars += chunk_chars
             merged.append(normalized)
             if len(merged) >= max_chunks:
-                return merged
-    return merged
+                return merged, dropped_for_budget
+    return merged, dropped_for_budget
 
 
 def normalize_chunk(chunk: dict[str, Any], *, default_source_type: str, rank: int) -> dict[str, Any]:

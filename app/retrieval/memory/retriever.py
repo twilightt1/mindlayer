@@ -27,7 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.entity import Entity
+from app.models.entity import MemoryEntity
 from app.models.memory import Memory
 from app.retrieval.embedder import embed_query
 from app.retrieval.memory.context import fetch_personal_context
@@ -207,7 +207,7 @@ class MemoryRetriever:
         stmt = (
             select(Memory)
             .where(Memory.id.in_(memory_ids), Memory.user_id == self.user_id)
-            .options(selectinload(Memory.entity_links).selectinload(Entity))
+            .options(selectinload(Memory.entity_links).selectinload(MemoryEntity.entity))
         )
         rows = (await self.db.execute(stmt)).scalars().all()
         return {str(m.id): m for m in rows}
@@ -259,6 +259,8 @@ def _memory_response(memory: Memory) -> MemoryResponse:
         tags=memory.tags or [],
         salience=memory.salience,
         pinned=memory.pinned,
+        recall_count=memory.recall_count,
+        last_used_at=memory.last_used_at,
         captured_at=memory.captured_at,
         indexed_at=memory.indexed_at,
         updated_at=memory.updated_at,
