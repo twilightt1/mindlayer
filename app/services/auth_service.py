@@ -207,7 +207,10 @@ async def login_email(db: AsyncSession, email: str, password: str) -> tuple[User
                                                                                 
 async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
     from fastapi import HTTPException
-    sub, email, picture = info["sub"], info["email"], info.get("picture")
+    sub, picture = info["sub"], info.get("picture")
+    # Normalize to match the lowercased emails stored via the request schemas,
+    # so a Google login resolves to the same row as an email signup.
+    email = str(info["email"]).strip().lower()
 
                                    
     user = await db.scalar(select(User).where(User.google_id == sub))
