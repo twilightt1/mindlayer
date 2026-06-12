@@ -1,7 +1,9 @@
 # Demo Evidence — Phase 15 Live Certification
 
 This document captures the live local certification run for the MindLayer demo
-workflow.
+workflow. The run validates the Personal AI Second Brain path: seed a local user,
+upload sample memories, ingest them through Celery, and answer recall questions
+with sources and agent trace metadata.
 
 ## Environment
 
@@ -84,11 +86,11 @@ The reusable smoke script completed successfully.
 
 | Step | Result |
 | --- | --- |
-| Ensure demo user | `MindLayer-demo@example.com` verified and onboarded |
+| Ensure demo user | `mindlayer-demo@example.com` verified and onboarded |
 | Login | access token received |
 | Conversation | `b456faf1-cb01-4341-a820-7b02bc390d89` |
 
-### Uploaded Documents
+### Uploaded Memories
 
 | File | Document ID | Result |
 | --- | --- | --- |
@@ -105,7 +107,7 @@ BM25 built
 Ingestion complete
 ```
 
-### SSE RAG Questions
+### SSE Recall Questions
 
 | Question | Sources | Event Sequence | Answer Preview |
 | --- | ---: | --- | --- |
@@ -153,9 +155,9 @@ Phase 15 certification passed:
 - Demo user setup passed.
 - Auth login passed.
 - Conversation creation passed.
-- Document upload passed.
+- Memory upload passed.
 - Celery ingestion passed.
 - OpenRouter embeddings passed.
 - Chroma upsert passed.
 - BM25 build passed.
-- SSE RAG answers passed with sources and trace.
+- SSE recall answers passed with sources and trace.

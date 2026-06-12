@@ -31,6 +31,10 @@ numpy>=1.26.4
 pdfplumber>=0.11.0
 python-docx>=1.1.0
 
+# Connectors (web clipper + RSS ingestion)
+beautifulsoup4>=4.12.0
+feedparser>=6.0.11
+
 # Storage
 minio>=7.2.8
 

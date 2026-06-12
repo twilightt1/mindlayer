@@ -2,25 +2,26 @@
 
 ## One-liner
 
-**MindLayer** is a production-grade RAG backend for SaaS support teams that
-streams cited answers from internal knowledge-base documents using hybrid
-retrieval, reranking, LangGraph self-correction, and admin diagnostics.
+**MindLayer** is a production-grade backend for a self-hosted personal AI second
+brain. It captures notes, articles, PDFs, clips, transcripts, and technical docs,
+then returns cited answers from the user's own memory using hybrid retrieval,
+reranking, LangGraph self-correction, and operator-grade diagnostics.
 
 ## Problem
 
-Support teams repeatedly answer questions about APIs, plans, webhooks,
-integrations, releases, and incidents. Information is usually scattered across
-product docs, FAQs, runbooks, and troubleshooting guides, which creates three
+People save useful information across browsers, note apps, PDFs, chats, RSS feeds,
+work docs, and local folders. Months later, they remember the idea but not the
+source, quote, date, or context. Traditional bookmarks and notes have three core
 problems:
 
-1. Slow answer lookup.
-2. Inconsistent responses between agents.
-3. Poor traceability back to source documents.
+1. Slow recall across fragmented personal knowledge stores.
+2. Weak traceability back to original sources.
+3. No systematic way to evaluate whether AI answers are grounded.
 
 ## Solution
 
-MindLayer provides a backend that lets teams upload knowledge-base documents,
-ingest them asynchronously, and ask natural-language questions. The system
+MindLayer provides a backend that lets a user upload or sync personal knowledge,
+ingest it asynchronously, and ask natural-language recall questions. The system
 retrieves relevant context with lexical + semantic search, reranks it, generates
 a grounded answer, streams the answer over SSE, and returns citations plus an
 agent trace for debugging.
@@ -140,7 +141,8 @@ FastAPI API
 
 ## Demo Scenario
 
-A SaaS support agent uploads sample knowledge-base documents:
+A user saves a small collection of technical memories into their personal second
+brain:
 
 - API authentication guide
 - Billing and plans FAQ
@@ -157,18 +159,19 @@ Then asks:
 - “How do I troubleshoot failed Stripe integration?”
 - “What should I check when Redis latency spikes?”
 
-MindLayer responds with a streamed, grounded answer and source snippets.
-Operators can also show `/api/v1/admin/diagnostics` to demonstrate production
-observability.
+MindLayer responds with a streamed, grounded answer and source snippets from the
+stored memories. Operators can also show `/api/v1/admin/diagnostics` to
+demonstrate production observability.
 
 ## What I Would Emphasize in an Interview
 
+- The project is not just a prompt wrapper; it has ingestion, retrieval,
+  self-correction, streaming, evaluation, security, and operations layers.
 - I did not rely on vector search alone; the system uses hybrid retrieval,
   fusion, parent expansion, and reranking.
 - The RAG workflow has validation and retry paths instead of a single linear
   prompt call.
 - The chat API has a concrete SSE event contract suitable for a real frontend.
-- The project separates local/dev workflows from production-like deployment.
 - Tests avoid live-service dependencies by default but still include opt-in live
   integration coverage.
 - Admin diagnostics and runbooks make the system easier to operate, not just demo.
@@ -188,8 +191,9 @@ observability.
 
 ## Future Improvements
 
-- Deploy to a real staging target and run live smoke tests.
+- Add a lightweight desktop or PWA front-end for daily capture.
 - Add a small frontend/admin dashboard over diagnostics and eval reports.
 - Add OpenTelemetry traces and structured metrics.
 - Add atomic quota updates with Redis Lua or database row locks.
 - Track retrieval quality over time with eval dashboards.
+- Deploy to a real staging target and run live smoke tests.

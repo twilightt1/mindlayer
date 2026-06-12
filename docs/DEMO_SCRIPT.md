@@ -1,7 +1,7 @@
 # Demo Script
 
 This script is designed for a 5-minute portfolio/interview walkthrough of
-MindLayer.
+MindLayer as a **self-hosted Personal AI Second Brain**.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ MindLayer.
 - Database migrations have been applied.
 - API is running at `http://localhost:8000`.
 - A demo user exists, or registration/login is available.
-- Sample documents are available in [sample_docs](file:///d:/DL/rag-backend/rag-backend/sample_docs).
+- Sample memories are available in [sample_docs](file:///d:/DL/rag-backend/rag-backend/sample_docs).
 
 Useful setup commands:
 
@@ -32,17 +32,17 @@ Run the end-to-end demo smoke workflow:
 ```
 
 The smoke script seeds a verified/onboarded local demo user, logs in through the
-API, creates a conversation, uploads sample docs, waits for ingestion, asks the
-standard demo questions via SSE, and verifies answer tokens, sources, and trace
-events.
+API, creates a conversation, uploads sample memories, waits for ingestion, asks
+the standard demo questions via SSE, and verifies answer tokens, sources, and
+trace events.
 
 ## 1. Open With the Problem
 
 Talking point:
 
-> Support teams often answer the same API, billing, webhook, and incident
-> questions from scattered docs. MindLayer turns those docs into cited,
-> traceable answers and exposes enough diagnostics to operate the system.
+> We save useful details across docs, notes, clips, transcripts, and runbooks,
+> but later we only remember fragments. MindLayer turns that personal archive
+> into a cited recall layer with enough traceability to debug answer quality.
 
 ## 2. Show Health and Readiness
 
@@ -91,7 +91,7 @@ Talking point:
 curl.exe -sS -X POST http://localhost:8000/api/v1/chat/conversations `
   -H "Authorization: Bearer $env:ACCESS_TOKEN" `
   -H "Content-Type: application/json" `
-  -d '{"title":"MindLayer demo"}'
+  -d '{"title":"MindLayer second brain demo"}'
 ```
 
 Save the id:
@@ -100,7 +100,7 @@ Save the id:
 $env:CONVERSATION_ID="paste-conversation-id-here"
 ```
 
-## 5. Upload a Sample Document
+## 5. Upload a Sample Memory
 
 ```powershell
 curl.exe -sS -X POST "http://localhost:8000/api/v1/chat/conversations/$env:CONVERSATION_ID/documents" `
@@ -144,8 +144,9 @@ status → token → sources → trace → done
 
 Talking point:
 
-> The backend streams token events while LangGraph runs retrieval, reranking,
-> answer generation, validation, persistence, and trace collection.
+> The backend streams token events while LangGraph runs routing, memory loading,
+> hybrid retrieval, reranking, answer generation, validation, persistence, and
+> trace collection.
 
 ## 7. Show Sources and Agent Trace
 

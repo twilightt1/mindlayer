@@ -1,7 +1,7 @@
 # Billing and Plans FAQ
 
 This FAQ explains MindLayer subscription plans, limits, billing behavior, and
-upgrade rules for SaaS support teams.
+upgrade rules for a personal self-hosted workspace.
 
 ## Plans
 

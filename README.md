@@ -264,6 +264,21 @@ display `status` retry events as progress indicators, and render `sources` and
 
 ---
 
+## Recommended Demo Path
+
+For a reviewer or interview walkthrough, use this shortest path:
+
+1. Start the infra, API, and Celery worker from [LOCAL_RUN_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/LOCAL_RUN_GUIDE.md).
+2. Run [scripts/demo_smoke.py](file:///d:/DL/rag-backend/rag-backend/scripts/demo_smoke.py) to seed a verified demo user, upload sample memories, and ask SSE questions.
+3. Open [DEMO_SCRIPT.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_SCRIPT.md) for the 5-minute talk track.
+4. Show [DEMO_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEMO_EVIDENCE.md), [SECURITY_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_EVIDENCE.md), and [NEXT_PHASE_ROADMAP.md](file:///d:/DL/rag-backend/rag-backend/docs/NEXT_PHASE_ROADMAP.md) as proof of readiness and next steps.
+
+Provider keys are optional for browsing the code and running CI-safe tests. Live
+RAG ingestion and answer generation need configured embedding, LLM, and reranker
+providers; empty email settings use the redacted local email mock.
+
+---
+
 ## Quick Start
 
 ### 1. Install dependencies
@@ -322,7 +337,7 @@ python scripts/demo_smoke.py
 ```
 
 The script seeds a verified/onboarded local user, logs in through the API,
-creates a conversation, uploads sample sources, waits for ingestion, asks
+creates a conversation, uploads sample memories, waits for ingestion, asks
 the standard demo questions over SSE, and verifies answer tokens, sources,
 and agent trace events.
 
@@ -464,11 +479,12 @@ runtime config, and ingestion status.
 
 ## Roadmap
 
-Recommended next steps:
+Recommended next phases are tracked in [NEXT_PHASE_ROADMAP.md](file:///d:/DL/rag-backend/rag-backend/docs/NEXT_PHASE_ROADMAP.md). The roadmap is evidence-grounded (every gap cites the file/line where it lives). Summary:
 
-- Add a lightweight desktop or PWA front-end for daily capture.
-- Wire additional connectors (Notion, Obsidian vault, Apple Notes, Gmail).
-- Add a calendar- and RSS-driven auto-sync for hands-free ingestion.
-- Surface a "memory of the week" digest from the knowledge graph.
-- Add OpenTelemetry traces for end-to-end recall observability.
-- Investigate on-device embeddings for a fully offline mode.
+| Phase | Goal | Why it matters |
+| :--- | :--- | :--- |
+| **P0. Close the spine** | Embed connector-synced memories; add a reindex/backfill task. | Today, connector-synced memories never reach the vector index — recall can't find them. Blocking bug. |
+| **P1. Unify the two worlds** | Make documents *become* memories; ship one excellent connector; wire "save note" from chat. | Stops the product being "chat-with-PDF + a separate note app" and makes it one brain. |
+| **P2. Smarter over time** | Salience feedback loop, proactive surfacing, user-facing knowledge graph. | The difference between a vector DB and a brain that learns what matters. |
+| **P3. Provable quality** | Quality/cost trend endpoints; per-answer grounding confidence. | "An AI you can trust because it cites your sources and measures itself." |
+| **P4. Hardening** | Carry-over fixes from the deep code review (temperature, indexes, token budget). | Gates production trust. |

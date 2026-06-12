@@ -1,7 +1,7 @@
 # Webhook Troubleshooting Guide
 
 MindLayer can send webhooks for document ingestion, conversation events, and
-billing changes. This guide helps support teams troubleshoot delivery issues.
+billing changes. This guide helps operators troubleshoot delivery issues.
 
 ## Webhook Retry Rules
 

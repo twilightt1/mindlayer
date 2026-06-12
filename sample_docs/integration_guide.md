@@ -6,7 +6,7 @@ including Slack, Zendesk, Stripe, and CRM systems.
 ## Slack Integration
 
 Admins can connect Slack from **Admin → Integrations → Slack**. After connection,
-support agents can ask MindLayer questions directly from selected channels.
+users can ask MindLayer questions directly from selected channels.
 
 Required Slack permissions:
 
@@ -16,9 +16,9 @@ Required Slack permissions:
 
 ## Zendesk Integration
 
-The Zendesk integration allows agents to search support knowledge while replying
-to tickets. MindLayer can attach cited answers as internal notes or public
-replies.
+The Zendesk integration allows users to search saved helpdesk knowledge while
+replying to tickets. MindLayer can attach cited answers as internal notes or
+public replies.
 
 ## Stripe Integration
 
@@ -36,5 +36,5 @@ Troubleshooting failed Stripe integration:
 ## CRM Integration
 
 Enterprise customers can sync account metadata from Salesforce or HubSpot. CRM
-metadata is used only for support routing and is not embedded into the vector
+metadata is used only for routing and is not embedded into the vector
 index.

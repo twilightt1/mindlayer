@@ -8,7 +8,7 @@ MindLayer. For detailed LangGraph node behavior, see
 
 ```mermaid
 graph TD
-    User[Support Agent / Frontend] --> API[FastAPI API]
+    User[Personal User / Frontend] --> API[FastAPI API]
     API --> Auth[Auth and User Lifecycle]
     API --> Chat[Conversations, Documents, SSE Chat]
     API --> Admin[Admin and Diagnostics]

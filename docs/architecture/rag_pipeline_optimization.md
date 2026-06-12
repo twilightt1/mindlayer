@@ -5,7 +5,7 @@
 This document describes the current Retrieval-Augmented Generation (RAG)
 pipeline after the AI architecture hardening work. The design goal is to balance
 latency, retrieval quality, and runtime safety for a portfolio-grade but
-production-oriented support knowledge-base backend.
+production-oriented personal second-brain backend.
 
 The current architecture is not a minimal linear "chat with PDF" flow. It uses a
 bounded corrective LangGraph workflow, hybrid retrieval, parent-child chunking,

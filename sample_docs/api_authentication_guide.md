@@ -1,8 +1,8 @@
 # API Authentication Guide
 
-MindLayer APIs use bearer tokens for authenticated requests. Support agents,
-admins, and integrations must authenticate before uploading documents or asking
-support questions.
+MindLayer APIs use bearer tokens for authenticated requests. Users,
+admins, and integrations must authenticate before uploading memories or asking
+recall questions.
 
 ## Login
 
