@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "MindLayer - AI-Powered Knowledge Graph",
-  description: "Transform scattered information into connected knowledge. Discover insights you didn't know you needed.",
+  title: "MindLayer - AI Knowledge Platform",
+  description: "Transform scattered information into a unified knowledge graph. Find answers, discover connections, and unlock insights.",
   keywords: ["AI", "knowledge management", "RAG", "document analysis", "insights"],
-  openGraph: {
-    title: "MindLayer - AI-Powered Knowledge Graph",
-    description: "Transform scattered information into connected knowledge",
-    type: "website",
-  },
 };
 
 export default function RootLayout({
@@ -22,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

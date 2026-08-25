@@ -51,11 +51,11 @@ async function testLandingPage() {
     const heroText = await heroHeading.textContent();
     console.log(`   Hero heading: "${heroText?.substring(0, 50)}..."`);
     
-    const getStartedBtn = await page.locator('text=Get Started Free').first();
+    const getStartedBtn = await page.locator('text=Start for free').first();
     if (await getStartedBtn.isVisible()) {
-      console.log('   ✅ "Get Started Free" button is visible');
+      console.log('   ✅ "Start for free" button is visible');
     } else {
-      console.log('   ❌ "Get Started Free" button not found');
+      console.log('   ❌ "Start for free" button not found');
     }
 
     // Test 4: Check Navbar
@@ -166,7 +166,7 @@ async function testLandingPage() {
 
     // Test 10: CTA button navigation
     console.log('\n📍 Test 10: Testing CTA button...');
-    await page.locator('a:has-text("Get Started Free")').first().click();
+    await page.locator('a:has-text("Start for free")').first().click();
     await page.waitForURL('**/signup**', { timeout: 5000 }).catch(() => {
       console.log('   ⚠️ Navigation to /signup (page may not exist yet)');
     });
