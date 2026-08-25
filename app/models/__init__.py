@@ -13,6 +13,16 @@ from app.models.entity import Entity, Relation, MemoryEntity, ENTITY_TYPES, RELA
 from app.models.source import Source, MemorySource, SOURCE_TYPES, SOURCE_STATUS
 from app.models.feedback import Feedback
 from app.models.insight import InsightCard, InsightTypeEnum, InsightStatusEnum, InsightSurpriseLevelEnum
+from app.models.workspace import (
+    Workspace,
+    TeamMembership,
+    WorkspaceInvite,
+    WorkspaceType,
+    WorkspaceStatus,
+    MemberRole,
+    MemberStatus,
+    InviteStatus,
+)
 
 __all__ = [
     # Auth & user
@@ -46,4 +56,13 @@ __all__ = [
     "InsightTypeEnum",
     "InsightStatusEnum",
     "InsightSurpriseLevelEnum",
+    # Team Workspaces
+    "Workspace",
+    "TeamMembership",
+    "WorkspaceInvite",
+    "WorkspaceType",
+    "WorkspaceStatus",
+    "MemberRole",
+    "MemberStatus",
+    "InviteStatus",
 ]
