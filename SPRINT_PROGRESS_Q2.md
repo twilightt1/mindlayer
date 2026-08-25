@@ -1,7 +1,7 @@
 # MindLayer Sprint Progress Q2 2025
 
 **Last Updated:** Auto-generated  
-**Status:** 📋 Planning  
+**Status:** 🚀 In Progress  
 **Decision Gate:** Apr 7, 2025
 
 ---
@@ -25,14 +25,16 @@ Retention Gate (Apr 7):
 
 ## Growth Track: Q2 Tasks (If ≥70% WAQR)
 
-### Insight Cards - Week 13-16
+### Insight Cards - Week 13-16 ✅ IN PROGRESS
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Document connection analysis engine | 📋 Pending | Find unexpected connections |
-| Proactive insight surfacing | 📋 Pending | Surface before user asks |
+| Document connection analysis engine | ✅ Complete | `app/agents/insight_agent.py` |
+| Proactive insight surfacing | ✅ Complete | LLM-powered insight generation |
 | Insight card UI component | 📋 Pending | Display cards in sidebar |
-| User preference learning | 📋 Pending | Learn which insights matter |
+| User preference learning | ✅ Complete | Feedback → preference updates |
+
+**Commit:** `65b8492` (20 tests passing)
 
 ### Multi-hop Discovery Experience - Week 17-20
 
@@ -145,9 +147,11 @@ Workspaces Building
 
 ## Next Actions
 
-1. 📋 Wait for retention data (Apr 7, 2025)
-2. 📋 Based on WAQR decision: implement Growth or Retention Fix track
-3. 📋 Weekly retention monitoring with RetentionGateChecker
+1. ✅ Insight Cards backend - Week 13-14 (backend complete)
+2. 📋 Insight Cards UI - Week 14-15 (sidebar component)
+3. 📋 Multi-hop Discovery Experience - Week 17-20
+4. 📋 Team Knowledge Base Sharing - Week 21-24
+5. 📋 Retention Gate monitoring (Apr 7 decision)
 
 ---
 
