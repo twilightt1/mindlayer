@@ -108,6 +108,13 @@ class Settings(BaseSettings):
     TEMPORAL_HALF_LIFE_DAYS: int = 90  # Recency decay half-life
     TEMPORAL_WEIGHT: float = 0.3  # Weight of temporal score in final ranking
 
+    # ── Multi-hop Reasoning (EfficientRAG) ─────────────────────────────────────
+    # Multi-hop query decomposition and reasoning.
+    # Reference: EfficientRAG - EMNLP 2024
+    MULTIHOP_ENABLED: bool = True
+    MULTIHOP_MODEL: str = "openai/gpt-4o-mini"  # Model for multi-hop reasoning
+    MULTIHOP_MAX_HOPS: int = 3  # Maximum number of reasoning hops
+
                           
     EVALUATOR_FAILURE_MODE: str = "warn_only"
 

@@ -64,3 +64,10 @@ class AgentState(TypedDict, total=False):
     # ── Temporal Memory State ─────────────────────────────────────────────────
     temporal_query: dict[str, Any] | None  # Parsed temporal query info
     temporal_trace: dict[str, Any]  # Trace of temporal operations
+
+    # ── Multi-hop Reasoning State ──────────────────────────────────────────────
+    multihop_subqueries: list[dict[str, Any]] | None  # Subqueries for each hop
+    multihop_hop_results: list[dict[str, Any]]  # Results from each hop
+    multihop_pending: bool  # Whether synthesis is pending
+    multihop_result: dict[str, Any] | None  # Final synthesized result
+    multihop_trace: dict[str, Any]  # Trace of multi-hop operations
