@@ -72,7 +72,7 @@ const capabilities = [
 
 export function FeaturesSection() {
   return (
-    <section className="relative py-24 overflow-hidden">
+    <section id="features" className="relative py-24 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-indigo-950/20" />
       

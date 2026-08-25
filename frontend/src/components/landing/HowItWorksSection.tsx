@@ -63,7 +63,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; gradi
 
 export function HowItWorksSection() {
   return (
-    <section className="relative py-24 overflow-hidden">
+    <section id="how-it-works" className="relative py-24 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-slate-50 dark:bg-slate-950" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/5 via-transparent to-transparent" />
