@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -54,6 +54,15 @@ const config: Config = {
       },
       letterSpacing: {
         tightest: "-0.05em",
+      },
+      animation: {
+        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+      },
+      keyframes: {
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.5" },
+          "50%": { opacity: "1" },
+        },
       },
     },
   },

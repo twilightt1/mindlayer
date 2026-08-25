@@ -31,8 +31,9 @@ export function FAQSection() {
 
   return (
     <section id="faq" className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-slate-50/50 dark:bg-slate-950/50" />
-      
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
+
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
         <motion.div
@@ -42,7 +43,10 @@ export function FAQSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-6">
+          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+            FAQ
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
             Common questions
           </h2>
         </motion.div>
@@ -56,16 +60,16 @@ export function FAQSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden"
+              className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full flex items-center justify-between p-5 text-left"
               >
-                <span className="font-medium text-slate-900 dark:text-white pr-4">
+                <span className="font-medium text-white pr-4">
                   {faq.question}
                 </span>
-                <span className={`flex-shrink-0 text-slate-400 transition-transform duration-200 ${openIndex === index ? 'rotate-45' : ''}`}>
+                <span className={`flex-shrink-0 text-white/40 transition-transform duration-200 ${openIndex === index ? 'rotate-45' : ''}`}>
                   +
                 </span>
               </button>
@@ -79,7 +83,7 @@ export function FAQSection() {
                     className="overflow-hidden"
                   >
                     <div className="px-5 pb-5 pt-0">
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                      <p className="text-white/60 leading-relaxed">
                         {faq.answer}
                       </p>
                     </div>

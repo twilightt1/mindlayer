@@ -4,28 +4,36 @@ import { motion } from "framer-motion";
 
 const features = [
   {
-    title: "Unified Knowledge",
-    description: "Connect documents, notes, and data sources. Create a single source of truth your entire team can explore.",
+    title: "Unified Knowledge Graph",
+    description: "Connect all your documents, notes, and data sources into a single, searchable knowledge graph.",
+    highlight: "One source of truth",
   },
   {
     title: "AI-Powered Search",
-    description: "Ask questions in natural language. Get instant answers with citations from your connected sources.",
+    description: "Ask questions in natural language. Get instant, accurate answers with citations.",
+    highlight: "90%+ accuracy",
   },
   {
     title: "Hidden Connections",
-    description: "Surface relationships between concepts you didn't know existed. Let AI reveal patterns across your knowledge.",
+    description: "Surface relationships between concepts you didn't know existed. Let AI reveal patterns.",
+    highlight: "Multi-hop discovery",
   },
   {
     title: "Team Intelligence",
-    description: "Build shared understanding across your organization. Insights discovered by one become available to all.",
+    description: "Build shared understanding across your organization. Insights discovered by one, available to all.",
+    highlight: "Collaborative",
   },
 ];
 
 export function FeaturesSection() {
   return (
     <section id="features" className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-white dark:bg-black" />
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
       
+      {/* Subtle gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent" />
+
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
         <motion.div
@@ -35,17 +43,22 @@ export function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-20"
         >
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-6">
-            Built for how knowledge actually works
+          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+            Features
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+            Built for how knowledge
+            <br />
+            <span className="text-white/50">actually works</span>
           </h2>
-          <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
+          <p className="text-lg text-white/40 leading-relaxed">
             MindLayer understands that information doesn't exist in isolation. 
             It connects, evolves, and compounds over time.
           </p>
         </motion.div>
 
-        {/* Features grid - typography focused */}
-        <div className="grid md:grid-cols-2 gap-12 md:gap-16 max-w-4xl mx-auto">
+        {/* Features grid */}
+        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -53,16 +66,21 @@ export function FeaturesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="relative"
+              className="group relative p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300"
             >
-              {/* Minimal accent */}
-              <div className="absolute left-0 top-0 w-8 h-px bg-slate-200 dark:bg-slate-800" />
+              {/* Hover glow */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-500/0 to-purple-500/0 group-hover:from-violet-500/10 group-hover:to-purple-500/10 transition-all duration-500" />
               
-              <div className="pl-10">
-                <h3 className="text-xl font-medium text-slate-900 dark:text-white mb-3 tracking-tight">
+              <div className="relative">
+                {/* Highlight tag */}
+                <span className="inline-block px-3 py-1 text-xs font-medium text-violet-400 bg-violet-500/10 rounded-full mb-4">
+                  {feature.highlight}
+                </span>
+                
+                <h3 className="text-xl font-semibold text-white mb-3 tracking-tight">
                   {feature.title}
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-white/50 leading-relaxed">
                   {feature.description}
                 </p>
               </div>

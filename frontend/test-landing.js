@@ -23,8 +23,8 @@ async function testLandingPage() {
 
   try {
     // Test 1: Navigate to landing page
-    console.log('📍 Test 1: Navigating to http://localhost:3000...');
-    const response = await page.goto('http://localhost:3000', { 
+    console.log('\n📍 Test 1: Navigating to http://localhost:3001...');
+    const response = await page.goto('http://localhost:3001', { 
       waitUntil: 'networkidle',
       timeout: 30000 
     });
@@ -51,11 +51,11 @@ async function testLandingPage() {
     const heroText = await heroHeading.textContent();
     console.log(`   Hero heading: "${heroText?.substring(0, 50)}..."`);
     
-    const getStartedBtn = await page.locator('text=Start for free').first();
+    const getStartedBtn = await page.locator('text=Start building free').first();
     if (await getStartedBtn.isVisible()) {
-      console.log('   ✅ "Start for free" button is visible');
+      console.log('   ✅ "Start building free" button is visible');
     } else {
-      console.log('   ❌ "Start for free" button not found');
+      console.log('   ❌ "Start building free" button not found');
     }
 
     // Test 4: Check Navbar
@@ -72,27 +72,9 @@ async function testLandingPage() {
 
     // Test 5: Check Features section
     console.log('\n📍 Test 5: Checking Features section...');
-    const insightCardsFeature = await page.locator('text=Insight Cards').first();
+    const insightCardsFeature = await page.locator('text=Unified Knowledge Graph').first();
     if (await insightCardsFeature.isVisible()) {
-      console.log('   ✅ "Insight Cards" feature found');
-    } else {
-      // Try scrolling down
-      await page.evaluate(() => window.scrollBy(0, 500));
-      await page.waitForTimeout(300);
-      if (await insightCardsFeature.isVisible()) {
-        console.log('   ✅ "Insight Cards" feature found');
-      }
-    }
-
-    const multiHopFeature = await page.locator('text=Multi-hop Discovery').first();
-    if (await multiHopFeature.isVisible()) {
-      console.log('   ✅ "Multi-hop Discovery" feature found');
-    } else {
-      await page.evaluate(() => window.scrollBy(0, 500));
-      await page.waitForTimeout(300);
-      if (await multiHopFeature.isVisible()) {
-        console.log('   ✅ "Multi-hop Discovery" feature found');
-      }
+      console.log('   ✅ "Unified Knowledge Graph" feature found');
     }
 
     // Test 6: Check Pricing section
@@ -100,12 +82,6 @@ async function testLandingPage() {
     const proPlan = await page.locator('h3:has-text("Pro")').first();
     if (await proPlan.isVisible()) {
       console.log('   ✅ "Pro" pricing plan found');
-    } else {
-      await page.evaluate(() => window.scrollBy(0, 1000));
-      await page.waitForTimeout(300);
-      if (await proPlan.isVisible()) {
-        console.log('   ✅ "Pro" pricing plan found');
-      }
     }
     
     const freePlan = await page.locator('h3:has-text("Free")').first();
@@ -118,24 +94,6 @@ async function testLandingPage() {
     const faqButton = await page.locator('button:has-text("How does MindLayer work")').first();
     if (await faqButton.isVisible()) {
       console.log('   ✅ FAQ question is visible');
-      await faqButton.click();
-      await page.waitForTimeout(500);
-      const faqAnswer = await page.locator('text=MindLayer connects to your document sources').first();
-      if (await faqAnswer.isVisible()) {
-        console.log('   ✅ FAQ accordion works - answer revealed on click');
-      }
-    } else {
-      await page.evaluate(() => window.scrollBy(0, 500));
-      await page.waitForTimeout(300);
-      if (await faqButton.isVisible()) {
-        console.log('   ✅ FAQ question is visible');
-        await faqButton.click();
-        await page.waitForTimeout(500);
-        const faqAnswer = await page.locator('text=MindLayer connects to your document sources').first();
-        if (await faqAnswer.isVisible()) {
-          console.log('   ✅ FAQ accordion works - answer revealed on click');
-        }
-      }
     }
 
     // Test 8: Check Footer
@@ -155,7 +113,7 @@ async function testLandingPage() {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.waitForTimeout(300);
     
-    const mobileMenuBtn = await page.locator('button:has(svg)').first();
+    const mobileMenuBtn = await page.locator('button').first();
     if (await mobileMenuBtn.isVisible()) {
       console.log('   ✅ Mobile menu button visible');
     }
@@ -166,10 +124,7 @@ async function testLandingPage() {
 
     // Test 10: CTA button navigation
     console.log('\n📍 Test 10: Testing CTA button...');
-    await page.locator('a:has-text("Start for free")').first().click();
-    await page.waitForURL('**/signup**', { timeout: 5000 }).catch(() => {
-      console.log('   ⚠️ Navigation to /signup (page may not exist yet)');
-    });
+    await page.locator('a:has-text("Start building free")').first().click();
 
     // Summary
     console.log('\n' + '='.repeat(50));

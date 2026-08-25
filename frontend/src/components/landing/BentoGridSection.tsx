@@ -24,8 +24,9 @@ const features = [
 export function BentoGridSection() {
   return (
     <section className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-slate-50/50 dark:bg-slate-950/50" />
-      
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
+
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
         <motion.div
@@ -35,13 +36,18 @@ export function BentoGridSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-20"
         >
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-6">
-            The details that matter
+          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+            Details
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+            The details
+            <br />
+            <span className="text-white/50">that matter</span>
           </h2>
         </motion.div>
 
-        {/* Bento grid - minimal */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+        {/* Bento grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -49,12 +55,12 @@ export function BentoGridSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group p-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl transition-all duration-300 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+              className="group p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300"
             >
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2 tracking-tight">
+              <h3 className="text-lg font-medium text-white mb-2 tracking-tight">
                 {feature.title}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-sm text-white/50 leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>

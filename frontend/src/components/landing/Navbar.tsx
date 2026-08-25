@@ -8,7 +8,6 @@ const navItems = [
   { label: "Features", href: "#features" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
 ];
 
 export function Navbar() {
@@ -17,36 +16,45 @@ export function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         isScrolled
-          ? "bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800"
-          : "bg-transparent"
+          ? "py-3 bg-background/80 backdrop-blur-xl border-b border-white/10"
+          : "py-6 bg-transparent"
       }`}
     >
       <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo - Minimal text only */}
-          <Link href="/" className="flex items-center">
-            <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">M</span>
+              </div>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 blur-lg opacity-50 -z-10" />
+            </div>
+            <span className="text-xl font-semibold tracking-tight text-white">
               MindLayer
             </span>
           </Link>
 
-          {/* Desktop Navigation - Minimal */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="text-sm text-white/70 hover:text-white transition-colors duration-300"
               >
                 {item.label}
               </Link>
@@ -57,28 +65,29 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
-              className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="text-sm text-white/70 hover:text-white transition-colors duration-300"
             >
               Sign in
             </Link>
             <Link
               href="/signup"
-              className="px-5 py-2 text-sm font-medium bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full transition-all duration-300 hover:bg-slate-800 dark:hover:bg-slate-100"
+              className="group relative px-5 py-2.5 text-sm font-medium text-white rounded-full overflow-hidden"
             >
-              Start free
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-500 group-hover:to-purple-500 transition-all duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600 blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+              <span className="relative">Start free</span>
             </Link>
           </div>
 
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 -mr-2"
+            className="md:hidden p-2 text-white/70"
           >
-            <span className="sr-only">Menu</span>
             {isMobileMenuOpen ? (
-              <span className="block w-5 h-5 text-slate-900 dark:text-white font-light">×</span>
+              <span className="text-xl">×</span>
             ) : (
-              <span className="block w-5 h-5 text-slate-900 dark:text-white">☰</span>
+              <span className="text-xl">☰</span>
             )}
           </button>
         </div>
@@ -91,30 +100,31 @@ export function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white dark:bg-black border-t border-slate-100 dark:border-slate-800"
+            transition={{ duration: 0.3 }}
+            className="md:hidden bg-background/95 backdrop-blur-xl border-t border-white/10"
           >
             <div className="container mx-auto px-6 py-6 space-y-4">
               {navItems.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="block text-base text-slate-600 dark:text-slate-400"
+                  className="block text-base text-white/70"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
-              <hr className="border-slate-100 dark:border-slate-800" />
+              <hr className="border-white/10" />
               <Link
                 href="/login"
-                className="block text-base text-slate-600 dark:text-slate-400"
+                className="block text-base text-white/70"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
                 href="/signup"
-                className="block text-base font-medium text-slate-900 dark:text-white"
+                className="block text-base font-medium text-white"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Start free →
@@ -123,6 +133,6 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+    </motion.nav>
   );
 }

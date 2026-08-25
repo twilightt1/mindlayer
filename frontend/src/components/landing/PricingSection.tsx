@@ -50,8 +50,12 @@ const plans = [
 export function PricingSection() {
   return (
     <section id="pricing" className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-white dark:bg-black" />
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
       
+      {/* Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent" />
+
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
         <motion.div
@@ -61,10 +65,15 @@ export function PricingSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-20"
         >
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-6">
-            Simple, transparent pricing
+          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+            Pricing
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+            Simple, transparent
+            <br />
+            <span className="text-white/50">pricing</span>
           </h2>
-          <p className="text-lg text-slate-500 dark:text-slate-400">
+          <p className="text-lg text-white/40">
             Start free, upgrade when you're ready.
           </p>
         </motion.div>
@@ -78,33 +87,33 @@ export function PricingSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative p-8 bg-white dark:bg-slate-900 border rounded-2xl ${
-                plan.popular 
-                  ? 'border-slate-900 dark:border-white shadow-lg' 
-                  : 'border-slate-100 dark:border-slate-800'
+              className={`relative p-8 rounded-2xl border backdrop-blur-sm transition-all duration-300 ${
+                plan.popular
+                  ? 'border-violet-500/50 bg-gradient-to-b from-violet-500/10 to-transparent'
+                  : 'border-white/10 bg-white/5 hover:bg-white/10'
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs font-medium text-white bg-gradient-to-r from-violet-600 to-purple-600 rounded-full">
                   Most popular
                 </div>
               )}
 
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">
+                <h3 className="text-lg font-semibold text-white mb-1">
                   {plan.name}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-white/40">
                   {plan.description}
                 </p>
               </div>
 
               <div className="mb-8">
-                <span className="text-4xl font-semibold text-slate-900 dark:text-white">
+                <span className="text-4xl font-bold text-white">
                   ${plan.price}
                 </span>
                 {plan.price > 0 && (
-                  <span className="text-slate-500 dark:text-slate-400">/month</span>
+                  <span className="text-white/40">/month</span>
                 )}
               </div>
 
@@ -112,8 +121,8 @@ export function PricingSection() {
                 href="/signup"
                 className={`block w-full py-3 text-center font-medium rounded-full transition-all duration-300 ${
                   plan.popular
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 {plan.cta}
@@ -121,8 +130,8 @@ export function PricingSection() {
 
               <ul className="mt-8 space-y-3">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
-                    <span className="w-1 h-1 bg-slate-400 dark:bg-slate-600 rounded-full" />
+                  <li key={feature} className="flex items-center gap-3 text-sm text-white/60">
+                    <span className="w-1.5 h-1.5 bg-violet-500 rounded-full" />
                     {feature}
                   </li>
                 ))}
@@ -136,7 +145,7 @@ export function PricingSection() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mt-12 text-center text-sm text-slate-500 dark:text-slate-400"
+          className="mt-12 text-center text-sm text-white/40"
         >
           All plans include a 14-day free trial. No credit card required.
         </motion.p>
