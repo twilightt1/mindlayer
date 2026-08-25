@@ -11,6 +11,7 @@ from app.models.system_setting import SystemSetting
 from app.models.memory import Memory
 from app.models.entity import Entity, Relation, MemoryEntity, ENTITY_TYPES, RELATION_TYPES
 from app.models.source import Source, MemorySource, SOURCE_TYPES, SOURCE_STATUS
+from app.models.feedback import Feedback
 
 __all__ = [
     # Auth & user
@@ -37,4 +38,6 @@ __all__ = [
     "RELATION_TYPES",
     "SOURCE_TYPES",
     "SOURCE_STATUS",
+    # Feedback
+    "Feedback",
 ]

@@ -1,6 +1,12 @@
 """Pytest configuration and shared fixtures."""
 import asyncio
 import os
+from unittest.mock import patch
+
+# Mock required environment variables BEFORE importing app modules
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:123456@localhost:5432/ragdb_test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
 
 import pytest
 import pytest_asyncio
