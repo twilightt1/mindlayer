@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BentoCard } from "@/components/ui/Spotlight";
+import { BentoCard } from "@/components/ui/bento-grid";
 
 export function BentoGridSection() {
   const features = [

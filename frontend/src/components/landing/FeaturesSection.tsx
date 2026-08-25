@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GradientText } from "@/components/ui/BackgroundEffects";
-import { BentoCard } from "@/components/ui/Spotlight";
+import { BentoCard } from "@/components/ui/bento-grid";
 
 const features = [
   {

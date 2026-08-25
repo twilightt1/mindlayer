@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GradientText } from "@/components/ui/BackgroundEffects";
-import { GlowButton } from "@/components/ui/Spotlight";
+import { GlowButton } from "@/components/ui/button";
 
 export function CTASection() {
   return (

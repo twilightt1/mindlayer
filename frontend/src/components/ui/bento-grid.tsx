@@ -28,12 +28,14 @@ interface BentoCardProps {
   title?: string;
   description?: string;
   onClick?: () => void;
+  delay?: number;
 }
 
-export function BentoCard({ children, className, icon, title, description, onClick }: BentoCardProps) {
+export function BentoCard({ children, className, icon, title, description, onClick, delay }: BentoCardProps) {
   return (
     <div
       onClick={onClick}
+      data-delay={delay}
       className={cn(
         "relative row-span-1 rounded-xl border border-border bg-card p-6",
         "hover:border-border/80 transition-all duration-300",

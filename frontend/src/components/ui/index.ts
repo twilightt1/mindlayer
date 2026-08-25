@@ -6,3 +6,4 @@ export { Timeline, SimpleTimeline } from "./timeline";
 export { Stats, StatCard } from "./stats";
 export { CardStack, ExpandableCard } from "./card-stack";
 export { Modal, ModalHeader, ModalBody, ModalFooter, ConfirmDialog } from "./modal";
+export { GlowButton } from "./button";

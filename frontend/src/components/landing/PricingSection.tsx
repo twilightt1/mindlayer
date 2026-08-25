@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { GradientText } from "@/components/ui/BackgroundEffects";
-import { GlowButton } from "@/components/ui/Spotlight";
 
 const plans = [
   {
