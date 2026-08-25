@@ -1,5 +1,16 @@
 import { Metadata } from "next";
-import { DiscoveryDashboard } from "@/components/discovery/DiscoveryDashboard";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+// Lazy load the heavy dashboard component
+const DiscoveryDashboard = dynamic(
+  () => import("@/components/discovery/DiscoveryDashboard").then((mod) => mod.DiscoveryDashboard),
+  {
+    loading: () => <PageSkeleton />,
+    ssr: true,
+  }
+);
 
 export const metadata: Metadata = {
   title: "Discovery | MindLayer",
@@ -8,10 +19,12 @@ export const metadata: Metadata = {
 
 export default function DiscoveryPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <DiscoveryDashboard />
+    <Suspense fallback={<PageSkeleton />}>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <DiscoveryDashboard />
+        </div>
       </div>
-    </div>
+    </Suspense>
   );
 }

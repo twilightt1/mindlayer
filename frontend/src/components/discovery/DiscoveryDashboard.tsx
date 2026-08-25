@@ -4,10 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { 
   Compass, 
-  RefreshCw, 
   Play, 
-  ChevronRight, 
-  ChevronLeft,
+  ChevronRight,
   Loader2,
   Map,
   TrendingUp,
@@ -35,6 +33,7 @@ import { BentoGrid, BentoCard } from "@/components/ui/bento-grid";
 import { Timeline } from "@/components/ui/timeline";
 import { Spotlight } from "@/components/ui/spotlight";
 import { StatCard } from "@/components/ui/stats";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 interface DiscoveryDashboardProps {
   className?: string;
@@ -123,11 +122,7 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
   }
 
   if (loading) {
-    return (
-      <div className={cn("flex items-center justify-center py-20", className)}>
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   // Active discovery session view
