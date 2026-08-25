@@ -3,6 +3,7 @@ from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.answer_agent import answer_agent
 from app.agents.context_merge_agent import context_merge_agent
+from app.agents.crag_agent import crag_agent
 from app.agents.evaluator_agent import evaluator_agent
 from app.agents.graph_context_agent import graph_context_agent
 from app.agents.hallucination_agent import hallucination_agent
@@ -24,6 +25,8 @@ from app.agents.routing import (
     route_from_router,
 )
 from app.agents.state import AgentState
+from app.memory.temporal_encoder import temporal_agent
+from app.retrieval.hyde_agent import hyde_agent
 
 # Re-exports for backward compatibility. Pure routing helpers live in
 # ``app.agents.routing`` so they can be unit-tested without importing the
@@ -89,9 +92,12 @@ def build_graph() -> CompiledStateGraph:
     g.add_node("memory", memory_load_agent)
     g.add_node("personal_context", personal_context_agent)
     g.add_node("graph_context", graph_context_agent)
+    g.add_node("temporal", temporal_agent)  # Temporal: parse time-aware queries
+    g.add_node("hyde", hyde_agent)  # HyDE: generate hypothetical document
     g.add_node("retrieval", retrieval_agent)
     g.add_node("merge_context", context_merge_agent)
     g.add_node("grade_docs", evaluator_agent)
+    g.add_node("crag", crag_agent)  # Corrective-RAG: self-critique + web fallback
     g.add_node("retry_retrieval_for_irrelevant_context", _retry_retrieval_for_irrelevant_context)
     g.add_node("retry_answer_for_hallucination", _retry_answer_for_hallucination)
     g.add_node("retry_retrieval_for_unanswered_question", _retry_retrieval_for_unanswered_question)
@@ -121,7 +127,9 @@ def build_graph() -> CompiledStateGraph:
 
     g.add_edge("memory", "personal_context")
     g.add_edge("personal_context", "graph_context")
-    g.add_edge("graph_context", "retrieval")
+    g.add_edge("graph_context", "temporal")  # Temporal: parse time-aware queries
+    g.add_edge("temporal", "hyde")  # HyDE generates hypothetical doc before retrieval
+    g.add_edge("hyde", "retrieval")
     g.add_edge("retrieval", "merge_context")
     g.add_edge("merge_context", "grade_docs")
     g.add_conditional_edges(
@@ -130,11 +138,14 @@ def build_graph() -> CompiledStateGraph:
         {
             "retry_retrieval_for_irrelevant_context": "retry_retrieval_for_irrelevant_context",
             "record_irrelevant_context_retry_limit": "record_irrelevant_context_retry_limit",
-            "answer": "answer",
+            "answer": "crag",  # CRAG runs before answer generation
         },
     )
     g.add_edge("retry_retrieval_for_irrelevant_context", "retrieval")
-    g.add_edge("record_irrelevant_context_retry_limit", "answer")
+    g.add_edge("record_irrelevant_context_retry_limit", "crag")
+    
+    # CRAG node: self-critiques retrieval quality, may trigger web fallback
+    g.add_edge("crag", "answer")
 
     g.add_edge("answer", "grade_gen")
     g.add_conditional_edges(

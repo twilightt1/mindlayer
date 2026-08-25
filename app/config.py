@@ -82,7 +82,33 @@ class Settings(BaseSettings):
     JINA_RERANKER_MODEL: str = "jina-reranker-v2-base-multilingual"
     JINA_RERANKER_TOP_N: int = 5
 
-                         
+    # ── Corrective-RAG (CRAG) ────────────────────────────────────────────────────
+    # CRAG self-critiques retrieval quality and falls back to web search when needed.
+    # Reference: Yan et al., arXiv 2401.15884
+    CRAG_ENABLED: bool = True
+    CRAG_GRADING_MODEL: str = "openai/gpt-4o-mini"  # Model for grading (smaller = faster)
+    CRAG_RELEVANCE_THRESHOLD: float = 0.7  # Score >= this = RELEVANT
+    CRAG_PARTIAL_THRESHOLD: float = 0.4  # Score >= this = PARTIAL
+    CRAG_FALLBACK_THRESHOLD: float = 0.5  # % of docs needed to avoid web fallback
+    CRAG_MAX_WEB_RESULTS: int = 10  # Max web search results to include
+    TAVILY_API_KEY: str = ""  # Tavily API key for web search fallback
+
+    # ── HyDE (Hypothetical Document Embeddings) ────────────────────────────────
+    # HyDE generates hypothetical documents for better retrieval.
+    # Reference: Gao et al., arXiv 2309.08830
+    HYDE_ENABLED: bool = True
+    HYDE_MODEL: str = "openai/gpt-4o-mini"  # Model for generating hypothetical docs
+    HYDE_PASSAGE_COUNT: int = 3  # Number of hypothetical passages to generate
+    HYDE_USE_IN_RETRIEVAL: bool = True  # Use HyDE embeddings in retrieval
+
+    # ── Temporal Memory ──────────────────────────────────────────────────────
+    # Time-aware retrieval using temporal encoding.
+    TEMPORAL_ENABLED: bool = True
+    TEMPORAL_DIM: int = 64  # Temporal vector dimension
+    TEMPORAL_HALF_LIFE_DAYS: int = 90  # Recency decay half-life
+    TEMPORAL_WEIGHT: float = 0.3  # Weight of temporal score in final ranking
+
+                          
     EVALUATOR_FAILURE_MODE: str = "warn_only"
 
             

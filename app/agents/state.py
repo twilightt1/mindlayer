@@ -49,3 +49,18 @@ class AgentState(TypedDict, total=False):
     total_tokens_out: int
     agent_costs: dict[str, float]
     agent_latency_ms: dict[str, float]
+
+    # ── Corrective-RAG (CRAG) State ─────────────────────────────────────────────
+    # Reference: Yan et al., arXiv 2401.15884
+    crag_trace: dict[str, Any]  # Trace of CRAG operations
+    crag_enabled: bool  # Whether CRAG is enabled for this query
+    crag_web_fallback_triggered: bool  # Whether web fallback was triggered
+
+    # ── HyDE (Hypothetical Document Embeddings) State ──────────────────────────
+    # Reference: Gao et al., arXiv 2309.08830
+    hyde_result: dict[str, Any] | None  # Generated hypothetical document
+    hyde_trace: dict[str, Any]  # Trace of HyDE operations
+
+    # ── Temporal Memory State ─────────────────────────────────────────────────
+    temporal_query: dict[str, Any] | None  # Parsed temporal query info
+    temporal_trace: dict[str, Any]  # Trace of temporal operations
