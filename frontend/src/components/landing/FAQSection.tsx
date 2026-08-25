@@ -2,37 +2,45 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { GradientText } from "@/components/ui/BackgroundEffects";
 
 const faqs = [
   {
     question: "How does MindLayer work?",
-    answer: "MindLayer connects to your document sources and uses advanced AI to analyze content, extract entities, identify relationships, and build a dynamic knowledge graph. When you ask a question, our AI searches across all your documents and provides answers with source citations.",
+    answer: "MindLayer connects to your documents, databases, and knowledge sources. Our AI indexes and understands the relationships between your information, allowing you to query it in natural language and get accurate, context-aware answers."
   },
   {
-    question: "What document sources are supported?",
-    answer: "MindLayer supports 50+ integrations including Notion, Google Drive, Dropbox, Slack, Email, Confluence, SharePoint, and more.",
+    question: "What document sources do you support?",
+    answer: "We support PDF, DOCX, TXT, Markdown, Notion, Confluence, Slack, Google Drive, GitHub, and many more. Our integrations are continuously expanding."
   },
   {
     question: "Is my data secure?",
-    answer: "Security is our top priority. We use industry-standard encryption for data at rest and in transit. We're SOC 2 Type II certified and GDPR compliant. Your data is never used to train AI models.",
+    answer: "Absolutely. We use enterprise-grade encryption, SOC 2 compliance, and never train on your data. You maintain full ownership and control of your information."
   },
   {
-    question: "How accurate are the answers?",
-    answer: "MindLayer achieves 90%+ answer accuracy through our RAG system. Every answer includes source citations so you can verify the information.",
+    question: "How many team members can I add?",
+    answer: "Our Pro plan includes unlimited team collaboration. You can invite as many colleagues as you need and manage their access levels easily."
   },
   {
-    question: "Can I collaborate with my team?",
-    answer: "Yes. Team workspaces allow you to share knowledge, insights, and documents with colleagues. You can set permission levels and track contributions.",
+    question: "Can I try it for free?",
+    answer: "Yes! Our Free plan gives you 3 document sources and 100 queries per month. No credit card required to get started."
+  },
+  {
+    question: "What happens if I exceed my query limit?",
+    answer: "You'll receive a notification when you're approaching your limit. You can upgrade to Pro for unlimited queries or wait until your monthly reset."
   },
 ];
 
 export function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <section id="faq" className="relative py-32 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
+      
+      {/* Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent" />
 
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
@@ -41,51 +49,75 @@ export function FAQSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="max-w-2xl mx-auto text-center mb-16"
+          className="max-w-2xl mx-auto text-center mb-20"
         >
-          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+          <motion.span 
+            className="text-xs tracking-[0.2em] uppercase text-purple-400 mb-4 block"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             FAQ
-          </span>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
-            Common questions
+          </motion.span>
+          
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
+            Frequently asked
+            <br />
+            <span className="text-white/50">questions</span>
           </h2>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-lg text-white/40"
+          >
+            Everything you need to know about MindLayer.
+          </motion.p>
         </motion.div>
 
-        {/* FAQs */}
-        <div className="max-w-2xl mx-auto space-y-3">
+        {/* FAQ items */}
+        <div className="max-w-3xl mx-auto space-y-4">
           {faqs.map((faq, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden"
+              transition={{ duration: 0.4, delay: index * 0.05 }}
+              className="border border-white/10 rounded-2xl overflow-hidden bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-white/20"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full flex items-center justify-between p-5 text-left"
+                className="w-full px-8 py-6 text-left flex items-center justify-between cursor-pointer"
               >
-                <span className="font-medium text-white pr-4">
+                <span className="text-lg font-semibold text-white pr-4">
                   {faq.question}
                 </span>
-                <span className={`flex-shrink-0 text-white/40 transition-transform duration-200 ${openIndex === index ? 'rotate-45' : ''}`}>
-                  +
-                </span>
+                <motion.span
+                  className="w-6 h-6 flex-shrink-0 flex items-center justify-center text-white/60"
+                  animate={{ rotate: openIndex === index ? 45 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </motion.span>
               </button>
+              
               <AnimatePresence>
                 {openIndex === index && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 pt-0">
-                      <p className="text-white/60 leading-relaxed">
-                        {faq.answer}
-                      </p>
+                    <div className="px-8 pb-6 text-white/60 leading-relaxed border-t border-white/10 pt-4">
+                      {faq.answer}
                     </div>
                   </motion.div>
                 )}

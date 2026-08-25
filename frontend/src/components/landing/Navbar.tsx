@@ -36,28 +36,40 @@ export function Navbar() {
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-3 cursor-pointer">
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
                 <span className="text-white font-bold text-lg">M</span>
               </div>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 blur-lg opacity-50 -z-10" />
-            </div>
-            <span className="text-xl font-semibold tracking-tight text-white">
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 blur-lg opacity-50 -z-10" />
+            </motion.div>
+            <span className="text-xl font-bold tracking-tight text-white">
               MindLayer
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
-              <Link
+            {navItems.map((item, index) => (
+              <motion.div
                 key={item.label}
-                href={item.href}
-                className="text-sm text-white/70 hover:text-white transition-colors duration-300"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
               >
-                {item.label}
-              </Link>
+                <Link
+                  href={item.href}
+                  className="text-sm text-white/60 hover:text-white transition-colors duration-300 relative group cursor-pointer"
+                >
+                  {item.label}
+                  <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300 group-hover:w-full" />
+                </Link>
+              </motion.div>
             ))}
           </div>
 
@@ -65,31 +77,41 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
-              className="text-sm text-white/70 hover:text-white transition-colors duration-300"
+              className="text-sm text-white/60 hover:text-white transition-colors duration-300 cursor-pointer"
             >
               Sign in
             </Link>
-            <Link
-              href="/signup"
-              className="group relative px-5 py-2.5 text-sm font-medium text-white rounded-full overflow-hidden"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-500 group-hover:to-purple-500 transition-all duration-300" />
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600 blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-              <span className="relative">Start free</span>
-            </Link>
+              <Link
+                href="/signup"
+                className="group relative px-5 py-2.5 text-sm font-semibold text-white rounded-full overflow-hidden cursor-pointer"
+              >
+                {/* Gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 transition-all duration-300 group-hover:from-violet-500 group-hover:via-purple-500 group-hover:to-pink-500" />
+                
+                {/* Glow */}
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+                
+                <span className="relative">Start free</span>
+              </Link>
+            </motion.div>
           </div>
 
           {/* Mobile menu button */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-white/70"
+            className="md:hidden p-2 text-white/70 cursor-pointer"
           >
             {isMobileMenuOpen ? (
               <span className="text-xl">×</span>
             ) : (
               <span className="text-xl">☰</span>
             )}
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -124,7 +146,7 @@ export function Navbar() {
               </Link>
               <Link
                 href="/signup"
-                className="block text-base font-medium text-white"
+                className="block text-base font-semibold text-white"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Start free →

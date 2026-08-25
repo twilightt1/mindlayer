@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { GradientText } from "@/components/ui/BackgroundEffects";
 
 const steps = [
   {
@@ -27,7 +28,7 @@ export function HowItWorksSection() {
       <div className="absolute inset-0 bg-background" />
       
       {/* Gradient accent */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-violet-500/10 to-transparent rounded-full blur-[120px]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-violet-500/10 to-transparent rounded-full blur-[150px]" />
 
       <div className="relative z-10 container mx-auto px-6">
         {/* Section header */}
@@ -38,15 +39,21 @@ export function HowItWorksSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-20"
         >
-          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+          <motion.span 
+            className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             How it works
-          </span>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+          </motion.span>
+          
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
             Three steps to
             <br />
-            <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+            <GradientText from="from-violet-400" to="to-purple-400">
               connected knowledge
-            </span>
+            </GradientText>
           </h2>
         </motion.div>
 
@@ -55,31 +62,50 @@ export function HowItWorksSection() {
           {steps.map((step, index) => (
             <motion.div
               key={step.number}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.15 }}
-              className="relative"
+              className="relative group"
             >
-              {/* Step card */}
-              <div className="relative p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 group">
-                {/* Number */}
-                <div className="text-6xl font-bold text-white/5 mb-4 select-none">
-                  {step.number}
+              {/* Card */}
+              <motion.div 
+                className="relative p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 group-hover:bg-white/10 group-hover:border-violet-500/30 overflow-hidden"
+                whileHover={{ y: -5 }}
+              >
+                {/* Animated gradient on hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-purple-500/10" />
                 </div>
+                
+                {/* Number - Large decorative */}
+                <motion.div 
+                  className="text-7xl md:text-8xl font-black text-white/5 select-none mb-2"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  {step.number}
+                </motion.div>
                 
                 {/* Connector line */}
                 {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-px bg-gradient-to-r from-white/20 to-transparent" />
+                  <motion.div 
+                    className="hidden md:block absolute top-1/2 -right-4 lg:-right-8 w-8 lg:w-16 h-px bg-gradient-to-r from-violet-500/50 to-transparent"
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 + index * 0.2 }}
+                  />
                 )}
                 
-                <h3 className="text-xl font-semibold text-white mb-3 tracking-tight">
-                  {step.title}
-                </h3>
-                <p className="text-white/50 leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
+                <div className="relative">
+                  <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight">
+                    {step.title}
+                  </h3>
+                  <p className="text-white/50 leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+              </motion.div>
             </motion.div>
           ))}
         </div>

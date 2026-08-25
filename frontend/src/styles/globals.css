@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    /* Core theme */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -25,11 +26,21 @@
     --ring: 240 4.9% 83.9%;
     --radius: 0.75rem;
     
-    /* Premium colors */
-    --gold: 45 93% 47%;
-    --gold-muted: 45 93% 35%;
+    /* Premium violet/purple/pink palette */
+    --violet-500: 262 83% 58%;
+    --violet-600: 263 70% 50%;
+    --violet-400: 263 83% 68%;
+    --purple-500: 270 65% 60%;
+    --purple-400: 270 75% 70%;
+    --pink-500: 330 81% 60%;
+    --pink-400: 330 90% 70%;
+    
+    /* Glow effects */
     --glow-primary: 262 83% 58%;
     --glow-secondary: 330 81% 60%;
+    --glow-violet: 262 83% 58%;
+    --glow-purple: 270 65% 60%;
+    --glow-pink: 330 81% 60%;
   }
 }
 

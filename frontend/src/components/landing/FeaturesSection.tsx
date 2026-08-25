@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { GradientText } from "@/components/ui/BackgroundEffects";
+import { BentoCard } from "@/components/ui/Spotlight";
 
 const features = [
   {
@@ -31,7 +33,7 @@ export function FeaturesSection() {
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
       
-      {/* Subtle gradient */}
+      {/* Gradient accent */}
       <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent" />
 
       <div className="relative z-10 container mx-auto px-6">
@@ -43,48 +45,60 @@ export function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl mx-auto text-center mb-20"
         >
-          <span className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block">
+          <motion.span 
+            className="text-xs tracking-[0.2em] uppercase text-violet-400 mb-4 block"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             Features
-          </span>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+          </motion.span>
+          
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
             Built for how knowledge
             <br />
             <span className="text-white/50">actually works</span>
           </h2>
-          <p className="text-lg text-white/40 leading-relaxed">
+          
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-lg text-white/40 leading-relaxed"
+          >
             MindLayer understands that information doesn't exist in isolation. 
             It connects, evolves, and compounds over time.
-          </p>
+          </motion.p>
         </motion.div>
 
-        {/* Features grid */}
+        {/* Features grid with BentoCard */}
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group relative p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300"
-            >
-              {/* Hover glow */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-500/0 to-purple-500/0 group-hover:from-violet-500/10 group-hover:to-purple-500/10 transition-all duration-500" />
+            <BentoCard key={feature.title} delay={index * 0.1}>
+              {/* Hover glow effect */}
+              <motion.div
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-500/0 to-purple-500/0 opacity-0 transition-opacity duration-500"
+                whileHover={{ opacity: 1 }}
+              />
               
               <div className="relative">
                 {/* Highlight tag */}
-                <span className="inline-block px-3 py-1 text-xs font-medium text-violet-400 bg-violet-500/10 rounded-full mb-4">
+                <motion.span 
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium text-violet-400 bg-violet-500/10 rounded-full mb-4"
+                  whileHover={{ scale: 1.05 }}
+                >
                   {feature.highlight}
-                </span>
+                </motion.span>
                 
-                <h3 className="text-xl font-semibold text-white mb-3 tracking-tight">
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight">
                   {feature.title}
                 </h3>
                 <p className="text-white/50 leading-relaxed">
                   {feature.description}
                 </p>
               </div>
-            </motion.div>
+            </BentoCard>
           ))}
         </div>
       </div>

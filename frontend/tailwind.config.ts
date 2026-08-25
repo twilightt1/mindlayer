@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -46,6 +46,20 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Premium violet/purple/pink palette
+        violet: {
+          400: "hsl(var(--violet-400))",
+          500: "hsl(var(--violet-500))",
+          600: "hsl(var(--violet-600))",
+        },
+        purple: {
+          400: "hsl(var(--purple-400))",
+          500: "hsl(var(--purple-500))",
+        },
+        pink: {
+          400: "hsl(var(--pink-400))",
+          500: "hsl(var(--pink-500))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -54,14 +68,26 @@ const config: Config = {
       },
       letterSpacing: {
         tightest: "-0.05em",
+        tighter: "-0.04em",
+        tight: "-0.025em",
       },
       animation: {
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        "float": "float 6s ease-in-out infinite",
+        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
       },
       keyframes: {
         "pulse-glow": {
           "0%, 100%": { opacity: "0.5" },
           "50%": { opacity: "1" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "fade-in-up": {
+          from: { opacity: "0", transform: "translateY(20px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
       },
     },
