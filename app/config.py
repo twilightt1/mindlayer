@@ -115,6 +115,18 @@ class Settings(BaseSettings):
     MULTIHOP_MODEL: str = "openai/gpt-4o-mini"  # Model for multi-hop reasoning
     MULTIHOP_MAX_HOPS: int = 3  # Maximum number of reasoning hops
 
+    # ── Feedback Pipeline (Continual Learning) ──────────────────────────────────
+    # Closed-loop learning from user feedback.
+    # Reference: Pistis-RAG framework
+    FEEDBACK_ENABLED: bool = True
+    FEEDBACK_MIN_SAMPLES: int = 1000  # Min feedback before retraining
+    FEEDBACK_MIN_CORRECTIONS: int = 50  # Min corrections before retraining
+    FEEDBACK_RETENTION_DAYS: int = 90  # How long to keep feedback
+    FEEDBACK_POSITIVE_BOOST: float = 0.1  # Weight boost per positive
+    FEEDBACK_NEGATIVE_PENALTY: float = 0.1  # Weight penalty per negative
+    FEEDBACK_MAX_WEIGHT: float = 2.0  # Max document weight
+    FEEDBACK_MIN_WEIGHT: float = 0.5  # Min document weight
+
                           
     EVALUATOR_FAILURE_MODE: str = "warn_only"
 
