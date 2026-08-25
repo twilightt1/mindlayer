@@ -12,6 +12,7 @@ from app.models.memory import Memory
 from app.models.entity import Entity, Relation, MemoryEntity, ENTITY_TYPES, RELATION_TYPES
 from app.models.source import Source, MemorySource, SOURCE_TYPES, SOURCE_STATUS
 from app.models.feedback import Feedback
+from app.models.insight import InsightCard, InsightTypeEnum, InsightStatusEnum, InsightSurpriseLevelEnum
 
 __all__ = [
     # Auth & user
@@ -40,4 +41,9 @@ __all__ = [
     "SOURCE_STATUS",
     # Feedback
     "Feedback",
+    # Insight Cards
+    "InsightCard",
+    "InsightTypeEnum",
+    "InsightStatusEnum",
+    "InsightSurpriseLevelEnum",
 ]
