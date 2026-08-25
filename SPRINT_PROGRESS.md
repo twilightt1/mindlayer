@@ -61,7 +61,7 @@
 | Multi-hop reasoning (EfficientRAG) | ✅ Complete | `2fcf043` | Week 9-10 |
 | Temporal memory ("What did I conclude Q1?") | ✅ Complete | `f5f32fe` | Week 10-11 |
 | Feedback → eval set pipeline | ✅ Complete | `f5f32fe` | Week 11 |
-| Retention gate check | 📋 Pending | - | Week 12 |
+| **Retention gate check** | ✅ Complete | `c95865e` | Week 12 |
 
 ### Multi-hop Reasoning ✅
 - [x] Multi-hop detector
@@ -88,6 +88,19 @@
 
 **Commit:** `f5f32fe` (included in SOTA batch)
 
+### Retention Gate Check ✅
+- [x] RetentionGateChecker implementation
+- [x] Query success rate evaluation (>= 85%)
+- [x] User return rate tracking (>= 40%)
+- [x] Feedback rate monitoring (>= 10%)
+- [x] Multi-hop query rate tracking (>= 20%)
+- [x] Confidence score improvement tracking
+- [x] Baseline comparison
+- [x] Recommendations generation
+- [x] 37 unit tests passing
+
+**Commit:** `c95865e`
+
 ---
 
 ## Test Coverage Summary
@@ -99,12 +112,17 @@
 | Temporal Memory | 24 | ✅ Passing |
 | Multi-hop | 16 | ✅ Passing |
 | Feedback Pipeline | 20 | ✅ Passing |
+| Retention Gate | 37 | ✅ Passing |
 
 ---
 
 ## Git Commits
 
 ```
+[c95865e] feat(retention): implement Retention Gate Check - Week 12
+  - app/agents/retention_gate.py
+  - tests/test_retention_gate.py (37 tests)
+
 [f5f32fe] feat(rag): SOTA RAG implementation - CRAG, HyDE, Temporal Memory, Multi-hop, Feedback Pipeline
   - app/agents/crag_agent.py (CRAG agent)
   - app/agents/feedback_agent.py (Feedback Pipeline)
@@ -132,4 +150,8 @@
 3. ✅ Temporal Memory - Week 8
 4. ✅ Multi-hop Reasoning - Week 9-10
 5. ✅ Feedback Pipeline - Week 11
-6. 📋 Retention Gate Check - Week 12 (PENDING)
+6. ✅ Retention Gate Check - Week 12
+
+---
+
+## Q1 2025 Roadmap: ✅ ALL COMPLETE
