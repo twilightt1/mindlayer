@@ -87,12 +87,12 @@ fully proven by repository-local checks:
 
 ## Related Files
 
-- [security_check.py](file:///d:/DL/rag-backend/rag-backend/scripts/security_check.py)
-- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
-- [config.py](file:///d:/DL/rag-backend/rag-backend/app/config.py)
-- [diagnostics_service.py](file:///d:/DL/rag-backend/rag-backend/app/services/diagnostics_service.py)
-- [admin.py](file:///d:/DL/rag-backend/rag-backend/app/api/v1/admin.py)
-- [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml)
+- [security_check.py](scripts/security_check.py)
+- [SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md)
+- [config.py](app/config.py)
+- [diagnostics_service.py](app/services/diagnostics_service.py)
+- [admin.py](app/api/v1/admin.py)
+- [docker-compose.prod.yml](docker-compose.prod.yml)
 
 ## Outcome
 

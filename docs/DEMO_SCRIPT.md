@@ -9,7 +9,7 @@ Orivory as a **self-hosted Personal AI Second Brain**.
 - Database migrations have been applied.
 - API is running at `http://localhost:8000`.
 - A demo user exists, or registration/login is available.
-- Sample memories are available in [sample_docs](file:///d:/DL/rag-backend/rag-backend/sample_docs).
+- Sample memories are available in [sample_docs](sample_docs).
 
 Useful setup commands:
 
@@ -200,11 +200,11 @@ Talking point:
 
 Show docs:
 
-- [README.md](file:///d:/DL/rag-backend/rag-backend/README.md)
-- [ARCHITECTURE_OVERVIEW.md](file:///d:/DL/rag-backend/rag-backend/docs/ARCHITECTURE_OVERVIEW.md)
-- [DEPLOYMENT_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEPLOYMENT_GUIDE.md)
-- [OPERATIONS_RUNBOOK.md](file:///d:/DL/rag-backend/rag-backend/docs/OPERATIONS_RUNBOOK.md)
-- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
+- [README.md](README.md)
+- [ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md)
+- [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
+- [OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
+- [SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md)
 
 Talking point:
 

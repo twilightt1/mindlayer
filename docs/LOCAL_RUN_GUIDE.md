@@ -16,8 +16,8 @@ infrastructure and how to diagnose the most common dependency failures.
 ### 1. Clone the repository
 
 ```powershell
-git clone <repository-url>
-cd rag-backend
+git clone https://github.com/twilightt1/orivory.git
+cd orivory
 ```
 
 ### 2. Create a virtual environment
@@ -60,12 +60,12 @@ docker compose up -d postgres redis chromadb minio flower
 
 `docker-compose.yml` is optimized for local development and uses source bind
 mounts plus API `--reload`. For production-like validation, use
-[docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml) with the deployment docs:
+[docker-compose.prod.yml](docker-compose.prod.yml) with the deployment docs:
 
-- [DEPLOYMENT_GUIDE.md](file:///d:/DL/rag-backend/rag-backend/docs/DEPLOYMENT_GUIDE.md)
-- [OPERATIONS_RUNBOOK.md](file:///d:/DL/rag-backend/rag-backend/docs/OPERATIONS_RUNBOOK.md)
-- [BACKUP_RESTORE.md](file:///d:/DL/rag-backend/rag-backend/docs/BACKUP_RESTORE.md)
-- [SECURITY_CHECKLIST.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_CHECKLIST.md)
+- [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
+- [OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
+- [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)
+- [SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md)
 
 Check container health:
 
@@ -176,7 +176,7 @@ Run the deterministic RAG evaluation report:
 .\.venv\Scripts\python.exe eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 ```
 
-Reports are written to [latest_report.md](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.md) and [latest_report.json](file:///d:/DL/rag-backend/rag-backend/eval/results/latest_report.json).
+Reports are written to [latest_report.md](eval/results/latest_report.md) and [latest_report.json](eval/results/latest_report.json).
 
 These tests use mocks/monkeypatching and do not need Postgres, Redis, MinIO,
 ChromaDB, or external LLM/API credentials.
@@ -230,7 +230,7 @@ Reports are written to `eval/results/live_api_report.md` and
 ### Full test suite
 
 The full suite expects a local test database at the URL configured in
-[tests/conftest.py](file:///d:/DL/rag-backend/rag-backend/tests/conftest.py).
+[tests/conftest.py](tests/conftest.py).
 
 ```powershell
 pytest tests/ -v
@@ -320,7 +320,7 @@ curl http://localhost:8000/ready
 
 ### MinIO bucket or credential errors
 
-The app creates the configured bucket on startup via [ensure_bucket](file:///d:/DL/rag-backend/rag-backend/app/storage.py).
+The app creates the configured bucket on startup via [ensure_bucket](app/storage.py).
 If readiness reports MinIO failed:
 
 ```powershell
@@ -347,7 +347,7 @@ Check the exact failing service:
 
 ```powershell
 docker compose ps
-docker inspect --format='{{json .State.Health}}' rag-backend-postgres-1
+docker inspect --format='{{json .State.Health}}' orivory-postgres-1
 ```
 
 If container names differ, get the name from `docker compose ps` first.

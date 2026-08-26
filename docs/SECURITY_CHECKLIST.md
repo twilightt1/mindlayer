@@ -4,7 +4,7 @@ Use this checklist before deploying Orivory to a public environment.
 
 Legend:
 
-- **Automated**: covered by [security_check.py](file:///d:/DL/rag-backend/rag-backend/scripts/security_check.py).
+- **Automated**: covered by [security_check.py](scripts/security_check.py).
 - **Runtime guardrail**: enforced by application settings or route dependencies.
 - **Manual deploy check**: must be verified in the target hosting environment.
 
@@ -94,4 +94,4 @@ curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
   https://api.example.com/api/v1/admin/diagnostics
 ```
 
-See [SECURITY_EVIDENCE.md](file:///d:/DL/rag-backend/rag-backend/docs/SECURITY_EVIDENCE.md) for Phase 16 evidence.
+See [SECURITY_EVIDENCE.md](docs/SECURITY_EVIDENCE.md) for Phase 16 evidence.

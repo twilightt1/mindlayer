@@ -1,7 +1,7 @@
 # Deployment Guide
 
 This guide describes a production-like Docker Compose deployment for Orivory.
-Local development should continue using [docker-compose.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.yml). Production-like deployments should combine it with [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml).
+Local development should continue using [docker-compose.yml](docker-compose.yml). Production-like deployments should combine it with [docker-compose.prod.yml](docker-compose.prod.yml).
 
 ## Required Services
 
@@ -62,7 +62,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 docker build -t Orivory-api:latest .
 ```
 
-The [Dockerfile](file:///d:/DL/rag-backend/rag-backend/Dockerfile) runs the app as a non-root user and defaults to a production `uvicorn` command. Development Compose can still override this with `--reload`.
+The [Dockerfile](Dockerfile) runs the app as a non-root user and defaults to a production `uvicorn` command. Development Compose can still override this with `--reload`.
 
 ## Start Production-like Stack
 

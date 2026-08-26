@@ -2,7 +2,7 @@
 
 This document summarizes the production-style backend architecture for
 Orivory. For detailed LangGraph node behavior, see
-[architecture.md](file:///d:/DL/rag-backend/rag-backend/docs/architecture.md).
+[architecture.md](docs/architecture.md).
 
 ## System Context
 
@@ -202,8 +202,8 @@ sequenceDiagram
 
 ## Reliability and Deployment Boundaries
 
-- Local development uses [docker-compose.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.yml).
-- Production-like validation overlays [docker-compose.prod.yml](file:///d:/DL/rag-backend/rag-backend/docker-compose.prod.yml).
+- Local development uses [docker-compose.yml](docker-compose.yml).
+- Production-like validation overlays [docker-compose.prod.yml](docker-compose.prod.yml).
 - Production mode rejects unsafe placeholder config at startup.
 - `/ready` is a dependency readiness gate.
 - `/api/v1/admin/diagnostics` is an authenticated operator view.

@@ -76,7 +76,7 @@ Snapshot the volume while writes are stopped:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml stop app celery_worker
-docker run --rm -v rag-backend_chromadata:/data -v "$PWD/backups":/backup alpine \
+docker run --rm -v orivory_chromadata:/data -v "$PWD/backups":/backup alpine \
   tar czf /backup/chromadata_backup.tgz -C /data .
 ```
 
@@ -84,7 +84,7 @@ docker run --rm -v rag-backend_chromadata:/data -v "$PWD/backups":/backup alpine
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml stop chromadb
-docker run --rm -v rag-backend_chromadata:/data -v "$PWD/backups":/backup alpine \
+docker run --rm -v orivory_chromadata:/data -v "$PWD/backups":/backup alpine \
   sh -c "rm -rf /data/* && tar xzf /backup/chromadata_backup.tgz -C /data"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d chromadb
 ```
