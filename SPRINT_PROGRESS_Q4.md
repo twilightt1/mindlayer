@@ -148,16 +148,17 @@ Retention Gate (Sep 7)
 ### Referral System
 | Task | Priority | Status |
 |------|----------|--------|
-| Referral model | High | Pending |
-| Referral service | High | Pending |
-| Referral API | High | Pending |
-| Shareable pages | High | Pending |
+| Referral model | High | ✅ Done |
+| Referral service | High | ✅ Done |
+| Referral API | High | ✅ Done |
+| Referral UI | High | ✅ Done |
+| Shareable pages | High | ✅ Done |
 | Landing page update | Medium | Pending |
 
 ### Social/SEO
 | Task | Priority | Status |
 |------|----------|--------|
-| Public memory links | High | Pending |
+| Public memory links | High | ✅ Done |
 | SEO meta tags | Medium | Pending |
 | Blog integration | Low | Backlog |
 
