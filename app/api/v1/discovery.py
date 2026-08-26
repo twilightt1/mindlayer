@@ -51,6 +51,7 @@ from app.agents.discovery_agent import (
     compute_graph_metrics,
 )
 from app.utils.dependencies import get_current_verified_user
+from app.middleware.response_cache import CacheInvalidation
 
 log = logging.getLogger(__name__)
 
@@ -290,6 +291,9 @@ async def create_session(
     # Store session
     _session_store[session.id] = session
     
+    # Invalidate user's sessions cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
+    
     return _session_to_response(session)
 
 
@@ -435,6 +439,9 @@ async def advance_discovery(
     session = advance_session(session, step["next_doc_id"], connection)
     _session_store[session_id] = session
     
+    # Invalidate user's sessions cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
+    
     return _session_to_response(session)
 
 
@@ -473,6 +480,9 @@ async def complete_discovery(
     
     session = complete_session(session)
     _session_store[session_id] = session
+    
+    # Invalidate user's sessions cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
     
     return _session_to_response(session)
 

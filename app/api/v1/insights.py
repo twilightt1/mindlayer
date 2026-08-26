@@ -39,6 +39,7 @@ from app.agents.insight_agent import (
     calculate_insight_relevance,
 )
 from app.utils.dependencies import get_current_verified_user
+from app.middleware.response_cache import CacheInvalidation
 
 log = logging.getLogger(__name__)
 
@@ -343,6 +344,9 @@ async def dismiss_insight(
     await db.commit()
     await db.refresh(card)
     
+    # Invalidate user's insights cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
+    
     return _insight_response(card)
 
 
@@ -361,6 +365,9 @@ async def save_insight(
     card.helpful = True
     await db.commit()
     await db.refresh(card)
+    
+    # Invalidate user's insights cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
     
     return _insight_response(card)
 
@@ -452,6 +459,9 @@ async def refresh_insights_endpoint(
                 updated_count += 1
     
     await db.commit()
+    
+    # Invalidate user's insights cache
+    await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
     
     # Generate new insights if there are new documents
     new_insights = []
