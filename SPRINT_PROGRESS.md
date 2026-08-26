@@ -3,6 +3,7 @@
 **Last Updated:** Auto-generated  
 **Status:** 🔄 Active Development
 **Repository:** [github.com/twilightt1/orivory](https://github.com/twilightt1/orivory)
+**Release:** [v1.0.0](https://github.com/twilightt1/orivory/releases/tag/v1.0.0)
 
 ---
 
