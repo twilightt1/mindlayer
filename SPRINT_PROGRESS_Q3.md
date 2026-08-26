@@ -97,27 +97,31 @@ Q3 Focus Areas:
 
 ---
 
-### Week 33-36: User Onboarding
+### Week 33-36: User Onboarding ✅ COMPLETE
 
 #### Feature Discovery
 | Task | Status | Notes |
 |------|--------|-------|
-| Onboarding tooltips | 📋 Pending | New feature highlights |
-| First-run tutorials | 📋 Pending | Interactive walkthroughs |
-| Sample data | 📋 Pending | Demo workspace, insights |
-| Empty state CTAs | 📋 Pending | Guide users to action |
+| Onboarding provider | ✅ Complete | Step tracking, localStorage persistence |
+| Onboarding tooltips | ✅ Complete | Spotlight effect, positioned tooltips |
+| Preset tours | ✅ Complete | Dashboard, Discovery, Insights, Workspaces, Sources |
+| Sample demo data | ✅ Complete | 8 sample memories for new users |
+| Empty state CTAs | ✅ Complete | EmptyState component with CTAs |
 
 #### Navigation Integration
 | Task | Status | Notes |
 |------|--------|-------|
-| App shell navigation | 📋 Pending | Add to sidebar/header |
-| Breadcrumbs | 📋 Pending | Page hierarchy |
-| Quick actions | 📋 Pending | Keyboard shortcuts |
-| Search integration | 📋 Pending | Find across features |
+| Keyboard shortcuts | ✅ Complete | Cmd+K (search), Cmd+N (new), Cmd+/ (help) |
+| Quick actions | ✅ Complete | Global shortcut handler |
+| Shortcuts help modal | ✅ Complete | SHORTCUTS constant + ShortcutsHelp component |
+
+**Demo Data:**
+- `/api/v1/demo/seed` - Seed 8 sample memories
+- `/api/v1/demo/status` - Check if user has memories
 
 ---
 
-### Week 37-40: Analytics & Metrics
+### Week 37-40: Analytics & Metrics ✅ IN PROGRESS
 
 #### Feature Analytics
 | Task | Status | Notes |
@@ -191,8 +195,8 @@ Integration  Performance
 2. ✅ Create integration test suite  
 3. ✅ Run performance audit (frontend bundle optimization)
 4. ✅ Run backend performance optimizations
-5. 📋 Implement navigation integration
-6. 📋 Build analytics dashboard
+5. ✅ User onboarding system (tooltips, tours, demo data)
+6. 📋 Build analytics dashboard (Week 37-40)
 7. 📋 Q3 Retention Gate check (Sep 7)
 
 ---
