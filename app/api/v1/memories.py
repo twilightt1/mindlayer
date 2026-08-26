@@ -43,6 +43,7 @@ from app.schemas.mindlayer import (
     RecallRequest,
     RecallResponse,
 )
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -257,4 +258,41 @@ async def recall_memory(
         query=body.query,
         top_k=body.top_k,
         include_personal_context=body.include_personal_context,
+    )
+
+
+# ── Public Share Endpoint ────────────────────────────────────────────
+
+
+class SharedMemoryResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    summary: str | None
+    tags: list[str]
+    created_at: str
+    source_type: str
+
+
+@router.get("/{memory_id}/share", response_model=SharedMemoryResponse)
+async def get_shared_memory(
+    memory_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SharedMemoryResponse:
+    """Get a shared memory publicly (no auth required).
+    
+    Only memories with is_shared=True are accessible.
+    """
+    memory = await db.get(Memory, memory_id)
+    if not memory or not getattr(memory, 'is_shared', False):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Memory not found or not shared")
+    
+    return SharedMemoryResponse(
+        id=str(memory.id),
+        title=memory.title,
+        content=memory.content,
+        summary=memory.summary,
+        tags=memory.tags or [],
+        created_at=memory.captured_at.isoformat() if memory.captured_at else "",
+        source_type=memory.source_type,
     )

@@ -65,6 +65,7 @@ class Memory(Base):
     # Scoring
     salience:      Mapped[float]      = mapped_column(Float, server_default="0.5", nullable=False)
     pinned:        Mapped[bool]        = mapped_column(Boolean(), server_default="false", nullable=False)
+    is_shared:     Mapped[bool]        = mapped_column(Boolean(), server_default="false", nullable=False)  # Public share
 
     # Usage feedback (P2.1): bumped when a memory is recalled & used in an
     # answer; decayed periodically when untouched. Drives the salience loop.
