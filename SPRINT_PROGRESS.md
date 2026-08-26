@@ -31,7 +31,7 @@ Orion Mind is an open-source, self-hosted AI second brain built with FastAPI, La
 | Referral system | ✅ Done | Backend + API |
 | Shareable pages | ✅ Done | Public memory sharing |
 | Referral UI | ✅ Done | Dashboard component |
-| Landing page update | 🔄 In Progress | SEO optimized |
+| Landing page SEO | ✅ Done | Meta tags, OG, social links |
 
 ### Week 45-48: Platform Scale
 

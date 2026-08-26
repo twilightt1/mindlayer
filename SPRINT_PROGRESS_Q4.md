@@ -137,9 +137,9 @@ Retention Gate (Sep 7)
 ## Next Actions
 
 1. ✅ Q3 retention gate PASSED
-2. 🔄 Start Week 41: Referral System
-3. 📋 Build referral model + service
-4. 📋 Create referral API endpoints
+2. ✅ Week 41-44: User Acquisition COMPLETE
+3. 🔄 Week 45-48: Platform Scale (Team Workspaces, SSO)
+4. 📋 Next: Multi-tenant architecture planning
 
 ---
 
@@ -153,13 +153,14 @@ Retention Gate (Sep 7)
 | Referral API | High | ✅ Done |
 | Referral UI | High | ✅ Done |
 | Shareable pages | High | ✅ Done |
-| Landing page update | Medium | Pending |
+| Landing page SEO | Medium | ✅ Done |
 
 ### Social/SEO
 | Task | Priority | Status |
 |------|----------|--------|
 | Public memory links | High | ✅ Done |
-| SEO meta tags | Medium | Pending |
+| SEO meta tags | Medium | ✅ Done |
+| OG images | Medium | ✅ Done |
 | Blog integration | Low | Backlog |
 
 ---
