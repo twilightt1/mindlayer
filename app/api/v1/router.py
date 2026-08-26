@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import auth, users, chat, admin, system_settings
 from app.api.v1 import memories, entities, sources, insights, discovery, workspaces
-from app.api.v1 import demo, analytics
+from app.api.v1 import demo, analytics, referral
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -27,3 +27,6 @@ api_router.include_router(demo.router)         # /demo - Demo data for new users
 
 # Analytics & Metrics
 api_router.include_router(analytics.router)    # /analytics - Usage tracking
+
+# Q4 User Acquisition: Referral System
+api_router.include_router(referral.router)    # /referral - Viral referrals
