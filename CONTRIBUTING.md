@@ -1,81 +1,64 @@
-# Contributing to Orivory
+# Contributing to Orion Mind
 
-Thank you for your interest in contributing to Orivory! This document provides guidelines and instructions for contributing.
-
----
-
-## Code of Conduct
-
-By participating in this project, you agree to maintain a welcoming and respectful environment for everyone.
+Thank you for your interest in contributing to Orion Mind! This guide will help you get started.
 
 ---
 
-## How Can I Contribute?
+## 🎯 How Can I Contribute?
 
-### 🐛 Reporting Bugs
+### 1. 🐛 Reporting Bugs
 
 Before opening a bug report:
-1. Search existing issues to avoid duplicates
-2. Use the bug report template
-3. Include:
-   - Clear description of the issue
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Environment (Python version, OS, etc.)
-   - Error messages/logs
+- Search [existing issues](https://github.com/twilightt1/orivory/issues) to avoid duplicates
+- Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- Include: steps to reproduce, expected/actual behavior, environment details
 
-### 💡 Suggesting Features
+### 2. 💡 Suggesting Features
 
-We welcome feature suggestions! Please:
-1. Check the roadmap and existing issues
-2. Describe the feature clearly
-3. Explain the use case and benefits
-4. Consider backward compatibility
+- Check the [roadmap](orivory-product-roadmap-2025.md)
+- Open a [feature request](.github/ISSUE_TEMPLATE/feature_request.md)
+- Explain the use case and benefits
 
-### 🔧 Pull Requests
+### 3. 🔧 Pull Requests
 
-1. **Fork** the repository
-2. **Clone** your fork:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/orivory.git
-   cd orivory
-   ```
-3. **Create a branch**:
-   ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-bug-fix
-   ```
-4. **Make your changes**
-5. **Test** your changes:
-   ```bash
-   pytest tests/ -v
-   ```
-6. **Lint** your code:
-   ```bash
-   ruff check app/ tests/
-   ```
-7. **Commit** with clear messages:
-   ```bash
-   git commit -m "feat: add new feature"
-   git commit -m "fix: resolve issue with..."
-   ```
-8. **Push** to your fork:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-9. **Open a Pull Request**
+We welcome code contributions! Follow these steps:
+
+```bash
+# 1. Fork the repository
+# 2. Clone your fork
+git clone https://github.com/YOUR_USERNAME/orivory.git
+cd orivory
+
+# 3. Create a feature branch
+git checkout -b feature/your-feature-name
+
+# 4. Make your changes
+# ... write code ...
+
+# 5. Run tests
+pytest tests/ -v
+
+# 6. Run linting
+ruff check app/ tests/
+
+# 7. Commit with clear messages
+git commit -m "feat: add new feature"
+
+# 8. Push and create PR
+git push origin feature/your-feature-name
+```
 
 ---
 
-## Development Setup
+## 🛠️ Development Setup
 
 ### Prerequisites
+
 - Python 3.12+
 - Docker & Docker Compose
 - PostgreSQL 15+, Redis 7+
 
-### Quick Setup
+### Quick Start
 
 ```bash
 # Clone repository
@@ -115,10 +98,7 @@ pytest tests/ --cov=app --cov-report=html
 
 ### Code Style
 
-We use:
-- **Ruff** for linting and formatting
-- **Black** compatible formatting
-- **Type hints** required for new code
+We use **Ruff** for linting:
 
 ```bash
 # Check code style
@@ -130,46 +110,55 @@ ruff check --fix app/ tests/
 
 ---
 
-## Commit Message Guidelines
+## 📝 Commit Message Format
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
-feat: add new feature
-fix: resolve a bug
-docs: update documentation
-style: code style changes (formatting, etc.)
-refactor: code refactoring
-test: add or update tests
-chore: maintenance tasks
-```
+| Type | Description |
+|------|-------------|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `docs:` | Documentation changes |
+| `style:` | Formatting, no code change |
+| `refactor:` | Code refactoring |
+| `test:` | Adding tests |
+| `chore:` | Maintenance tasks |
 
-Examples:
-- `feat: add referral system`
-- `fix: resolve auth token refresh issue`
-- `docs: update API documentation`
+**Examples:**
+```bash
+git commit -m "feat: add referral system"
+git commit -m "fix: resolve auth token refresh issue"
+git commit -m "docs: update API documentation"
+```
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 orivory/
 ├── app/                    # Main application
 │   ├── api/v1/            # API endpoints
+│   │   ├── auth.py        # Authentication
+│   │   ├── chat.py        # Chat & recall
+│   │   ├── memories.py    # Memory management
+│   │   ├── insights.py    # AI insights
+│   │   ├── discovery.py   # Knowledge discovery
+│   │   ├── referral.py    # Referral system
+│   │   └── analytics.py   # Analytics
 │   ├── models/            # Database models
 │   ├── services/          # Business logic
 │   ├── agents/            # LangGraph agents
 │   └── retrieval/         # RAG retrieval
 ├── frontend/              # Next.js frontend
-├── tests/                 # Test suite
-├── scripts/               # Utility scripts
-└── docs/                  # Documentation
+├── tests/                # Test suite
+├── scripts/              # Utility scripts
+└── docs/                 # Documentation
 ```
 
 ---
 
-## Labels
+## 🏷️ Issue Labels
 
 | Label | Description |
 |-------|-------------|
@@ -182,11 +171,23 @@ orivory/
 
 ---
 
-## Questions?
+## ❓ Questions?
 
 - Open a [Discussion](https://github.com/twilightt1/orivory/discussions)
 - Check [existing issues](https://github.com/twilightt1/orivory/issues)
 
 ---
 
-Thank you for contributing to Orivory! 🚀
+## 📜 Code of Conduct
+
+By participating, you agree to maintain a welcoming and respectful environment for everyone.
+
+---
+
+<div align="center">
+
+**Thank you for contributing to Orion Mind!** 🚀
+
+*Your AI Second Brain from the Stars* ⭐🐺
+
+</div>

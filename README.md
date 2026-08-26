@@ -1,38 +1,43 @@
-# Orivory — Open Source AI Second Brain
+# Orion Mind — Open Source AI Second Brain
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/Chat-Open%20Source-brightgreen?style=for-the-badge" alt="Open Source" />
-</p>
+<div align="center">
 
-<p align="center">
-  <a href="https://github.com/twilightt1/orivory/stargazers"><img src="https://img.shields.io/github/stars/twilightt1/orivory?style=social" alt="Stars"></a>
-  <a href="https://github.com/twilightt1/orivory/network/members"><img src="https://img.shields.io/github/forks/twilightt1/orivory?style=social" alt="Forks"></a>
-  <a href="https://github.com/twilightt1/orivory/issues"><img src="https://img.shields.io/github/issues/twilightt1/orivory" alt="Issues"></a>
-</p>
+![Python](https://img.shields.io/badge/Python-3.12+-blue?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![Stars](https://img.shields.io/github/stars/twilightt1/orivory?style=for-the-badge)
+![Forks](https://img.shields.io/github/forks/twilightt1/orivory?style=for-the-badge)
 
----
+**Your AI-powered second brain. Open source. Self-hosted. Privacy-first.**
 
-**Orivory** is an open-source, self-hosted AI second brain. It captures what you read, write, clip, and think — and lets you ask questions and get cited answers from your own knowledge.
+*[Orivory = Orion (constellation) + Memory]*
 
-**100% Self-Hosted** • **Your Data Stays Private** • **Fully Customizable**
+</div>
 
 ---
 
-## ✨ Features
+## 🌟 What is Orion Mind?
 
-| Category | Capabilities |
-|----------|-------------|
-| **💬 Chat & Recall** | Natural language Q&A with cited answers from your memories |
-| **📝 Memory Capture** | Manual notes, file uploads, web clips, RSS feeds |
-| **🔍 Hybrid Search** | Vector (ChromaDB) + keyword (BM25) + RRF fusion + reranking |
-| **🕸️ Knowledge Graph** | Entity extraction, relations, clusters, graph visualization |
-| **🤖 AI Agents** | LangGraph-powered recall workflow with self-correction |
-| **📡 Real-time Streaming** | SSE token streaming with sources and trace events |
+Orion Mind is an open-source, self-hosted AI second brain that helps you capture, organize, and retrieve your personal knowledge. Unlike cloud-based solutions, your data stays on your infrastructure — fully private and customizable.
+
+### Core Philosophy
+
+> **"Store what you know. Ask what you remember. Always cite your sources."**
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **🔍 Hybrid Search** | Vector + keyword search with RRF fusion and Jina reranking |
+| **🧠 Memory Recall** | Ask questions in natural language, get cited answers |
+| **🕸️ Knowledge Graph** | Entity extraction, relations, and cluster detection |
+| **🤖 AI Agents** | LangGraph-powered workflow with self-correction |
+| **📡 Real-time Streaming** | SSE token streaming with trace events |
 | **👥 Multi-user** | Teams, workspaces, shared knowledge bases |
-| **📊 Analytics** | Usage tracking, DAU, feature adoption metrics |
+| **📊 Analytics** | Usage tracking and DAU metrics |
 | **🎁 Referrals** | Built-in viral referral system |
 
 ---
@@ -40,77 +45,68 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.12+
 - Docker & Docker Compose
 - PostgreSQL 15+, Redis 7+
 
-### 1. Clone the Repository
+### One-Command Setup
 
 ```bash
+# Clone and start
 git clone https://github.com/twilightt1/orivory.git
 cd orivory
-```
-
-### 2. Start Infrastructure
-
-```bash
 docker compose up -d
-```
 
-### 3. Install Dependencies
-
-```bash
+# Install dependencies
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# or: .venv\Scripts\activate  # Windows
-
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-### 4. Configure Environment
-
-```bash
+# Configure and run
 cp .env.example .env
-# Edit .env with your settings
-```
-
-### 5. Run Migrations
-
-```bash
 alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-### 6. Start the API
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Open [http://localhost:8000/docs](http://localhost:8000/docs) for API docs.
+Visit [http://localhost:8000/docs](http://localhost:8000/docs) for API documentation.
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│   FastAPI   │────▶│  PostgreSQL │
-│  (Web/CLI)  │     │     API     │     │   (Memory)  │
-└─────────────┘     └──────┬──────┘     └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Client (Web/CLI)                         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       FastAPI Backend                            │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │   Auth   │  │   Chat   │  │ Memories │  │ Analytics│       │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌───────────────┐  ┌───────────────┐  ┌───────────────┐
+│  PostgreSQL   │  │    Redis     │  │    MinIO     │
+│  (Metadata)  │  │   (Cache)    │  │  (Storage)   │
+└───────────────┘  └───────────────┘  └───────────────┘
+                            │
+                            ▼
+                   ┌───────────────┐
+                   │   Celery      │
+                   │  (Workers)    │
+                   └───────┬───────┘
                            │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-         ▼                 ▼                 ▼
-┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│    Redis    │   │   MinIO     │   │   Celery    │
-│   (Cache)   │   │  (Storage)  │   │  (Workers)  │
-└─────────────┘   └─────────────┘   └──────┬──────┘
-                                           │
-                                           ▼
-                                    ┌─────────────┐
-                                    │  ChromaDB   │
-                                    │  (Vectors)  │
-                                    └─────────────┘
+                           ▼
+                   ┌───────────────┐
+                   │   ChromaDB    │
+                   │  (Vectors)   │
+                   └───────────────┘
 ```
 
 ---
@@ -119,36 +115,37 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) for API docs.
 
 ```
 orivory/
-├── app/                    # Main application
-│   ├── api/v1/            # API endpoints
-│   │   ├── auth.py        # Authentication
-│   │   ├── chat.py        # Chat & recall
-│   │   ├── memories.py    # Memory management
-│   │   ├── insights.py    # AI insights
-│   │   ├── discovery.py   # Knowledge discovery
-│   │   ├── referral.py    # Referral system
-│   │   └── analytics.py   # Analytics
-│   ├── models/            # Database models
-│   ├── services/          # Business logic
-│   ├── agents/            # LangGraph agents
-│   └── retrieval/         # RAG retrieval
-├── frontend/              # Next.js frontend
-├── tests/                 # Test suite
-├── scripts/               # Utility scripts
-└── docs/                  # Documentation
+├── app/                    # Python backend
+│   ├── api/v1/           # REST API endpoints
+│   ├── models/           # SQLAlchemy models
+│   ├── services/         # Business logic
+│   ├── agents/           # LangGraph agents
+│   └── retrieval/        # RAG pipeline
+├── frontend/              # Next.js web app
+├── tests/                # Test suite
+├── scripts/              # Utility scripts
+└── docs/                 # Documentation
 ```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Python 3.12+, FastAPI, SQLAlchemy |
+| **AI/ML** | LangGraph, ChromaDB, Jina Reranker |
+| **Database** | PostgreSQL, Redis |
+| **Storage** | MinIO (S3-compatible) |
+| **Queue** | Celery |
+| **Frontend** | Next.js 14, TypeScript |
+| **Infrastructure** | Docker, Docker Compose |
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our contributing guide:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md).
 
 ### Development Setup
 
@@ -163,11 +160,24 @@ pytest tests/ -v
 ruff check app/ tests/
 ```
 
+### Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+feat: add new feature
+fix: resolve a bug
+docs: update documentation
+refactor: code refactoring
+test: add or update tests
+```
+
 ---
 
 ## 🐛 Reporting Issues
 
-Found a bug? [Open an issue](https://github.com/twilightt1/orivory/issues/new) with:
+Found a bug? [Open an issue](https://github.com/twilightt1/orivory/issues) with:
+
 - Clear description
 - Steps to reproduce
 - Expected vs actual behavior
@@ -177,22 +187,28 @@ Found a bug? [Open an issue](https://github.com/twilightt1/orivory/issues/new) w
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 Built With
 
-Built with:
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
-- [LangGraph](https://langchain-ai.github.io/langgraph/) - Agentic workflows
-- [ChromaDB](https://www.trychroma.com/) - Vector database
-- [PostgreSQL](https://www.postgresql.org/) - Relational database
-- [Redis](https://redis.io/) - Caching and queues
-- [Next.js](https://nextjs.org/) - React framework
+<div align="center">
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-FF6B35?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-5B21B6?style=for-the-badge&logo=chroma&logoColor=white)](https://www.trychroma.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+
+</div>
 
 ---
 
-<p align="center">
-  <strong>Orivory</strong> — Your AI Second Brain, Open Source Forever
-</p>
+<div align="center">
+
+**⭐ Star us on GitHub if Orion Mind helps you build your second brain!**
+
+*Orion Mind — Your AI Second Brain from the Stars* ⭐🐺
+
+</div>
