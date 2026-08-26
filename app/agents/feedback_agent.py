@@ -1,5 +1,5 @@
 """
-Feedback Pipeline Agent for MindLayer v2.0
+Feedback Pipeline Agent for Orivory v2.0
 
 Implements Pistis-RAG closed-loop learning:
 - Collect user feedback on answers

@@ -1,5 +1,5 @@
 """
-MindLayer ingestion package.
+Orivory ingestion package.
 
 A connector is a class that knows how to pull "memories" from a single
 source type (manual notes, file uploads, web pages, Google Drive,

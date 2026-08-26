@@ -1,7 +1,7 @@
 # Demo Script
 
 This script is designed for a 5-minute portfolio/interview walkthrough of
-MindLayer as a **self-hosted Personal AI Second Brain**.
+Orivory as a **self-hosted Personal AI Second Brain**.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ trace events.
 Talking point:
 
 > We save useful details across docs, notes, clips, transcripts, and runbooks,
-> but later we only remember fragments. MindLayer turns that personal archive
+> but later we only remember fragments. Orivory turns that personal archive
 > into a cited recall layer with enough traceability to debug answer quality.
 
 ## 2. Show Health and Readiness
@@ -91,7 +91,7 @@ Talking point:
 curl.exe -sS -X POST http://localhost:8000/api/v1/chat/conversations `
   -H "Authorization: Bearer $env:ACCESS_TOKEN" `
   -H "Content-Type: application/json" `
-  -d '{"title":"MindLayer second brain demo"}'
+  -d '{"title":"Orivory second brain demo"}'
 ```
 
 Save the id:

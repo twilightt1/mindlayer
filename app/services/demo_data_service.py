@@ -1,7 +1,7 @@
 """
 Demo Data Service
 
-Creates sample memories for new users to demonstrate MindLayer features.
+Creates sample memories for new users to demonstrate Orivory features.
 Called on first login or when user requests demo data.
 """
 
@@ -23,12 +23,12 @@ log = logging.getLogger(__name__)
 # Sample memories for different use cases
 SAMPLE_MEMORIES = [
     {
-        "title": "Getting Started with MindLayer",
-        "content": """Welcome to MindLayer! Here's how to get the most out of your second brain:
+        "title": "Getting Started with Orivory",
+        "content": """Welcome to Orivory! Here's how to get the most out of your second brain:
 
 1. **Quick Capture**: Use the quick capture bar (⌘K) to instantly save thoughts, links, or notes. They'll be automatically organized.
 
-2. **Ask Questions**: Type questions in natural language. MindLayer understands context and finds relevant memories across all your sources.
+2. **Ask Questions**: Type questions in natural language. Orivory understands context and finds relevant memories across all your sources.
 
 3. **Discover Connections**: The Discovery feature finds hidden relationships between your memories that you might have missed.
 
@@ -41,13 +41,13 @@ SAMPLE_MEMORIES = [
 - Use tags to organize related content
 - Review insights regularly to discover new connections
 """,
-        "summary": "Complete guide to using MindLayer features",
-        "tags": ["getting-started", "tutorial", "mindlayer"],
+        "summary": "Complete guide to using Orivory features",
+        "tags": ["getting-started", "tutorial", "Orivory"],
         "source_type": "manual_note",
     },
     {
         "title": "Weekly Review Process",
-        "content": """My weekly review process using MindLayer:
+        "content": """My weekly review process using Orivory:
 
 **Monday Morning (30 min)**:
 - Review last week's key memories
@@ -146,7 +146,7 @@ SAMPLE_MEMORIES = [
 - Notion: Good for structured data, weak on connections
 - Obsidian: Powerful linking but manual
 - Roam: Strong bidirectional links, steep learning curve
-- MindLayer: AI-powered automatic discovery
+- Orivory: AI-powered automatic discovery
 
 **Technical Approaches**:
 1. Vector embeddings for semantic search
@@ -180,10 +180,10 @@ SAMPLE_MEMORIES = [
 - **Identity-Based Habits**: Focus on who you want to become
 - **The Two-Minute Rule**: Scale down habits to 2 minutes
 
-**Application to MindLayer**:
+**Application to Orivory**:
 - Set daily reminder to capture notes
 - Create quick capture shortcut on phone
-- Use MindLayer as part of morning routine
+- Use Orivory as part of morning routine
 - Build "review insights" as weekly habit
 """,
         "summary": "Key concepts from Atomic Habits",
@@ -192,7 +192,7 @@ SAMPLE_MEMORIES = [
     },
     {
         "title": "API Integration Notes",
-        "content": """MindLayer API Integration Guide:
+        "content": """Orivory API Integration Guide:
 
 **Authentication**:
 ```python
@@ -228,7 +228,7 @@ headers = {
         "content": """Q4 2024 Personal Goals:
 
 **Professional**:
-- Launch MindLayer mobile app
+- Launch Orivory mobile app
 - Grow user base to 10,000 active users
 - Establish thought leadership in AI productivity space
 - Ship 3 major feature releases
@@ -269,7 +269,7 @@ async def create_demo_memories(
     """
     Create demo memories for a new user.
     
-    This helps new users understand MindLayer's capabilities
+    This helps new users understand Orivory's capabilities
     by providing sample data that demonstrates various features.
     """
     log.info(f"Creating demo memories for user {user_id}")

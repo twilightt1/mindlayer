@@ -67,7 +67,7 @@ export function FeaturesSection() {
             transition={{ delay: 0.2 }}
             className="text-lg text-white/40 leading-relaxed"
           >
-            MindLayer understands that information doesn't exist in isolation. 
+            Orivory understands that information doesn't exist in isolation. 
             It connects, evolves, and compounds over time.
           </motion.p>
         </motion.div>

@@ -6,8 +6,8 @@ import { GradientText } from "@/components/ui/BackgroundEffects";
 
 const faqs = [
   {
-    question: "How does MindLayer work?",
-    answer: "MindLayer connects to your documents, databases, and knowledge sources. Our AI indexes and understands the relationships between your information, allowing you to query it in natural language and get accurate, context-aware answers."
+    question: "How does Orivory work?",
+    answer: "Orivory connects to your documents, databases, and knowledge sources. Our AI indexes and understands the relationships between your information, allowing you to query it in natural language and get accurate, context-aware answers."
   },
   {
     question: "What document sources do you support?",
@@ -73,7 +73,7 @@ export function FAQSection() {
             transition={{ delay: 0.2 }}
             className="text-lg text-white/40"
           >
-            Everything you need to know about MindLayer.
+            Everything you need to know about Orivory.
           </motion.p>
         </motion.div>
 

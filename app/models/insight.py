@@ -1,5 +1,5 @@
 """
-InsightCard model for MindLayer.
+InsightCard model for Orivory.
 
 Stores discovered insights from "What I Didn't Know I Knew" feature.
 Proactively surfaces hidden connections and patterns from user's documents.

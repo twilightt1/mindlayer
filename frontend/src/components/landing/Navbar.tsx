@@ -49,7 +49,7 @@ export function Navbar() {
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 blur-lg opacity-50 -z-10" />
             </motion.div>
             <span className="text-xl font-bold tracking-tight text-white">
-              MindLayer
+              Orivory
             </span>
           </Link>
 

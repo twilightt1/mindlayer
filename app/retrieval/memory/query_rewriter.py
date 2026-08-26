@@ -129,7 +129,7 @@ async def rewrite_query(
             response_format={"type": "json_object"},
             extra_headers={
                 "HTTP-Referer": settings.FRONTEND_URL,
-                "X-Title": "MindLayer Memory Rewriter",
+                "X-Title": "Orivory Memory Rewriter",
             },
         )
         result_text = resp.choices[0].message.content

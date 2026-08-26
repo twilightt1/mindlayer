@@ -95,7 +95,7 @@ export function Footer() {
           className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4"
         >
           <p className="text-sm text-white/30">
-            © 2025 MindLayer. All rights reserved.
+            © 2025 Orivory. All rights reserved.
           </p>
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/20">Powered by</span>

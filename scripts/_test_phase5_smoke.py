@@ -76,7 +76,7 @@ except ValidationError:
 
 print("\n=== 2. personal memory chunks ===")
 from app.agents.personal_context_agent import memory_to_chunk, recall_to_chunks, personal_context_agent  # noqa: E402
-from app.schemas.mindlayer import MemoryResponse, MemoryWithScore, RecallResponse, RecallTrace  # noqa: E402
+from app.schemas.orivory import MemoryResponse, MemoryWithScore, RecallResponse, RecallTrace  # noqa: E402
 
 base_memory = MemoryResponse(**memory().__dict__)
 scored_memory = MemoryWithScore(**base_memory.model_dump(), score=0.91, match_reasons=["entity:mom"])

@@ -1,5 +1,5 @@
 """
-Base class for all MindLayer source connectors.
+Base class for all Orivory source connectors.
 
 A connector is a thin adapter around one source type. It owns the
 remote-API logic (or, for stubs, a "not implemented" path) and

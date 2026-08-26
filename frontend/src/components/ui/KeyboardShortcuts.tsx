@@ -11,7 +11,7 @@ interface ShortcutHandlers {
 }
 
 /**
- * Global keyboard shortcuts for MindLayer
+ * Global keyboard shortcuts for Orivory
  * 
  * Shortcuts:
  * - Cmd/Ctrl + K: Quick capture / Search

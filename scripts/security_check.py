@@ -33,16 +33,16 @@ def _read(path: str) -> str:
 
 def _base_production_settings(**overrides) -> dict[str, object]:
     values: dict[str, object] = {
-        "DATABASE_URL": "postgresql+asyncpg://mindlayer:strong-db-password@postgres:5432/ragdb",
+        "DATABASE_URL": "postgresql+asyncpg://orivory:strong-db-password@postgres:5432/ragdb",
         "REDIS_URL": "redis://redis:6379/0",
         "JWT_SECRET_KEY": "production-secret-key-with-more-than-32-characters",
-        "MINIO_ACCESS_KEY": "mindlayer-prod-minio",
-        "MINIO_SECRET_KEY": "mindlayer-prod-minio-secret",
+        "MINIO_ACCESS_KEY": "orivory-prod-minio",
+        "MINIO_SECRET_KEY": "orivory-prod-minio-secret",
         "OPENROUTER_API_KEY": "sk-or-production",
         "OPENAI_API_KEY": "sk-production",
         "JINA_API_KEY": "jina-production",
-        "ALLOWED_ORIGINS": "https://app.mindlayer.example",
-        "FRONTEND_URL": "https://app.mindlayer.example",
+        "ALLOWED_ORIGINS": "https://app.orivory.example",
+        "FRONTEND_URL": "https://app.orivory.example",
         "ENVIRONMENT": "production",
     }
     values.update(overrides)

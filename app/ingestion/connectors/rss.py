@@ -7,7 +7,7 @@ Configuration (`Source.config`):
         # or
         "feed_urls": ["https://a.com/rss", "https://b.com/atom"],
         "max_items": 50,                # cap entries per feed per sync
-        "user_agent": "MindLayer/1.0"
+        "user_agent": "Orivory/1.0"
     }
 
 Behavior:
@@ -39,7 +39,7 @@ from app.ingestion.types import ConnectorItem, ItemError
 log = logging.getLogger(__name__)
 
 DEFAULT_MAX_ITEMS = 50
-DEFAULT_USER_AGENT = "MindLayer/1.0 (+second-brain)"
+DEFAULT_USER_AGENT = "Orivory/1.0 (+second-brain)"
 HTTP_TIMEOUT = 20.0
 MAX_CONTENT_CHARS = 50_000
 

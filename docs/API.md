@@ -1,8 +1,8 @@
-# MindLayer API Documentation v2.0
+# Orivory API Documentation v2.0
 
 **RAG-native Answer Engine for Researchers**
 
-Base URL: `https://api.mindlayer.io/api/v1`
+Base URL: `https://api.orivory.io/api/v1`
 
 ---
 
@@ -30,7 +30,7 @@ Base URL: `https://api.mindlayer.io/api/v1`
 ### Base URL
 
 ```
-https://api.mindlayer.io/api/v1
+https://api.orivory.io/api/v1
 ```
 
 ### Authentication
@@ -338,7 +338,7 @@ Exchange the code via `/api/v1/auth/google/callback`:
 
 ### POST /api/v1/auth/google/callback
 
-Exchange a Google OAuth code for MindLayer tokens.
+Exchange a Google OAuth code for Orivory tokens.
 
 **Request:**
 
@@ -961,7 +961,7 @@ Remove a document from a conversation and delete its indexed chunks.
 
 ## 4. Memory (Second Brain)
 
-MindLayer's memory system stores and retrieves knowledge using semantic search and temporal reasoning.
+Orivory's memory system stores and retrieves knowledge using semantic search and temporal reasoning.
 
 ### POST /api/v1/memories
 
@@ -2471,7 +2471,7 @@ Get aggregated quality metrics across all users.
 
 ## 10. Webhooks (Future)
 
-Webhooks will allow your application to receive real-time notifications when events occur in MindLayer.
+Webhooks will allow your application to receive real-time notifications when events occur in Orivory.
 
 ### Event Types
 
@@ -2503,7 +2503,7 @@ Webhooks will allow your application to receive real-time notifications when eve
 
 ### Security
 
-Each webhook delivery includes an `X-MindLayer-Signature` header containing an HMAC-SHA256 signature of the payload, using your webhook secret.
+Each webhook delivery includes an `X-Orivory-Signature` header containing an HMAC-SHA256 signature of the payload, using your webhook secret.
 
 **Verification Example (Python):**
 
@@ -2637,12 +2637,12 @@ Every error response follows this structure:
 ```yaml
 openapi: 3.1.0
 info:
-  title: MindLayer API
+  title: Orivory API
   version: '2.0'
   description: RAG-native answer engine for researchers
 
 servers:
-  - url: https://api.mindlayer.io/api/v1
+  - url: https://api.orivory.io/api/v1
     description: Production
 
 components:
@@ -3091,11 +3091,11 @@ paths:
 ### Python
 
 ```python
-import mindlayer
+import orivory
 
-client = mindlayer.Client(
+client = orivory.Client(
     api_key="your_api_key",
-    base_url="https://api.mindlayer.io/api/v1"
+    base_url="https://api.orivory.io/api/v1"
 )
 
 # Authenticate
@@ -3160,11 +3160,11 @@ for insight in insights.insights:
 ### JavaScript / TypeScript
 
 ```typescript
-import { MindLayer } from '@mindlayer/sdk';
+import { Orivory } from '@orivory/sdk';
 
-const client = new MindLayer({
-  apiKey: process.env.MINDLAYER_API_KEY,
-  baseUrl: 'https://api.mindlayer.io/api/v1'
+const client = new Orivory({
+  apiKey: process.env.Orivory_API_KEY,
+  baseUrl: 'https://api.orivory.io/api/v1'
 });
 
 // Authenticate
@@ -3260,53 +3260,53 @@ const connections = await client.insights.connections({
 
 ```bash
 # Authenticate
-TOKEN=$(curl -s -X POST https://api.mindlayer.io/api/v1/auth/login \
+TOKEN=$(curl -s -X POST https://api.orivory.io/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"researcher@university.edu","password":"SecureP@ssw0rd!"}' \
   | jq -r '.access_token')
 
 # Create conversation
-CONV_ID=$(curl -s -X POST https://api.mindlayer.io/api/v1/chat/conversations \
+CONV_ID=$(curl -s -X POST https://api.orivory.io/api/v1/chat/conversations \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"CRISPR analysis","tags":["crispr"]}' \
   | jq -r '.id')
 
 # Send streaming message with enhanced params
-curl -X POST "https://api.mindlayer.io/api/v1/chat/conversations/$CONV_ID/message?include_confidence=true&include_reasoning=true&multi_hop=true" \
+curl -X POST "https://api.orivory.io/api/v1/chat/conversations/$CONV_ID/message?include_confidence=true&include_reasoning=true&multi_hop=true" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -d '{"content":"Compare eSpCas9 vs HiFi Cas9 specificity","stream":true}'
 
 # Create memory
-curl -X POST https://api.mindlayer.io/api/v1/memories \
+curl -X POST https://api.orivory.io/api/v1/memories \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"content":"eSpCas9 shows 8-fold specificity improvement","type":"finding","tags":["crispr","espCas9"]}'
 
 # Recall with temporal reasoning
-curl -X POST https://api.mindlayer.io/api/v1/memories/recall \
+curl -X POST https://api.orivory.io/api/v1/memories/recall \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"query":"How did our understanding evolve?","temporal":true}'
 
 # Submit feedback
-curl -X POST https://api.mindlayer.io/api/v1/feedback \
+curl -X POST https://api.orivory.io/api/v1/feedback \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"query_id":"msg_123","answer_id":"msg_456","feedback_type":"accuracy","rating":4}'
 
 # Get accuracy metrics
-curl -X GET "https://api.mindlayer.io/api/v1/feedback/accuracy?period=30d" \
+curl -X GET "https://api.orivory.io/api/v1/feedback/accuracy?period=30d" \
   -H "Authorization: Bearer $TOKEN"
 
 # Get unexpected insights
-curl -X GET "https://api.mindlayer.io/api/v1/insights/unexpected?threshold=0.7" \
+curl -X GET "https://api.orivory.io/api/v1/insights/unexpected?threshold=0.7" \
   -H "Authorization: Bearer $TOKEN"
 
 # Get connections
-curl -X GET "https://api.mindlayer.io/api/v1/insights/connections?entity_a=eSpCas9&entity_b=RNA+helicase&max_hops=3" \
+curl -X GET "https://api.orivory.io/api/v1/insights/connections?entity_a=eSpCas9&entity_b=RNA+helicase&max_hops=3" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

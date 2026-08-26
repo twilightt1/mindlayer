@@ -1,6 +1,6 @@
 # Evaluation Guide
 
-How MindLayer measures RAG quality, runs the eval pipeline, and interprets
+How Orivory measures RAG quality, runs the eval pipeline, and interprets
 results.
 
 ## TL;DR
@@ -55,7 +55,7 @@ results.
 
 ## The eval dataset
 
-`eval/MindLayer_eval_dataset.json` — 18 cases across 6 categories:
+`eval/Orivory_eval_dataset.json` — 18 cases across 6 categories:
 
 | Category | Cases | What it tests |
 |----------|-------|---------------|
@@ -100,7 +100,7 @@ Each case has:
 }
 ```
 
-Add to `eval/MindLayer_eval_dataset.json`, then re-run.
+Add to `eval/Orivory_eval_dataset.json`, then re-run.
 
 ## Custom thresholds
 

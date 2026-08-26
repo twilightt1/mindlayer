@@ -1,5 +1,5 @@
 """
-Temporal Memory System for MindLayer v2.0
+Temporal Memory System for Orivory v2.0
 
 Implements time-aware retrieval using:
 - Sinusoidal temporal encoding

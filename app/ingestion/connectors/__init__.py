@@ -1,1 +1,1 @@
-"""Connector implementations for each MindLayer source type."""
+"""Connector implementations for each Orivory source type."""

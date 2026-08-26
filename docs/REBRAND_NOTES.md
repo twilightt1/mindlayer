@@ -1,6 +1,6 @@
-# MindLayer Rebrand Notes
+# Orivory Rebrand Notes
 
-This document captures the **SupportMind → MindLayer** brand pivot that took place
+This document captures the **SupportMind → Orivory** brand pivot that took place
 on 2026-06-15. The pivot is part of repositioning the project from a multi-tenant
 SaaS support RAG into a **Personal AI Second Brain**.
 
@@ -18,20 +18,20 @@ deleted once the team is confident the new brand has fully propagated.
 
 | Old | New | Notes |
 | --- | --- | --- |
-| `SupportMind` | `MindLayer` | Brand name, used in docs, prompts, app titles |
-| `supportmind.local` | `mindlayer.local` | Default email domain |
-| `supportmind-demo@example.com` | `mindlayer-demo@example.com` | Demo account email |
-| `app.supportmind.example` | `app.mindlayer.example` | Default CORS / frontend origin in tests |
-| `supportmind-prod-minio` | `mindlayer-prod-minio` | MinIO key placeholder in test fixtures |
-| `X-SupportMind-Signature` | `X-MindLayer-Signature` | Webhook signature header in sample docs |
-| `author: "supportmind"` | `author: "mindlayer"` | Prompt template author metadata |
+| `SupportMind` | `Orivory` | Brand name, used in docs, prompts, app titles |
+| `supportmind.local` | `orivory.local` | Default email domain |
+| `supportmind-demo@example.com` | `orivory-demo@example.com` | Demo account email |
+| `app.supportmind.example` | `app.orivory.example` | Default CORS / frontend origin in tests |
+| `supportmind-prod-minio` | `orivory-prod-minio` | MinIO key placeholder in test fixtures |
+| `X-SupportMind-Signature` | `X-Orivory-Signature` | Webhook signature header in sample docs |
+| `author: "supportmind"` | `author: "orivory"` | Prompt template author metadata |
 
 ## File renames
 
 | Old path | New path |
 | --- | --- |
-| `eval/supportmind_offline_eval.py` | `eval/mindlayer_offline_eval.py` |
-| `eval/supportmind_eval_dataset.json` | `eval/mindlayer_eval_dataset.json` |
+| `eval/supportmind_offline_eval.py` | `eval/Orivory_offline_eval.py` |
+| `eval/supportmind_eval_dataset.json` | `eval/Orivory_eval_dataset.json` |
 
 ## LLM prompt template rewrites
 
@@ -40,9 +40,9 @@ were updated to reflect the new role:
 
 | Prompt | Old role | New role |
 | --- | --- | --- |
-| `ROUTER_V1` | "SupportMind's intent router. Default to `rag`." | "MindLayer's intent router. Default to `recall`." |
+| `ROUTER_V1` | "SupportMind's intent router. Default to `rag`." | "Orivory's intent router. Default to `recall`." |
 | `ROUTER_V2` | Same as above with stricter JSON | New intents: `recall`, `save_note`, `web_search` |
-| `ANSWER_V1` | "SupportMind's support assistant. Cite [Source N]." | "MindLayer, a personal AI second brain. Cite [Source N]." |
+| `ANSWER_V1` | "SupportMind's support assistant. Cite [Source N]." | "Orivory, a personal AI second brain. Cite [Source N]." |
 | `ANSWER_V2` | Same as V1 with chain-of-thought | Same with CoT |
 
 The fallback message changed from
@@ -78,7 +78,7 @@ The following files still contain `SupportMind` (or `supportmind`) by design:
 - `.env` — the local development env file. The bulk rename scripts intentionally
   skipped this file because it may contain real secrets. After pulling the
   rebrand, manually update `EMAIL_FROM`, `EMAIL_FROM_NAME`, and any other
-  SupportMind-specific values to their MindLayer equivalents (see
+  SupportMind-specific values to their Orivory equivalents (see
   `.env.example` for the new defaults).
 - `docs/REBRAND_NOTES.md` — this file.
 

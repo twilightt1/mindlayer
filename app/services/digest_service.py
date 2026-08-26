@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
-from app.schemas.mindlayer import (
+from app.schemas.Orivory import (
     DigestResponse,
     DigestResurfacedMemory,
     DigestThemeCount,

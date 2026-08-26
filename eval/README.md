@@ -1,6 +1,6 @@
 # RAG Evaluation Framework
 
-This directory contains evaluation tooling for the MindLayer RAG demo.
+This directory contains evaluation tooling for the Orivory RAG demo.
 
 - **Offline mode** is deterministic and CI-safe. It uses `sample_docs/` directly
   and does not require the API server, database, ChromaDB, Redis, MinIO, or LLM
@@ -12,16 +12,16 @@ This directory contains evaluation tooling for the MindLayer RAG demo.
 
 | File | Purpose |
 |---|---|
-| `mindlayer_eval_dataset.json` | Golden dataset of questions, expected sources, keywords, and fallback expectations. |
+| `Orivory_eval_dataset.json` | Golden dataset of questions, expected sources, keywords, and fallback expectations. |
 | `metrics.py` | Deterministic metric helpers for source hit, keyword coverage, citations, fallback accuracy, and summaries. |
 | `reporting.py` | Markdown and JSON report generation helpers. |
 | `run_eval.py` | CLI entrypoint for offline and live API evaluation modes. |
 | `live_api_eval.py` | Live API evaluator, SSE parser, response collector, and live scoring helpers. |
-| `mindlayer_offline_eval.py` | Lightweight keyword sanity check used by `run_eval.py --mode offline`. |
+| `Orivory_offline_eval.py` | Lightweight keyword sanity check used by `run_eval.py --mode offline`. |
 
 ## Dataset Schema
 
-Each item in `mindlayer_eval_dataset.json` uses this shape:
+Each item in `Orivory_eval_dataset.json` uses this shape:
 
 ```json
 {

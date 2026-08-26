@@ -1,5 +1,5 @@
 """
-Multi-hop Reasoning Agent for MindLayer v2.0
+Multi-hop Reasoning Agent for Orivory v2.0
 
 Implements EfficientRAG pattern from EMNLP 2024:
 - Detects multi-hop queries

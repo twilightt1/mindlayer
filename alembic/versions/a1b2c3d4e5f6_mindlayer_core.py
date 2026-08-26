@@ -1,6 +1,6 @@
-"""MindLayer core schema — second-brain tables
+"""Orivory core schema — second-brain tables
 
-Adds the new MindLayer tables for personal second brain:
+Adds the new Orivory tables for personal second brain:
   - memories                : the canonical "memory" storage unit
   - entities                : people, projects, topics, concepts
   - relations               : typed edges between entities

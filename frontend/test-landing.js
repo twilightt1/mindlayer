@@ -39,8 +39,8 @@ async function testLandingPage() {
     console.log('\n📍 Test 2: Checking page title...');
     const title = await page.title();
     console.log(`   Title: "${title}"`);
-    if (title.includes('MindLayer')) {
-      console.log('   ✅ Title contains "MindLayer"');
+    if (title.includes('Orivory')) {
+      console.log('   ✅ Title contains "Orivory"');
     } else {
       console.log('   ❌ Title missing expected content');
     }
@@ -60,9 +60,9 @@ async function testLandingPage() {
 
     // Test 4: Check Navbar
     console.log('\n📍 Test 4: Checking Navbar...');
-    const logo = await page.locator('text=MindLayer').first();
+    const logo = await page.locator('text=Orivory').first();
     if (await logo.isVisible()) {
-      console.log('   ✅ Logo "MindLayer" is visible');
+      console.log('   ✅ Logo "Orivory" is visible');
     }
     
     const featuresLink = await page.locator('a[href="#features"]').first();
@@ -91,7 +91,7 @@ async function testLandingPage() {
 
     // Test 7: Check FAQ section
     console.log('\n📍 Test 7: Testing FAQ accordion...');
-    const faqButton = await page.locator('button:has-text("How does MindLayer work")').first();
+    const faqButton = await page.locator('button:has-text("How does Orivory work")').first();
     if (await faqButton.isVisible()) {
       console.log('   ✅ FAQ question is visible');
     }
@@ -103,7 +103,7 @@ async function testLandingPage() {
       console.log('   ✅ Footer is visible');
     }
     
-    const copyright = await page.locator('text=© 2025 MindLayer').first();
+    const copyright = await page.locator('text=© 2025 Orivory').first();
     if (await copyright.isVisible()) {
       console.log('   ✅ Copyright text found');
     }

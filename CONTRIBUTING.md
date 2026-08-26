@@ -1,6 +1,6 @@
-# Contributing to MindLayer
+# Contributing to Orivory
 
-Thank you for your interest in contributing to MindLayer! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Orivory! This document provides guidelines and instructions for contributing.
 
 ---
 
@@ -37,8 +37,8 @@ We welcome feature suggestions! Please:
 1. **Fork** the repository
 2. **Clone** your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/mindlayer.git
-   cd mindlayer
+   git clone https://github.com/YOUR_USERNAME/orivory.git
+   cd orivory
    ```
 3. **Create a branch**:
    ```bash
@@ -79,8 +79,8 @@ We welcome feature suggestions! Please:
 
 ```bash
 # Clone repository
-git clone https://github.com/twilightt1/mindlayer.git
-cd mindlayer
+git clone https://github.com/twilightt1/orivory.git
+cd orivory
 
 # Start infrastructure
 docker compose up -d
@@ -154,7 +154,7 @@ Examples:
 ## Project Structure
 
 ```
-mindlayer/
+orivory/
 ├── app/                    # Main application
 │   ├── api/v1/            # API endpoints
 │   ├── models/            # Database models
@@ -184,9 +184,9 @@ mindlayer/
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/twilightt1/mindlayer/discussions)
-- Check [existing issues](https://github.com/twilightt1/mindlayer/issues)
+- Open a [Discussion](https://github.com/twilightt1/orivory/discussions)
+- Check [existing issues](https://github.com/twilightt1/orivory/issues)
 
 ---
 
-Thank you for contributing to MindLayer! 🚀
+Thank you for contributing to Orivory! 🚀

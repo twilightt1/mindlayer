@@ -1,5 +1,5 @@
 """
-HyDE (Hypothetical Document Embeddings) Agent for MindLayer v2.0
+HyDE (Hypothetical Document Embeddings) Agent for Orivory v2.0
 
 Implements the HyDE pattern from Gao et al. (2023):
 - Generate hypothetical relevant document from query

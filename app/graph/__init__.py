@@ -1,4 +1,4 @@
-"""Knowledge-graph extraction package for MindLayer."""
+"""Knowledge-graph extraction package for Orivory."""
 
 from app.graph.extraction import (
     EntityExtractionResult,

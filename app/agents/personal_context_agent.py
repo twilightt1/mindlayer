@@ -9,7 +9,7 @@ from uuid import UUID
 from app.agents.state import AgentState
 from app.database import AsyncSessionLocal
 from app.retrieval.memory.retriever import MemoryRetriever
-from app.schemas.mindlayer import MemoryResponse, MemoryWithScore, RecallResponse
+from app.schemas.Orivory import MemoryResponse, MemoryWithScore, RecallResponse
 
 log = logging.getLogger(__name__)
 

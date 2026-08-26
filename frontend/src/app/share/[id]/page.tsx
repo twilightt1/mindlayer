@@ -65,11 +65,11 @@ export default function SharedMemoryPage() {
             {error || "This memory doesn't exist or isn't shared publicly."}
           </p>
           <a
-            href="https://mindlayer.app"
+            href="https://orivory.app"
             className="inline-flex items-center gap-2 text-primary hover:underline"
           >
             <ExternalLink className="h-4 w-4" />
-            Try MindLayer
+            Try Orivory
           </a>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function SharedMemoryPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-2 text-primary mb-4">
-            <span className="font-semibold">MindLayer</span>
+            <span className="font-semibold">Orivory</span>
             <Badge variant="outline">Shared Memory</Badge>
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function SharedMemoryPage() {
             Want to create your own second brain?
           </p>
           <a
-            href="https://mindlayer.app/signup"
+            href="https://orivory.app/signup"
             className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             Start Free Trial
@@ -142,7 +142,7 @@ export default function SharedMemoryPage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground pt-8">
-          <p>Powered by MindLayer - AI-Powered Second Brain</p>
+          <p>Powered by Orivory - AI-Powered Second Brain</p>
         </div>
       </div>
     </div>

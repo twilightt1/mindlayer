@@ -1,4 +1,4 @@
-"""Celery tasks for MindLayer knowledge-graph extraction."""
+"""Celery tasks for Orivory knowledge-graph extraction."""
 from __future__ import annotations
 
 import logging

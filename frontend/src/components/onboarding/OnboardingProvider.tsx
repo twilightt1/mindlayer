@@ -33,7 +33,7 @@ interface OnboardingContextValue {
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 // Local storage keys
-const STORAGE_KEY = "mindlayer_onboarding";
+const STORAGE_KEY = "Orivory_onboarding";
 
 function loadState(): Partial<OnboardingState> {
   if (typeof window === "undefined") return {};

@@ -1,4 +1,4 @@
-"""Persistence layer for MindLayer knowledge-graph extraction.
+"""Persistence layer for Orivory knowledge-graph extraction.
 
 The builder takes Memory rows, extracts entities/relations, and persists them
 into the existing graph tables without requiring migrations.

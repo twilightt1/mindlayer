@@ -10,7 +10,7 @@ api_router.include_router(chat.router)
 api_router.include_router(admin.router)
 api_router.include_router(system_settings.router)
 
-# MindLayer second-brain routes
+# Orivory second-brain routes
 api_router.include_router(memories.router)
 api_router.include_router(entities.router)
 api_router.include_router(entities.relations_router)  # /relations

@@ -8,7 +8,7 @@ Configuration (`Source.config`):
             "https://example.com/article-2"
         ],
         "max_chars": 50_000,            # truncate huge pages
-        "user_agent": "MindLayer/1.0"
+        "user_agent": "Orivory/1.0"
     }
 
 Behavior:
@@ -40,7 +40,7 @@ from app.ingestion.types import ConnectorItem, ItemError
 log = logging.getLogger(__name__)
 
 DEFAULT_MAX_CHARS = 50_000
-DEFAULT_USER_AGENT = "MindLayer/1.0 (+second-brain)"
+DEFAULT_USER_AGENT = "Orivory/1.0 (+second-brain)"
 HTTP_TIMEOUT = 20.0
 MAX_URLS_PER_SYNC = 100
 

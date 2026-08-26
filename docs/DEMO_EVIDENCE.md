@@ -1,6 +1,6 @@
 # Demo Evidence — Phase 15 Live Certification
 
-This document captures the live local certification run for the MindLayer demo
+This document captures the live local certification run for the Orivory demo
 workflow. The run validates the Personal AI Second Brain path: seed a local user,
 upload sample memories, ingest them through Celery, and answer recall questions
 with sources and agent trace metadata.
@@ -86,7 +86,7 @@ The reusable smoke script completed successfully.
 
 | Step | Result |
 | --- | --- |
-| Ensure demo user | `mindlayer-demo@example.com` verified and onboarded |
+| Ensure demo user | `orivory-demo@example.com` verified and onboarded |
 | Login | access token received |
 | Conversation | `b456faf1-cb01-4341-a820-7b02bc390d89` |
 

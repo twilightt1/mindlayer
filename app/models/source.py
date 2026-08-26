@@ -1,13 +1,13 @@
 """
-Source model for MindLayer.
+Source model for Orivory.
 
 A "source" is a connected account or feed that the user has authorized
-MindLayer to pull memories from. Examples:
+Orivory to pull memories from. Examples:
     - Google Drive folder or file
     - Notion workspace / database / page
     - Gmail mailbox or label
     - Web clipper bookmarked list
-    - Manual (when the user just types a note in MindLayer)
+    - Manual (when the user just types a note in Orivory)
 
 `config` stores connection-specific settings (auth tokens, folder ids,
 etc.). It is encrypted at rest via ``EncryptedJSONB``: the dict is

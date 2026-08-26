@@ -1,5 +1,5 @@
 """
-MLflow-style experiment tracking for MindLayer.
+MLflow-style experiment tracking for Orivory.
 
 Lightweight, SQLite-backed run logger. No external services required.
 

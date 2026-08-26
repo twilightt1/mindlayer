@@ -13,7 +13,7 @@ const DiscoveryDashboard = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: "Discovery | MindLayer",
+  title: "Discovery | Orivory",
   description: "Explore hidden connections across your knowledge with guided discovery journeys.",
 };
 

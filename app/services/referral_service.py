@@ -214,7 +214,7 @@ async def get_referral_stats(db: AsyncSession, user_id: UUID) -> dict:
         "pending_referrals": pending_referrals,
         "unclaimed_rewards": unclaimed_rewards,
         "referral_code": referral_code.code,
-        "referral_link": f"https://mindlayer.app/signup?ref={referral_code.code}"
+        "referral_link": f"https://Orivory.app/signup?ref={referral_code.code}"
     }
 
 

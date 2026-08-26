@@ -34,7 +34,7 @@ from app.retrieval.memory.context import fetch_personal_context
 from app.retrieval.memory.query_rewriter import rewrite_query
 from app.retrieval.memory.scoring import entity_boost, time_decay_score
 from app.retrieval.memory.vector_store import search_memories
-from app.schemas.mindlayer import (
+from app.schemas.Orivory import (
     MemoryResponse,
     MemoryWithScore,
     RecallResponse,

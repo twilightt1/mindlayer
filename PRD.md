@@ -1,4 +1,4 @@
-# MindLayer PRD v1.0
+# Orivory PRD v1.0
 
 **RAG-native answer engine for researchers**
 
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-MindLayer is a personal knowledge retrieval and reasoning engine built for knowledge workers, researchers, and analysts who are drowning in their own documents. Unlike general-purpose AI, MindLayer answers questions exclusively from the user's uploaded corpus—PDFs, notes, web clips, emails—then shows exactly where it found each answer.
+Orivory is a personal knowledge retrieval and reasoning engine built for knowledge workers, researchers, and analysts who are drowning in their own documents. Unlike general-purpose AI, Orivory answers questions exclusively from the user's uploaded corpus—PDFs, notes, web clips, emails—then shows exactly where it found each answer.
 
 **The core bet:** Researchers don't need another AI that hallucinates confidently. They need one that says "I found this in your March notes, but I'm uncertain because X"—and still surfaces the answer. Trust through transparency is the product.
 
@@ -71,11 +71,11 @@ The aha moment is *unexpected discovery*: showing users something in their own d
 
 ### 3.1 Vision Statement
 
-**MindLayer becomes the researcher's second memory.** You ask; it searches. You question; it cites. You explore; it discovers. Every answer is traceable to a source in your own knowledge base.
+**Orivory becomes the researcher's second memory.** You ask; it searches. You question; it cites. You explore; it discovers. Every answer is traceable to a source in your own knowledge base.
 
 ### 3.2 Positioning Matrix
 
-| | **MindLayer** | **Mem.ai** | **Notion AI** | **General AI** |
+| | **Orivory** | **Mem.ai** | **Notion AI** | **General AI** |
 |---|---|---|---|---|
 | **Answers from your documents** | ✓✓✓ Primary | ✓ Secondary | ✓ Within workspace | ✗ |
 | **Source attribution** | ✓✓✓ Non-negotiable | ✗ | Limited | ✗ |
@@ -112,7 +112,7 @@ The aha moment is *unexpected discovery*: showing users something in their own d
 
 **Her quote:** *"I spend 45 minutes looking for something I already read. By the time I find it, I've lost my train of thought on the actual problem."*
 
-**Her workflow:** Reads papers in the morning, takes notes in Obsidian, imports Zotero highlights via Zapier, has a messy `~/Downloads` full of PDFs. Wants to ask MindLayer: *"What did I read about CRISPR off-target effects?"* and get an answer with citations.
+**Her workflow:** Reads papers in the morning, takes notes in Obsidian, imports Zotero highlights via Zapier, has a messy `~/Downloads` full of PDFs. Wants to ask Orivory: *"What did I read about CRISPR off-target effects?"* and get an answer with citations.
 
 **Her friction:** Hates tagging. Will not use any tool that asks her to organize before querying.
 
@@ -128,7 +128,7 @@ The aha moment is *unexpected discovery*: showing users something in their own d
 
 **His quote:** *"I should be using my notes better. But the overhead of organizing everything is why I never do."*
 
-**His workflow:** Attends a client meeting, exports the transcript, uploads it to MindLayer alongside the relevant deck. Asks: *"What did we agree were the three biggest risks in the last three sessions?"*
+**His workflow:** Attends a client meeting, exports the transcript, uploads it to Orivory alongside the relevant deck. Asks: *"What did we agree were the three biggest risks in the last three sessions?"*
 
 **His friction:** He will not manually tag or categorize. He wants to dump and query.
 
@@ -163,7 +163,7 @@ The aha moment is *unexpected discovery*: showing users something in their own d
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Ask MindLayer...                                 [⏎ Send] │  │
+│  │  Ask Orivory...                                 [⏎ Send] │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  You asked: "What did my notes say about transformer scaling   │
@@ -268,7 +268,7 @@ The aha moment is *unexpected discovery*: showing users something in their own d
 ```
 Step 1 — Welcome Screen (5 seconds)
 ┌─────────────────────────────────────────┐
-│  Welcome to MindLayer.                   │
+│  Welcome to Orivory.                   │
 │  Your research memory, finally organized.│
 │                                         │
 │  Start by asking your first question.   │
@@ -284,7 +284,7 @@ Step 2 — Empty State (before first document)
 │  └─────────────────────────────────┘    │
 │                                         │
 │  You haven't added documents yet.       │
-│  MindLayer works better with each one.  │
+│  Orivory works better with each one.  │
 │                                         │
 │  [Upload PDFs / docs]  [Paste text]     │
 │  [Connect Notion]     [Connect Obsidian]│
@@ -300,7 +300,7 @@ System prompts: "Want to explore more documents?"
 **Import connectors (Phase 1):**
 - File upload: PDF, DOCX, TXT, Markdown (drag-and-drop)
 - Paste text directly
-- URL import (web clip saved to MindLayer)
+- URL import (web clip saved to Orivory)
 - Notion export (JSON)
 - Obsidian vault sync (via plugin)
 
@@ -455,7 +455,7 @@ Report error modal:
 - Retrieval adaptation: Feedback is used to reweight passage similarity scores (Boost known-relevant passages, suppress known-irrelevant ones)
 - Implementation: No fine-tuning. Use a learned weight vector applied at reranking time. Re-rank model takes retrieval score + feedback signal as features
 - Learning latency: Feedback reflected in next query (no retraining pipeline required for MVP)
-- User dashboard: "How MindLayer has learned from you" showing correction count, topic areas improved
+- User dashboard: "How Orivory has learned from you" showing correction count, topic areas improved
 
 **Success signal:** Users who submit ≥ 3 feedback items show ≥ 20% improvement in answer satisfaction scores within 2 weeks.
 
@@ -740,4 +740,4 @@ User Input (Query)
 
 ---
 
-*PRD v1.0 — MindLayer. Last updated: [Date]. Owner: [Product Lead]. Engineering contacts: [Backend Lead], [ML Lead].*
+*PRD v1.0 — Orivory. Last updated: [Date]. Owner: [Product Lead]. Engineering contacts: [Backend Lead], [ML Lead].*

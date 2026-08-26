@@ -40,7 +40,7 @@ def _get_async_client() -> AsyncOpenAI:
             base_url=settings.OPENROUTER_BASE_URL,
             default_headers={
                 "HTTP-Referer": settings.FRONTEND_URL,
-                "X-Title": "MindLayer",
+                "X-Title": "Orivory",
             },
         )
     return _async_client
@@ -55,7 +55,7 @@ def _get_sync_client() -> OpenAI:
             base_url=settings.OPENROUTER_BASE_URL,
             default_headers={
                 "HTTP-Referer": settings.FRONTEND_URL,
-                "X-Title": "MindLayer",
+                "X-Title": "Orivory",
             },
         )
     return _sync_client

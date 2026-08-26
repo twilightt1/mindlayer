@@ -1,5 +1,5 @@
 """
-Corrective-RAG (CRAG) Agent for MindLayer v2.0
+Corrective-RAG (CRAG) Agent for Orivory v2.0
 
 Implements the CRAG pattern from Yan et al. (arXiv 2401.15884):
 - LLM-based retrieval quality assessment

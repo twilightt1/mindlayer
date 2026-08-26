@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Q3 Retention Gate evaluates user engagement and retention metrics to determine if MindLayer is ready to proceed to Q4 or needs a retention-focused sprint.
+The Q3 Retention Gate evaluates user engagement and retention metrics to determine if Orivory is ready to proceed to Q4 or needs a retention-focused sprint.
 
 ## Gate Criteria
 
@@ -17,7 +17,7 @@ The Q3 Retention Gate evaluates user engagement and retention metrics to determi
 ### Option 1: Automated Script (Recommended)
 
 ```bash
-cd mindlayer
+cd orivory
 python scripts/retention_gate_check.py
 ```
 

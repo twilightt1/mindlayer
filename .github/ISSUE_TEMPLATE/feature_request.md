@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature for MindLayer
+about: Suggest a new feature for Orivory
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''

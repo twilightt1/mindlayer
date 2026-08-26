@@ -1,4 +1,4 @@
-# MindLayer Sprint Progress Q4 2025
+# Orivory Sprint Progress Q4 2025
 
 **Last Updated:** Auto-generated  
 **Status:** 🔄 Active (Week 41)

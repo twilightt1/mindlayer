@@ -1,11 +1,11 @@
 # Billing and Plans FAQ
 
-This FAQ explains MindLayer subscription plans, limits, billing behavior, and
+This FAQ explains Orivory subscription plans, limits, billing behavior, and
 upgrade rules for a personal self-hosted workspace.
 
 ## Plans
 
-MindLayer has three plans:
+Orivory has three plans:
 
 | Plan | Monthly conversations | Documents | SSO | Webhooks |
 | --- | ---: | ---: | --- | --- |

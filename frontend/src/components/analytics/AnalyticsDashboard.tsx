@@ -80,7 +80,7 @@ export function AnalyticsDashboard() {
         <div>
           <h2 className="text-2xl font-bold">Analytics</h2>
           <p className="text-muted-foreground">
-            Track your MindLayer usage and engagement
+            Track your Orivory usage and engagement
           </p>
         </div>
         
@@ -139,7 +139,7 @@ export function AnalyticsDashboard() {
         <CardHeader>
           <CardTitle>Feature Usage</CardTitle>
           <CardDescription>
-            Your most used MindLayer features
+            Your most used Orivory features
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,7 +151,7 @@ export function AnalyticsDashboard() {
             </div>
           ) : featureUsage.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No feature usage data yet. Start exploring MindLayer!
+              No feature usage data yet. Start exploring Orivory!
             </p>
           ) : (
             <div className="space-y-3">

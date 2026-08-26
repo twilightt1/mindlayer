@@ -1,5 +1,5 @@
 """
-Workspace and Team models for MindLayer.
+Workspace and Team models for Orivory.
 
 Q2 Growth Track: Team Knowledge Base Sharing
 - Workspace: Shared vs personal workspaces

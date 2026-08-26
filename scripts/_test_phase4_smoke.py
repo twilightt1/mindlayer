@@ -43,7 +43,7 @@ from app.graph.extraction import (
     normalize_entity_type,
     normalize_relation_type,
 )
-from app.schemas.mindlayer import (
+from app.schemas.orivory import (
     EntityCreate,
     EntityUpdate,
     GraphCluster,

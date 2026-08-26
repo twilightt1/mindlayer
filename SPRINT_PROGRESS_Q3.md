@@ -1,4 +1,4 @@
-# MindLayer Sprint Progress Q3 2025
+# Orivory Sprint Progress Q3 2025
 
 **Last Updated:** Auto-generated  
 **Status:** 🔄 Planning

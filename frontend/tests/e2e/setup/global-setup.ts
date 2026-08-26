@@ -12,7 +12,7 @@ setup('global setup', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   
   // Check if we're on the right page
-  await expect(page).toHaveTitle(/MindLayer/i);
+  await expect(page).toHaveTitle(/Orivory/i);
   
   // For authenticated pages, you would:
   // 1. Check if user is logged in

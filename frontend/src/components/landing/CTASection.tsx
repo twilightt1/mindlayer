@@ -50,7 +50,7 @@ export function CTASection() {
               </h2>
               
               <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">
-                Join thousands of teams who have unlocked the power of their knowledge with MindLayer.
+                Join thousands of teams who have unlocked the power of their knowledge with Orivory.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

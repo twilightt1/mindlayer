@@ -1,4 +1,4 @@
-"""Observability & experiment tracking package for MindLayer.
+"""Observability & experiment tracking package for Orivory.
 
 Provides:
   - `tracker.RunTracker`        MLflow-style run logger (SQLite-backed)

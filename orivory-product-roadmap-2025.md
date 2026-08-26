@@ -1,4 +1,4 @@
-# MindLayer Product Roadmap 2025
+# Orivory Product Roadmap 2025
 
 **Version:** 1.0  
 **Last Updated:** January 2025  
@@ -90,7 +90,7 @@ User Query → Initial Retrieval → Generate Answer → Self-Critique
 
 #### Phase 2 (Weeks 9–12): Value Demonstration
 
-**Objective:** Prove MindLayer surfaces insights researchers couldn't find alone.
+**Objective:** Prove Orivory surfaces insights researchers couldn't find alone.
 
 | Feature | Description | Differentiation |
 |---------|-------------|-----------------|
@@ -191,7 +191,7 @@ User Query → Initial Retrieval → Generate Answer → Self-Critique
 |------------|-------------|----------------|
 | **Team knowledge bases** | Collaborative workspaces with permission controls | Research teams (5–50 users) |
 | **Enterprise features** | SSO, audit logs, data residency | Enterprise accounts |
-| **API access** | Developer SDK for embedding MindLayer in other tools | Developers, ISVs |
+| **API access** | Developer SDK for embedding Orivory in other tools | Developers, ISVs |
 | **International expansion** | Japanese, German, French language support | Non-English research markets |
 
 ---

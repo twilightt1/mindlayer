@@ -1,6 +1,6 @@
 # API Authentication Guide
 
-MindLayer APIs use bearer tokens for authenticated requests. Users,
+Orivory APIs use bearer tokens for authenticated requests. Users,
 admins, and integrations must authenticate before uploading memories or asking
 recall questions.
 

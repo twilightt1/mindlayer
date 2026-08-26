@@ -13,7 +13,7 @@ const InsightsDashboard = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: "Discoveries | MindLayer",
+  title: "Discoveries | Orivory",
   description: "Discover hidden connections and insights from your knowledge base.",
 };
 

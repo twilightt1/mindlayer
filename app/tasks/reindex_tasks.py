@@ -1,7 +1,7 @@
 """Reindex / backfill personal memories into the vector store.
 
 The Postgres ``memories`` table is the source of truth. The ChromaDB
-``mindlayer_memories`` collection is a derived index that can be lost
+``Orivory_memories`` collection is a derived index that can be lost
 (restart with empty volume, corruption) or fall behind (memories written
 before write-through embedding existed). This task replays memories from
 Postgres into ChromaDB so recall can always be made whole again.

@@ -8,7 +8,7 @@ import {
   TOUR_LABELS,
 } from "./presetTours";
 
-const STORAGE_KEY = "mindlayer_tours_completed";
+const STORAGE_KEY = "Orivory_tours_completed";
 
 interface TourStatus {
   tourId: string;

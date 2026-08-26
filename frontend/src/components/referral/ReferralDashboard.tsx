@@ -100,7 +100,7 @@ export function ReferralDashboard() {
       <div>
         <h2 className="text-2xl font-bold">Refer & Earn</h2>
         <p className="text-muted-foreground">
-          Invite friends to MindLayer and earn free months
+          Invite friends to Orivory and earn free months
         </p>
       </div>
 

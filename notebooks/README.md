@@ -1,6 +1,6 @@
 # Jupyter notebooks — analysis & visualization
 
-This directory contains exploratory notebooks for MindLayer.
+This directory contains exploratory notebooks for Orivory.
 
 ## `rag_analysis.ipynb`
 

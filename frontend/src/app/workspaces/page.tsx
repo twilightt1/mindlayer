@@ -13,7 +13,7 @@ const WorkspacesDashboard = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: "Workspaces | MindLayer",
+  title: "Workspaces | Orivory",
   description: "Collaborate with your team on shared knowledge bases.",
 };
 

@@ -10,7 +10,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "MindLayer - AI Knowledge Platform",
+  title: "Orivory - AI Knowledge Platform",
   description: "Transform scattered information into a unified knowledge graph. Find answers, discover connections, and unlock insights.",
   keywords: ["AI", "knowledge management", "RAG", "document analysis", "insights"],
 };

@@ -1,4 +1,4 @@
-"""LLM + fallback extraction for MindLayer's personal knowledge graph.
+"""LLM + fallback extraction for Orivory's personal knowledge graph.
 
 This module intentionally has no database dependency. It accepts a Memory-like
 object and returns normalized extraction objects that the graph builder can
@@ -337,7 +337,7 @@ async def extract_entities(memory: Memory, *, model: str | None = None) -> Entit
             response_format={"type": "json_object"},
             extra_headers={
                 "HTTP-Referer": settings.FRONTEND_URL,
-                "X-Title": "MindLayer Graph Extraction",
+                "X-Title": "Orivory Graph Extraction",
             },
         )
         parsed = parse_llm_json_object(resp.choices[0].message.content)
@@ -394,7 +394,7 @@ async def extract_relations(
             response_format={"type": "json_object"},
             extra_headers={
                 "HTTP-Referer": settings.FRONTEND_URL,
-                "X-Title": "MindLayer Relation Extraction",
+                "X-Title": "Orivory Relation Extraction",
             },
         )
         parsed = parse_llm_json_object(resp.choices[0].message.content)

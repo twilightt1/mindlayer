@@ -1,6 +1,6 @@
 # Backup and Restore Guide
 
-MindLayer stores durable state in Postgres, MinIO, and ChromaDB volumes.
+Orivory stores durable state in Postgres, MinIO, and ChromaDB volumes.
 Redis is used for queues/cache/session-like data and is usually not the primary source of truth.
 
 ## What to Back Up
@@ -56,14 +56,14 @@ Recommended options:
 Example with `mc` from a configured host:
 
 ```bash
-mc alias set MindLayer http://localhost:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-mc mirror MindLayer/rag-docs backups/minio/rag-docs
+mc alias set Orivory http://localhost:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+mc mirror Orivory/rag-docs backups/minio/rag-docs
 ```
 
 ## MinIO Restore
 
 ```bash
-mc mirror backups/minio/rag-docs MindLayer/rag-docs
+mc mirror backups/minio/rag-docs Orivory/rag-docs
 ```
 
 Ensure `MINIO_BUCKET` matches the restored bucket name.

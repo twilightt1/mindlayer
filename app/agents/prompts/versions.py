@@ -1,5 +1,5 @@
 """
-Versioned prompt definitions for MindLayer agents.
+Versioned prompt definitions for Orivory agents.
 
 Each prompt variant is registered as a `PromptVariant` (see registry.py).
 Variants are grouped by agent (`router`, `answer`, `evaluator`, `hallucination`).
@@ -22,7 +22,7 @@ ROUTER_V1 = PromptVariant(
     agent="router",
     description="Default router: classify as chitchat/summarize/rag; rewrite the query.",
     template=(
-        "You are MindLayer's intent router.\n"
+        "You are Orivory's intent router.\n"
         "Classify the user message into exactly one of: chitchat, summarize, recall, save_note, web_search.\n"
         "If unsure, default to 'recall'.\n"
         "Then rewrite the user message to be self-contained (replace pronouns, "
@@ -30,7 +30,7 @@ ROUTER_V1 = PromptVariant(
         '{"query_type": "...", "rewritten_query": "...", "rationale": "..."}\n\n'
         "User: {query}"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
+    metadata={"author": "Orivory", "introduced_in": "0.1.0"},
 )
 
 ROUTER_V2 = PromptVariant(
@@ -38,7 +38,7 @@ ROUTER_V2 = PromptVariant(
     agent="router",
     description="Slightly stricter: forces JSON keys, requires confident rationale.",
     template=(
-        "You are the MindLayer intent router. Choose the most appropriate "
+        "You are the Orivory intent router. Choose the most appropriate "
         "intent for the user's message.\n"
         "Allowed intents: chitchat, summarize, recall, save_note, web_search.\n"
         "Pick 'recall' if the question is about something the user may have "
@@ -48,7 +48,7 @@ ROUTER_V2 = PromptVariant(
         "User: {query}\n"
         "JSON:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "stricter-json"},
+    metadata={"author": "Orivory", "introduced_in": "0.4.0", "experiment": "stricter-json"},
 )
 
 
@@ -61,7 +61,7 @@ ANSWER_V1 = PromptVariant(
     agent="answer",
     description="Default answer: cite [Source N] markers, follow citation rules.",
     template=(
-        "You are MindLayer, a personal AI second brain that helps the user "
+        "You are Orivory, a personal AI second brain that helps the user "
         "recall and reason about their own memories.\n"
         "Answer the user's question using ONLY the context below.\n"
         "If the answer is not in the context, reply: "
@@ -72,7 +72,7 @@ ANSWER_V1 = PromptVariant(
         "Context:\n{context}\n\n"
         "Answer:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
+    metadata={"author": "Orivory", "introduced_in": "0.1.0"},
 )
 
 ANSWER_V2 = PromptVariant(
@@ -80,7 +80,7 @@ ANSWER_V2 = PromptVariant(
     agent="answer",
     description="Adds chain-of-thought: extract facts first, then answer.",
     template=(
-        "You are MindLayer, a personal AI second brain. Be precise and cite sources.\n"
+        "You are Orivory, a personal AI second brain. Be precise and cite sources.\n"
         "Step 1: From the context, list 2-5 bullet points of facts relevant to the question.\n"
         "Step 2: Compose a concise final answer using only those facts. "
         "Cite each fact as [Source N] matching the order below.\n"
@@ -92,7 +92,7 @@ ANSWER_V2 = PromptVariant(
         "- \n\n"
         "Answer:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "cot-extract"},
+    metadata={"author": "Orivory", "introduced_in": "0.4.0", "experiment": "cot-extract"},
 )
 
 
@@ -113,7 +113,7 @@ EVALUATOR_V1 = PromptVariant(
         "Chunk:\n{chunk}\n\n"
         "JSON:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
+    metadata={"author": "Orivory", "introduced_in": "0.1.0"},
 )
 
 EVALUATOR_V2 = PromptVariant(
@@ -130,7 +130,7 @@ EVALUATOR_V2 = PromptVariant(
         "Chunk:\n{chunk}\n\n"
         "JSON:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "graded-relevance"},
+    metadata={"author": "Orivory", "introduced_in": "0.4.0", "experiment": "graded-relevance"},
 )
 
 
@@ -151,7 +151,7 @@ HALLUCINATION_V1 = PromptVariant(
         "Question: {query}\n\n"
         "JSON:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.1.0"},
+    metadata={"author": "Orivory", "introduced_in": "0.1.0"},
 )
 
 HALLUCINATION_V2 = PromptVariant(
@@ -169,7 +169,7 @@ HALLUCINATION_V2 = PromptVariant(
         "Question: {query}\n\n"
         "JSON:"
     ),
-    metadata={"author": "mindlayer", "introduced_in": "0.4.0", "experiment": "citation-check"},
+    metadata={"author": "Orivory", "introduced_in": "0.4.0", "experiment": "citation-check"},
 )
 
 

@@ -8,7 +8,7 @@ export const DASHBOARD_TOUR_STEPS: OnboardingStep[] = [
   {
     id: "welcome",
     target: "[data-onboarding='dashboard-header']",
-    title: "Welcome to MindLayer! 🎉",
+    title: "Welcome to Orivory! 🎉",
     description: "Your AI-powered second brain. This quick tour will show you the key features.",
     placement: "bottom",
   },
@@ -37,7 +37,7 @@ export const DASHBOARD_TOUR_STEPS: OnboardingStep[] = [
     id: "search",
     target: "[data-onboarding='search-bar']",
     title: "Semantic Search",
-    description: "Ask questions in natural language. MindLayer understands context, not just keywords.",
+    description: "Ask questions in natural language. Orivory understands context, not just keywords.",
     placement: "bottom",
   },
   {

@@ -1,6 +1,6 @@
-# MindLayer Security & Trust Guide v1.0
+# Orivory Security & Trust Guide v1.0
 
-> **RAG-native answer engine for researchers.** This guide describes how MindLayer protects the sensitive personal and professional knowledge entrusted to it — research notes, interview transcripts, client documents, and proprietary work product.
+> **RAG-native answer engine for researchers.** This guide describes how Orivory protects the sensitive personal and professional knowledge entrusted to it — research notes, interview transcripts, client documents, and proprietary work product.
 
 ---
 
@@ -8,13 +8,13 @@
 
 ### 1.1 Our Commitment
 
-MindLayer processes knowledge that researchers cannot afford to expose. Unpublished research, client communications, interview data, and internal documents represent years of work and irreplaceable intellectual property. A breach of that trust is not a data incident — it is a career incident for the researcher affected.
+Orivory processes knowledge that researchers cannot afford to expose. Unpublished research, client communications, interview data, and internal documents represent years of work and irreplaceable intellectual property. A breach of that trust is not a data incident — it is a career incident for the researcher affected.
 
 We operate a **zero-tolerance security posture**: every feature ships with a security review, every third-party integration is evaluated for data exposure, and every encryption decision defaults to the most conservative option.
 
 ### 1.2 Security-First Design Principles
 
-| Principle | Application in MindLayer |
+| Principle | Application in Orivory |
 |---|---|
 | **Least Privilege** | Users access only their own data; no cross-tenant visibility by default |
 | **Defense in Depth** | Encryption + access controls + audit logging + anomaly detection stack together |
@@ -26,7 +26,7 @@ We operate a **zero-tolerance security posture**: every feature ships with a sec
 
 Research from 2024–2025 consistently shows that **70% of enterprises cite privacy as the primary obstacle to AI adoption** in professional settings. For researchers, the figure is even higher. Knowledge workers who handle unpublished data, legal privileged content, or human subjects information cannot use tools that expose their queries or documents to unauthorized parties.
 
-MindLayer's security architecture is not a compliance checkbox. It is the product's core value proposition for any researcher whose work requires confidentiality.
+Orivory's security architecture is not a compliance checkbox. It is the product's core value proposition for any researcher whose work requires confidentiality.
 
 ---
 
@@ -34,7 +34,7 @@ MindLayer's security architecture is not a compliance checkbox. It is the produc
 
 ### 2.1 Data Classification
 
-MindLayer classifies all data into four tiers, each with distinct handling requirements:
+Orivory classifies all data into four tiers, each with distinct handling requirements:
 
 | Classification | Examples | Controls Applied |
 |---|---|---|
@@ -54,11 +54,11 @@ All network communication uses **TLS 1.3** with a minimum of 2048-bit RSA key ex
 - API endpoints: TLS 1.3 only
 - WebSocket connections for real-time queries: TLS 1.3 only
 - Third-party API calls (LLM providers): TLS 1.3 required; certificates validated against the system CA store
-- Certificate pinning is applied for mobile clients communicating with MindLayer infrastructure
+- Certificate pinning is applied for mobile clients communicating with Orivory infrastructure
 
 #### At-Rest Encryption
 
-All persistent data is encrypted using **AES-256-GCM** at the storage layer. MindLayer uses a layered encryption strategy:
+All persistent data is encrypted using **AES-256-GCM** at the storage layer. Orivory uses a layered encryption strategy:
 
 - **Volume encryption**: Underlying storage volumes use AES-256 with keys managed by the cloud provider's KMS (AWS KMS, Azure Key Vault, or GCP Cloud KMS)
 - **Application-layer encryption**: Sensitive metadata fields (document titles, user identifiers in audit logs) are encrypted with application-managed keys before storage
@@ -68,7 +68,7 @@ All persistent data is encrypted using **AES-256-GCM** at the storage layer. Min
 
 #### End-to-End Encryption (Future Roadmap)
 
-End-to-end encryption — where MindLayer's servers never see plaintext user data — is on the product roadmap for Q3. Until that capability ships, user data is encrypted at rest and in transit, and access is strictly controlled. Users who require E2EE today should review the data residency and processing terms in their subscription agreement.
+End-to-end encryption — where Orivory's servers never see plaintext user data — is on the product roadmap for Q3. Until that capability ships, user data is encrypted at rest and in transit, and access is strictly controlled. Users who require E2EE today should review the data residency and processing terms in their subscription agreement.
 
 #### Key Management
 
@@ -84,7 +84,7 @@ End-to-end encryption — where MindLayer's servers never see plaintext user dat
 
 #### Authentication
 
-MindLayer supports two authentication mechanisms:
+Orivory supports two authentication mechanisms:
 
 1. **JWT-based authentication**
    - Access tokens expire after **15 minutes**
@@ -96,14 +96,14 @@ MindLayer supports two authentication mechanisms:
 2. **OAuth 2.0 / SSO (Enterprise)**
    - Support for SAML 2.0 and OIDC identity providers
    - Identity provider authentication occurs entirely off-platform
-   - MindLayer receives only the verified identity assertion; no credentials are stored
+   - Orivory receives only the verified identity assertion; no credentials are stored
    - SCIM 2.0 provisioning for automated user lifecycle management
 
 **Multi-factor authentication (MFA)** is mandatory for all admin accounts and available as an opt-in for all users. Supported MFA methods: TOTP (authenticator apps), hardware security keys (WebAuthn/FIDO2), and SMS (fallback only, with rate limiting).
 
 #### Authorization
 
-MindLayer uses **Role-Based Access Control (RBAC)** with the following built-in roles:
+Orivory uses **Role-Based Access Control (RBAC)** with the following built-in roles:
 
 | Role | Permissions |
 |---|---|
@@ -117,7 +117,7 @@ Permissions are **deny-by-default**. Every API call and UI action is evaluated a
 
 #### Multi-Tenancy Isolation
 
-MindLayer is a multi-tenant SaaS application. Isolation between tenants is enforced at multiple layers:
+Orivory is a multi-tenant SaaS application. Isolation between tenants is enforced at multiple layers:
 
 - **Network isolation**: Tenant data is logically partitioned; shared infrastructure uses network segmentation with strict firewall rules
 - **Database isolation**: Each tenant's data resides in tenant-scoped database partitions; cross-tenant queries are architecturally impossible
@@ -174,13 +174,13 @@ Database queries are intercepted by a row-level security (RLS) layer that append
 
 #### What We Don't Collect
 
-MindLayer does **not** collect:
+Orivory does **not** collect:
 
 - Content of documents that users explicitly mark as "local only" (processed in-memory, never persisted)
 - LLM prompts or responses from third-party providers (we forward requests; providers handle their own logs per their privacy policies)
 - Keystrokes, screen content, or browser history
 - Data from third-party integrations unless the user has explicitly connected them
-- Financial or payment card data (processed and stored by our payment processor, not MindLayer)
+- Financial or payment card data (processed and stored by our payment processor, not Orivory)
 
 #### Data Minimization
 
@@ -226,7 +226,7 @@ When a user deletes data:
 Under GDPR Article 17, users have the right to request complete erasure of their personal data. To exercise this right:
 
 1. Submit a deletion request through **Settings → Privacy → Delete My Data** in the application
-2. For enterprise customers with a Data Processing Agreement (DPA): contact your account manager or email `privacy@mindlayer.ai`
+2. For enterprise customers with a Data Processing Agreement (DPA): contact your account manager or email `privacy@orivory.ai`
 3. We will confirm receipt within **72 hours** and complete deletion within **30 days**
 4. Backups containing the deleted data are purged within **90 days** of the deletion request
 
@@ -234,7 +234,7 @@ Under GDPR Article 17, users have the right to request complete erasure of their
 
 #### LLM Processing (Third-Party)
 
-MindLayer uses third-party LLM providers for answer generation. Data sent to LLM providers includes:
+Orivory uses third-party LLM providers for answer generation. Data sent to LLM providers includes:
 
 - The user's current query
 - Retrieved context chunks (sourced from the user's own indexed documents)
@@ -242,7 +242,7 @@ MindLayer uses third-party LLM providers for answer generation. Data sent to LLM
 
 **We do not send the full contents of the user's library to the LLM.** Only the relevant chunks retrieved by the vector search are included in the prompt.
 
-Data sent to LLM providers is transmitted over TLS 1.3 and processed under the provider's privacy terms. MindLayer maintains Data Processing Agreements with all LLM providers that include:
+Data sent to LLM providers is transmitted over TLS 1.3 and processed under the provider's privacy terms. Orivory maintains Data Processing Agreements with all LLM providers that include:
 
 - Prohibition on using submitted data for model training
 - Minimum 30-day data retention limits
@@ -259,7 +259,7 @@ Embeddings are generated using embedding models that convert text chunks into ve
 - Never shared with other users or third parties
 - Deleted when the source document is deleted
 
-The embedding model itself is either hosted by MindLayer or provided by a third-party embedding service. In both cases, the raw text chunks used to generate embeddings are not retained after the embedding vector is computed (within 24 hours).
+The embedding model itself is either hosted by Orivory or provided by a third-party embedding service. In both cases, the raw text chunks used to generate embeddings are not retained after the embedding vector is computed (within 24 hours).
 
 #### Chunk Processing
 
@@ -273,14 +273,14 @@ Users can configure chunking strategy per index. The original document structure
 
 #### Source Attribution
 
-Source attribution is the mechanism that allows MindLayer to cite the specific document and location from which each answer is derived:
+Source attribution is the mechanism that allows Orivory to cite the specific document and location from which each answer is derived:
 
 1. **Chunk-to-document mapping**: Each vector in the index is linked to its source document ID and chunk sequence number
 2. **Retrieval scoring**: During query processing, the top-k chunks are retrieved and scored; the scores determine which sources are cited in the response
 3. **Citation format**: Answers include inline citations linking to the source document, page, and chunk
 4. **Audit trail**: Citations are logged with the query ID for reproducibility and verification
 
-Source attribution serves both utility and trust functions: users can verify that MindLayer's answers are grounded in their actual documents, not hallucinated from training data.
+Source attribution serves both utility and trust functions: users can verify that Orivory's answers are grounded in their actual documents, not hallucinated from training data.
 
 ### 3.4 Data Portability
 
@@ -291,7 +291,7 @@ Users can export their data at any time in the following formats:
 | Data Type | Export Format(s) |
 |---|---|
 | Documents (uploaded files) | Original format; PDF, DOCX, TXT |
-| Documents (created within MindLayer) | Markdown, PDF |
+| Documents (created within Orivory) | Markdown, PDF |
 | Query history | JSON, CSV |
 | Index metadata | JSON |
 | Account information | JSON |
@@ -300,7 +300,7 @@ Exports are generated asynchronously and delivered via a time-limited, single-us
 
 #### Data Portability
 
-Under GDPR Article 20, users have the right to data portability. MindLayer provides:
+Under GDPR Article 20, users have the right to data portability. Orivory provides:
 
 - Full data export via the UI and API (`GET /api/v1/user/export`)
 - A machine-readable format (JSON) containing all user-created content and settings
@@ -324,7 +324,7 @@ Enterprise customers with DPA should coordinate deletion through their account m
 
 ### 4.1 GDPR Compliance
 
-MindLayer is committed to full compliance with the **General Data Protection Regulation (EU) 2016/679**.
+Orivory is committed to full compliance with the **General Data Protection Regulation (EU) 2016/679**.
 
 #### Data Subject Rights
 
@@ -333,30 +333,30 @@ MindLayer is committed to full compliance with the **General Data Protection Reg
 | Access (Art. 15) | Download your data via Settings → Privacy → Export My Data |
 | Rectification (Art. 16) | Edit profile information in Settings; contact support for document corrections |
 | Erasure (Art. 17) | Delete individual documents or your entire account via Settings |
-| Restriction (Art. 18) | Contact `privacy@mindlayer.ai` to restrict processing |
+| Restriction (Art. 18) | Contact `privacy@orivory.ai` to restrict processing |
 | Portability (Art. 20) | Export data in JSON format via the API or UI |
-| Objection (Art. 21) | Contact `privacy@mindlayer.ai` with your objection |
+| Objection (Art. 21) | Contact `privacy@orivory.ai` with your objection |
 
 #### Consent Management
 
 - Users provide explicit consent during account creation for the collection and processing of their data as described in the Privacy Policy
-- Consent is granular: users may use MindLayer without enabling optional features that require additional data collection
+- Consent is granular: users may use Orivory without enabling optional features that require additional data collection
 - Consent is logged with timestamp and version of the privacy policy at time of consent
 - Users may withdraw consent at any time; withdrawal does not affect processing already performed
 
 #### Data Processing Agreements
 
-GDPR requires a Data Processing Agreement (DPA) between the data controller (MindLayer) and data processors (sub-processors including cloud providers and LLM vendors). Enterprise customers may request a DPA by:
+GDPR requires a Data Processing Agreement (DPA) between the data controller (Orivory) and data processors (sub-processors including cloud providers and LLM vendors). Enterprise customers may request a DPA by:
 
 1. Contacting their account manager
-2. Submitting a request via `privacy@mindlayer.ai`
+2. Submitting a request via `privacy@orivory.ai`
 3. Using the DPA request form in the Enterprise admin console
 
 Our standard DPA includes sub-processor disclosure, processing limitations, data subject rights support, and breach notification obligations.
 
 ### 4.2 SOC 2 Readiness
 
-MindLayer is designed to meet **SOC 2 Type II** compliance requirements. The following controls are implemented and continuously monitored:
+Orivory is designed to meet **SOC 2 Type II** compliance requirements. The following controls are implemented and continuously monitored:
 
 #### Security Controls (Common Criteria)
 
@@ -394,11 +394,11 @@ MindLayer is designed to meet **SOC 2 Type II** compliance requirements. The fol
 | Output Accuracy | Confidence scoring on answers; source attribution verifies output groundedness |
 | Processing Completeness | End-to-end request tracing; no orphaned processing steps |
 
-**SOC 2 audit**: MindLayer engages an independent third-party auditor for annual SOC 2 Type II assessments. Enterprise customers can request a copy of the audit report under NDA.
+**SOC 2 audit**: Orivory engages an independent third-party auditor for annual SOC 2 Type II assessments. Enterprise customers can request a copy of the audit report under NDA.
 
 ### 4.3 HIPAA Readiness (Future)
 
-MindLayer is evaluating **HIPAA** compliance for customers who process Protected Health Information (PHI).
+Orivory is evaluating **HIPAA** compliance for customers who process Protected Health Information (PHI).
 
 #### PHI Handling (Planned)
 
@@ -414,13 +414,13 @@ When HIPAA readiness is achieved, the following additional controls will apply:
 
 #### BAA Requirements
 
-A Business Associate Agreement (BAA) will be required before any PHI can be processed in MindLayer. BAAs will be available to:
+A Business Associate Agreement (BAA) will be required before any PHI can be processed in Orivory. BAAs will be available to:
 
 - Healthcare providers with valid NPI numbers
 - Covered entities with documented HIPAA compliance programs
 - Business associates with existing BAAs with their covered entity customers
 
-**Note**: HIPAA readiness is currently on the roadmap. Customers with PHI requirements should contact `enterprise@mindlayer.ai` to discuss current capabilities and timeline.
+**Note**: HIPAA readiness is currently on the roadmap. Customers with PHI requirements should contact `enterprise@orivory.ai` to discuss current capabilities and timeline.
 
 ---
 
@@ -430,9 +430,9 @@ A Business Associate Agreement (BAA) will be required before any PHI can be proc
 
 #### Why It Matters for Trust
 
-Researchers cannot act on information they cannot verify. A legal brief citing a nonexistent case or a scientific summary citing a misread study has the potential to cause serious harm. Source attribution is MindLayer's primary mechanism for verifiable AI output:
+Researchers cannot act on information they cannot verify. A legal brief citing a nonexistent case or a scientific summary citing a misread study has the potential to cause serious harm. Source attribution is Orivory's primary mechanism for verifiable AI output:
 
-- Every factual claim in a MindLayer answer is traceable to a specific document and location
+- Every factual claim in a Orivory answer is traceable to a specific document and location
 - Users can click through to view the exact source text that supports the answer
 - Answers that cannot be grounded in retrieved sources are flagged as such
 
@@ -456,7 +456,7 @@ Source attribution reflects the retrieved context, not the model's reasoning pro
 
 #### Visible Uncertainty
 
-MindLayer communicates uncertainty rather than suppressing it:
+Orivory communicates uncertainty rather than suppressing it:
 
 - **Confidence scores**: Every answer includes a numerical confidence score (0–100%) based on the quality and relevance of retrieved context
 - **Confidence thresholds**: Answers below a configurable threshold (default: 60%) display a prominent uncertainty indicator
@@ -468,7 +468,7 @@ MindLayer communicates uncertainty rather than suppressing it:
 
 #### "I Don't Know" Responses
 
-MindLayer is configured to respond with "I couldn't find relevant information in your documents to answer this question" rather than generating an unsupported answer when:
+Orivory is configured to respond with "I couldn't find relevant information in your documents to answer this question" rather than generating an unsupported answer when:
 
 - No chunks exceed the retrieval relevance threshold
 - The query falls outside the indexed document corpus
@@ -490,7 +490,7 @@ Calibration reports are generated monthly and available via the admin console.
 
 #### Query History
 
-Every query submitted to MindLayer is logged with:
+Every query submitted to Orivory is logged with:
 
 - Timestamp (UTC)
 - User ID and tenant ID
@@ -538,7 +538,7 @@ Admin audit logs are retained for 24 months and are accessible only to designate
 
 - Use a strong, unique password (minimum 12 characters; use a password manager)
 - Enable MFA with an authenticator app or hardware security key
-- Never share your login credentials; MindLayer staff will never ask for your password
+- Never share your login credentials; Orivory staff will never ask for your password
 
 **Control document sharing.**
 
@@ -562,7 +562,7 @@ Admin audit logs are retained for 24 months and are accessible only to designate
 
 **Report security concerns.**
 
-- Report suspected phishing attempts to `security@mindlayer.ai`
+- Report suspected phishing attempts to `security@orivory.ai`
 - Report unexpected account behavior (emails you did not send, documents you did not upload) immediately
 - Enable security notifications in Settings → Security → Alert Preferences
 
@@ -611,7 +611,7 @@ Content-Type: application/json
 
 **Validate and sanitize inputs.**
 
-- All user-provided data passed to MindLayer APIs must be validated against expected types and formats
+- All user-provided data passed to Orivory APIs must be validated against expected types and formats
 - Document content should be scanned for embedded executable content before upload
 - URLs submitted for web scraping should be validated against allowlists if your application uses this feature
 
@@ -749,7 +749,7 @@ When a security incident is detected or suspected:
 
 | Capability | Description | Target |
 |---|---|---|
-| End-to-End Encryption | Client-side encryption for sensitive documents; MindLayer servers never see plaintext | Q2 2025 |
+| End-to-End Encryption | Client-side encryption for sensitive documents; Orivory servers never see plaintext | Q2 2025 |
 | Hardware Security Keys Enforced | Enterprise admins can mandate WebAuthn/FIDO2 hardware keys for all org members | Q2 2025 |
 | Enhanced Anomaly Detection | ML-based detection of unusual access patterns, impossible travel, bulk downloads | Q2 2025 |
 | Compliance Dashboard | Real-time view of security posture, access reviews, and policy compliance status | Q2 2025 |
@@ -760,7 +760,7 @@ When a security incident is detected or suspected:
 | Capability | Description | Target |
 |---|---|---|
 | HIPAA BAA Availability | Business Associate Agreements for healthcare customers processing PHI | Q3–Q4 2025 |
-| Self-Hosted LLM Option | Deploy MindLayer with a self-hosted LLM; all processing stays within user's infrastructure | Q3 2025 |
+| Self-Hosted LLM Option | Deploy Orivory with a self-hosted LLM; all processing stays within user's infrastructure | Q3 2025 |
 | Data Residency Controls | Enterprise customers select specific geographic regions for data storage and processing | Q4 2025 |
 | Granular Document ACLs | Per-document permissions beyond Owner/Editor/Viewer roles; field-level access control | Q4 2025 |
 | Penetration Testing Program | Public bug bounty program with defined scope and rewards | Q4 2025 |
@@ -773,11 +773,11 @@ When a security incident is detected or suspected:
 
 | Purpose | Contact |
 |---|---|
-| Security vulnerabilities | `security@mindlayer.ai` (PGP key available) |
-| Privacy and data requests | `privacy@mindlayer.ai` |
-| Enterprise sales and compliance | `enterprise@mindlayer.ai` |
-| General support | `support@mindlayer.ai` |
-| Incident reporting (urgent) | `security@mindlayer.ai` + Emergency hotline (Enterprise) |
+| Security vulnerabilities | `security@orivory.ai` (PGP key available) |
+| Privacy and data requests | `privacy@orivory.ai` |
+| Enterprise sales and compliance | `enterprise@orivory.ai` |
+| General support | `support@orivory.ai` |
+| Incident reporting (urgent) | `security@orivory.ai` + Emergency hotline (Enterprise) |
 
 ### Encryption Summary
 
@@ -801,6 +801,6 @@ When a security incident is detected or suspected:
 
 ---
 
-*MindLayer Security & Trust Guide v1.0 — Last updated: 2025. This document is reviewed quarterly and updated as capabilities evolve. Enterprise customers receive advance notice of material changes.*
+*Orivory Security & Trust Guide v1.0 — Last updated: 2025. This document is reviewed quarterly and updated as capabilities evolve. Enterprise customers receive advance notice of material changes.*
 
-*For questions about specific security controls or compliance requirements, contact `security@mindlayer.ai`.*
+*For questions about specific security controls or compliance requirements, contact `security@orivory.ai`.*

@@ -1,4 +1,4 @@
-"""Simple graph cluster detection for MindLayer.
+"""Simple graph cluster detection for Orivory.
 
 Phase 4 intentionally avoids external graph dependencies. Clusters are connected
 components over relation edges above a configurable weight threshold.
@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity, Relation
-from app.schemas.mindlayer import GraphCluster, GraphClustersResponse, GraphEdge, GraphNode
+from app.schemas.Orivory import GraphCluster, GraphClustersResponse, GraphEdge, GraphNode
 
 
 async def detect_clusters(

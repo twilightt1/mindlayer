@@ -1,4 +1,4 @@
-# MindLayer — Open Source AI Second Brain
+# Orivory — Open Source AI Second Brain
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python" alt="Python" />
@@ -8,14 +8,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/twilightt1/mindlayer/stargazers"><img src="https://img.shields.io/github/stars/twilightt1/mindlayer?style=social" alt="Stars"></a>
-  <a href="https://github.com/twilightt1/mindlayer/network/members"><img src="https://img.shields.io/github/forks/twilightt1/mindlayer?style=social" alt="Forks"></a>
-  <a href="https://github.com/twilightt1/mindlayer/issues"><img src="https://img.shields.io/github/issues/twilightt1/mindlayer" alt="Issues"></a>
+  <a href="https://github.com/twilightt1/orivory/stargazers"><img src="https://img.shields.io/github/stars/twilightt1/orivory?style=social" alt="Stars"></a>
+  <a href="https://github.com/twilightt1/orivory/network/members"><img src="https://img.shields.io/github/forks/twilightt1/orivory?style=social" alt="Forks"></a>
+  <a href="https://github.com/twilightt1/orivory/issues"><img src="https://img.shields.io/github/issues/twilightt1/orivory" alt="Issues"></a>
 </p>
 
 ---
 
-**MindLayer** is an open-source, self-hosted AI second brain. It captures what you read, write, clip, and think — and lets you ask questions and get cited answers from your own knowledge.
+**Orivory** is an open-source, self-hosted AI second brain. It captures what you read, write, clip, and think — and lets you ask questions and get cited answers from your own knowledge.
 
 **100% Self-Hosted** • **Your Data Stays Private** • **Fully Customizable**
 
@@ -47,8 +47,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/twilightt1/mindlayer.git
-cd mindlayer
+git clone https://github.com/twilightt1/orivory.git
+cd orivory
 ```
 
 ### 2. Start Infrastructure
@@ -118,7 +118,7 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) for API docs.
 ## 📁 Project Structure
 
 ```
-mindlayer/
+orivory/
 ├── app/                    # Main application
 │   ├── api/v1/            # API endpoints
 │   │   ├── auth.py        # Authentication
@@ -167,7 +167,7 @@ ruff check app/ tests/
 
 ## 🐛 Reporting Issues
 
-Found a bug? [Open an issue](https://github.com/twilightt1/mindlayer/issues/new) with:
+Found a bug? [Open an issue](https://github.com/twilightt1/orivory/issues/new) with:
 - Clear description
 - Steps to reproduce
 - Expected vs actual behavior
@@ -194,5 +194,5 @@ Built with:
 ---
 
 <p align="center">
-  <strong>MindLayer</strong> — Your AI Second Brain, Open Source Forever
+  <strong>Orivory</strong> — Your AI Second Brain, Open Source Forever
 </p>

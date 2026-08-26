@@ -1,8 +1,8 @@
-# MindLayer Portfolio Summary
+# Orivory Portfolio Summary
 
 ## One-liner
 
-**MindLayer** is a production-grade backend for a self-hosted personal AI second
+**Orivory** is a production-grade backend for a self-hosted personal AI second
 brain. It captures notes, articles, PDFs, clips, transcripts, and technical docs,
 then returns cited answers from the user's own memory using hybrid retrieval,
 reranking, LangGraph self-correction, and operator-grade diagnostics.
@@ -20,7 +20,7 @@ problems:
 
 ## Solution
 
-MindLayer provides a backend that lets a user upload or sync personal knowledge,
+Orivory provides a backend that lets a user upload or sync personal knowledge,
 ingest it asynchronously, and ask natural-language recall questions. The system
 retrieves relevant context with lexical + semantic search, reranks it, generates
 a grounded answer, streams the answer over SSE, and returns citations plus an
@@ -159,7 +159,7 @@ Then asks:
 - “How do I troubleshoot failed Stripe integration?”
 - “What should I check when Redis latency spikes?”
 
-MindLayer responds with a streamed, grounded answer and source snippets from the
+Orivory responds with a streamed, grounded answer and source snippets from the
 stored memories. Operators can also show `/api/v1/admin/diagnostics` to
 demonstrate production observability.
 

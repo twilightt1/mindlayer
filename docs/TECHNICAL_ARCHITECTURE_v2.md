@@ -1,4 +1,4 @@
-# MindLayer Technical Architecture v2.0
+# Orivory Technical Architecture v2.0
 
 **Document Version:** 2.0  
 **Last Updated:** 2026-01-19  
@@ -2206,7 +2206,7 @@ class WebResult(BaseModel):
 │     │    └── metrics.json                                          │   │
 │     │                                                              │   │
 │     │  Future: S3/MinIO for multi-node:                           │   │
-│     │  s3://mindlayer-models/calibration/{user_id}/               │   │
+│     │  s3://orivory-models/calibration/{user_id}/               │   │
 │     └──────────────────────────────────────────────────────────────┘   │
 │                                                                          │
 │  3. FINE-TUNED RETRIEVER MODELS                                        │
@@ -2798,6 +2798,6 @@ eventSource.addEventListener('done', (event) => {
 
 ---
 
-*Document generated for MindLayer v2.0 SOTA implementation planning.*
+*Document generated for Orivory v2.0 SOTA implementation planning.*
 *Maintained by: Engineering Team*
 *Next Review: Before Phase 1 kickoff*

@@ -4,7 +4,7 @@ When a ``Memory`` row is created or updated (manual API write, connector sync,
 or a future save-note node), two follow-up actions must happen so the memory
 is actually recallable:
 
-    1. Embed it into the ChromaDB ``mindlayer_memories`` collection.
+    1. Embed it into the ChromaDB ``Orivory_memories`` collection.
     2. Enqueue knowledge-graph extraction (entities + relations).
 
 Both are **best-effort**: the Postgres ``Memory`` row is the source of truth,

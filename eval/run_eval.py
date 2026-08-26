@@ -31,12 +31,12 @@ except Exception:  # pragma: no cover
     _HAS_RAGAS = False
 
 
-DEFAULT_DATASET = ROOT / "eval" / "mindlayer_eval_dataset.json"
+DEFAULT_DATASET = ROOT / "eval" / "Orivory_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "results"
 FALLBACK_ANSWER = (
     "I don't recall that in your memories. "
-    "This question appears to be outside what you've stored with MindLayer."
+    "This question appears to be outside what you've stored with Orivory."
 )
 
 
@@ -187,7 +187,7 @@ def run_evaluation(
     write_json_report(report, output_dir / "latest_report.json")
     write_markdown_report(report, output_dir / "latest_report.md")
 
-    print("MindLayer RAG Evaluation")
+    print("Orivory RAG Evaluation")
     print("=" * 30)
     print(f"Cases:             {summary['total_cases']}")
     print(f"Source hit rate:   {summary['source_hit_rate']:.1%}")
@@ -211,7 +211,7 @@ def run_evaluation(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run MindLayer RAG evaluation.")
+    parser = argparse.ArgumentParser(description="Run Orivory RAG evaluation.")
     parser.add_argument("--mode", choices=("offline", "live-api"), default="offline")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--sample-docs", type=Path, default=DEFAULT_SAMPLE_DOCS)

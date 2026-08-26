@@ -263,7 +263,7 @@ class MockRetriever:
         self.user_id = user_id
 
     async def recall(self, query, top_k=10, include_personal_context=True):
-        from app.schemas.mindlayer import (
+        from app.schemas.orivory import (
             MemoryResponse, MemoryWithScore, RecallResponse, RecallTrace,
         )
         m = MemoryResponse(
@@ -340,7 +340,7 @@ for mod_name in expected:
     check(f"module: {mod_name} importable", mod is not None)
 
 # Schema additions
-from app.schemas.mindlayer import RecallRequest, RecallResponse, MemoryWithScore, RecallTrace  # noqa: E402
+from app.schemas.orivory import RecallRequest, RecallResponse, MemoryWithScore, RecallTrace  # noqa: E402
 for cls in (RecallRequest, RecallResponse, MemoryWithScore, RecallTrace):
     check(f"schema: {cls.__name__} defined", cls is not None)
 

@@ -4,7 +4,7 @@ Part of the "unify the two worlds" work (roadmap P1.1). A document uploaded
 into one conversation only lives in that conversation's per-conversation
 vector index. To make it part of the user's second brain — recallable from
 *any* conversation — we also project it into the ``memories`` table and the
-shared ``mindlayer_memories`` vector collection.
+shared ``Orivory_memories`` vector collection.
 
 Granularity = **hybrid** (1 document + N passages):
 

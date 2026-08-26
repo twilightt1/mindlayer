@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers common MindLayer production-like operations.
+This runbook covers common Orivory production-like operations.
 
 ## Quick Status
 

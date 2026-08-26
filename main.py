@@ -1,5 +1,5 @@
 def main():
-    print("Hello from mindlayer!")
+    print("Hello from orivory!")
 
 
 if __name__ == "__main__":

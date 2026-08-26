@@ -1,4 +1,4 @@
-# MindLayer Technical Architecture v2.0
+# Orivory Technical Architecture v2.0
 
 **Document Version:** 2.0  
 **Last Updated:** 2026-01-19  
@@ -27,11 +27,11 @@
 
 ## 1. Executive Summary
 
-MindLayer is a RAG-native answer engine for researchers, enabling intelligent retrieval-augmented generation over personal knowledge bases. This document defines the technical architecture for v2.0, which introduces five state-of-the-art techniques to significantly improve answer accuracy, temporal reasoning, multi-hop question answering, continuous learning, and confidence calibration.
+Orivory is a RAG-native answer engine for researchers, enabling intelligent retrieval-augmented generation over personal knowledge bases. This document defines the technical architecture for v2.0, which introduces five state-of-the-art techniques to significantly improve answer accuracy, temporal reasoning, multi-hop question answering, continuous learning, and confidence calibration.
 
 ### 1.1 Business Context
 
-Researchers need to query their accumulated knowledge — papers, notes, documents — with natural questions. Traditional search fails because it doesn't understand semantic relationships, temporal context, or multi-step reasoning chains. MindLayer addresses this with an intelligent RAG pipeline that:
+Researchers need to query their accumulated knowledge — papers, notes, documents — with natural questions. Traditional search fails because it doesn't understand semantic relationships, temporal context, or multi-step reasoning chains. Orivory addresses this with an intelligent RAG pipeline that:
 
 - Retrieves relevant documents using hybrid search (BM25 + dense vectors)
 - Corrects retrieval failures by falling back to web search
@@ -4293,4 +4293,4 @@ CALIBRATION_INTERVAL_DAYS=7
 ---
 
 **Document End**  
-*For questions or clarifications, contact the MindLayer Architecture team.*
+*For questions or clarifications, contact the Orivory Architecture team.*

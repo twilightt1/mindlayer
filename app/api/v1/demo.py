@@ -44,7 +44,7 @@ async def seed_demo_data(
     """
     Seed demo memories for the current user.
     
-    Creates sample memories to demonstrate MindLayer features.
+    Creates sample memories to demonstrate Orivory features.
     Only works if user doesn't have any memories yet.
     """
     result = await seed_user_demo_data(current_user.id, db)

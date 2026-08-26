@@ -1,4 +1,4 @@
-"""Pydantic schemas for MindLayer Memory, Entity, Relation, Source."""
+"""Pydantic schemas for Orivory Memory, Entity, Relation, Source."""
 from __future__ import annotations
 
 from uuid import UUID

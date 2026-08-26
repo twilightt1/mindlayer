@@ -72,7 +72,7 @@ async def get_referral_code(
     code = await get_or_create_referral_code(db, current_user.id)
     return ReferralCodeResponse(
         code=code.code,
-        link=f"https://mindlayer.app/signup?ref={code.code}"
+        link=f"https://Orivory.app/signup?ref={code.code}"
     )
 
 
@@ -104,7 +104,7 @@ async def share_referral(
     return ShareReferralResponse(
         success=True,
         message=f"Referral link created for {body.email}",
-        referral_link=f"https://mindlayer.app/signup?ref={code.code}"
+        referral_link=f"https://Orivory.app/signup?ref={code.code}"
     )
 
 

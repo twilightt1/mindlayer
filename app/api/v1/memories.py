@@ -34,7 +34,7 @@ from app.retrieval.memory.write_back import (
     safe_upsert_to_chroma,
 )
 from app.utils.dependencies import get_current_verified_user
-from app.schemas.mindlayer import (
+from app.schemas.Orivory import (
     DigestResponse,
     MemoryCreate,
     MemoryUpdate,

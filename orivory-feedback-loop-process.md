@@ -1,4 +1,4 @@
-# MindLayer Feedback Loop Process v1.0
+# Orivory Feedback Loop Process v1.0
 
 **Document Status:** Active  
 **Last Updated:** June 2025  
@@ -11,7 +11,7 @@
 
 ### 1.1 Why Feedback Matters
 
-MindLayer's core value proposition is accuracy — researchers trust MindLayer to surface the right evidence from their corpus. That trust is earned and maintained through continuous improvement driven by user signal. Feedback is not a secondary feature; it is the primary mechanism by which MindLayer compounds its intelligence over time.
+Orivory's core value proposition is accuracy — researchers trust Orivory to surface the right evidence from their corpus. That trust is earned and maintained through continuous improvement driven by user signal. Feedback is not a secondary feature; it is the primary mechanism by which Orivory compounds its intelligence over time.
 
 Without an active feedback loop:
 
@@ -20,7 +20,7 @@ Without an active feedback loop:
 - Confidence scores drift from actual performance
 - User trust erodes silently
 
-With an active feedback loop, MindLayer transforms every user interaction into a training signal, creating a compounding advantage that competitors cannot replicate without equivalent engagement.
+With an active feedback loop, Orivory transforms every user interaction into a training signal, creating a compounding advantage that competitors cannot replicate without equivalent engagement.
 
 ### 1.2 The Learning Flywheel
 
@@ -69,7 +69,7 @@ The flywheel accelerates with volume. Every additional user interaction increase
 
 ### 1.3 Competitive Moat Through Feedback
 
-MindLayer's feedback infrastructure creates a **data network effect** that compounds over time:
+Orivory's feedback infrastructure creates a **data network effect** that compounds over time:
 
 | Feedback Volume | Competitive Advantage | Measurable Impact |
 |----------------|----------------------|-------------------|
@@ -86,7 +86,7 @@ Competitors can replicate the architecture but cannot replicate the accumulated 
 
 ### 2.1 User Feedback Points
 
-MindLayer captures feedback at four distinct interaction points, each targeting a different quality dimension:
+Orivory captures feedback at four distinct interaction points, each targeting a different quality dimension:
 
 #### 2.1.1 "Report Error" Button
 
@@ -412,7 +412,7 @@ Total feedback submitted
 
 ### 4.1 Eval Set Structure
 
-The MindLayer eval set is a curated collection of query-answer pairs with verifiable ground truth, used to measure and improve system performance.
+The Orivory eval set is a curated collection of query-answer pairs with verifiable ground truth, used to measure and improve system performance.
 
 ```json
 {
@@ -516,7 +516,7 @@ Before an eval item enters the active set:
 
 ### 5.1 Uncertainty Sampling
 
-Active learning focuses model improvement effort on cases where additional training would have the greatest impact. MindLayer uses a multi-signal uncertainty sampling strategy.
+Active learning focuses model improvement effort on cases where additional training would have the greatest impact. Orivory uses a multi-signal uncertainty sampling strategy.
 
 #### 5.1.1 Low Confidence + High Impact
 
@@ -590,7 +590,7 @@ Feedback patterns correlate with user retention:
 
 #### 5.3.1 Expert Review
 
-For domain-specific errors, MindLayer engages researchers with domain expertise:
+For domain-specific errors, Orivory engages researchers with domain expertise:
 
 **Expert Review Triggers:**
 - Errors in domains with <80% automatic classification accuracy
@@ -846,7 +846,7 @@ The most critical step: confirming that fixes actually worked.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  MindLayer Quality Dashboard — Live                         │
+│  Orivory Quality Dashboard — Live                         │
 │                                                             │
 │  Citation Accuracy    ████████░░  84.2%  (+2.1% W/W)       │
 │  Retrieval Prec@5    █████████░  78.6%  (+1.4% W/W)       │
@@ -989,7 +989,7 @@ The most critical step: confirming that fixes actually worked.
 
 | Function | Tool | Purpose |
 |---------|------|---------|
-| Feedback capture | MindLayer product UI | Inline and post-answer feedback collection |
+| Feedback capture | Orivory product UI | Inline and post-answer feedback collection |
 | Feedback storage | PostgreSQL + Redis | Structured feedback storage, real-time access |
 | Review queue | Custom internal dashboard | Queue management, labeling interface |
 | Automatic classification | Python ML pipeline | Hallucination detection, relevance scoring |
@@ -1155,7 +1155,7 @@ The most critical step: confirming that fixes actually worked.
 ### 10.4 Metrics Dashboard
 
 ```markdown
-# MindLayer Feedback Loop — Weekly Metrics Dashboard
+# Orivory Feedback Loop — Weekly Metrics Dashboard
 ## Week Ending: YYYY-MM-DD
 
 ## 1. Feedback Volume
@@ -1244,7 +1244,7 @@ Prepared: YYYY-MM-DD | Next review: YYYY-MM-DD
 
 ## Appendix C: Related Documents
 
-- MindLayer Eval Set Specification (`/docs/eval-set-spec.md`)
+- Orivory Eval Set Specification (`/docs/eval-set-spec.md`)
 - Reranker Fine-tuning Runbook (`/docs/reranker-finetune-runbook.md`)
 - A/B Testing Framework (`/docs/ab-testing-framework.md`)
 - Incident Response for P0 Errors (`/runbooks/p0-error-response.md`)

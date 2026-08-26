@@ -1,6 +1,6 @@
-# MindLayer — Next Phase Roadmap
+# Orivory — Next Phase Roadmap
 
-> **Purpose**: turn MindLayer from "a document-chat RAG with a memory layer
+> **Purpose**: turn Orivory from "a document-chat RAG with a memory layer
 > bolted on" into a product that genuinely behaves like a **Personal AI
 > Second Brain** — one brain, many ways to ask, that remembers across
 > conversations and gets smarter the more you use it.
@@ -46,7 +46,7 @@ only meet at answer-assembly time:
 | | Document-chat world | Personal Memory world (the "second brain") |
 | --- | --- | --- |
 | Stored in | `document_chunks` (scoped per conversation) | `memories` (scoped per user) |
-| Vector index | Chroma collection **per conversation** + in-process BM25 | Chroma collection **`mindlayer_memories`**, filtered by `user_id` |
+| Vector index | Chroma collection **per conversation** + in-process BM25 | Chroma collection **`Orivory_memories`**, filtered by `user_id` |
 | Enters via | file upload into one conversation | `POST /api/v1/memories` + connector sync |
 | Gets embedded | `tasks/ingestion_tasks.py::process_document` ✅ | **only the manual `POST` path** — see P0 |
 | Visible across conversations | ❌ no | ✅ yes (by design) |
@@ -94,7 +94,7 @@ brain exists to do.
 3. Keep it best-effort: wrap per-memory so one embedding failure does not fail
    the whole sync.
 
-**Acceptance**: sync a source with N items → `mindlayer_memories` Chroma
+**Acceptance**: sync a source with N items → `Orivory_memories` Chroma
 collection grows by N → `POST /api/v1/memories/recall` returns them.
 
 ### P0.2 — No reindex / backfill task 🔴
@@ -134,7 +134,7 @@ the same post-commit hook so the two indexes never diverge.
 
 ## P1 — Unify the two worlds + make capture a daily habit (≈1–2 weeks) 🟠
 
-This is where MindLayer stops being two apps and becomes one brain.
+This is where Orivory stops being two apps and becomes one brain.
 
 ### P1.1 — Documents should *become* memories 🟠
 
@@ -145,7 +145,7 @@ This is where MindLayer stops being two apps and becomes one brain.
 
 **Decision required** (see §Strategic decision): the recommended path is that
 finishing ingestion also creates a `Memory` (source_type `file_upload`)
-pointing back at the document, embedded into `mindlayer_memories`. Then upload
+pointing back at the document, embedded into `Orivory_memories`. Then upload
 = permanent recall, askable from anywhere.
 
 **Fix (recommended variant)**:

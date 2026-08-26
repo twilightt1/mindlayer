@@ -38,7 +38,7 @@ __all__ = [
     # Admin
     "AdminActionLog",
     "SystemSetting",
-    # MindLayer — second brain
+    # Orivory — second brain
     "Memory",
     "Entity",
     "Relation",

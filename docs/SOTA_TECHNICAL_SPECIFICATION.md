@@ -1,4 +1,4 @@
-# MindLayer SOTA Technical Specification v1.0
+# Orivory SOTA Technical Specification v1.0
 
 ## RAG-native Answer Engine for Researchers: State-of-the-Art Enhancement Plan
 
@@ -6,11 +6,11 @@
 
 ## 1. Executive Summary
 
-This document defines the technical specification for implementing five state-of-the-art (SOTA) retrieval and generation techniques into the MindLayer platform. These enhancements target significant improvements in answer accuracy, temporal reasoning, multi-hop question answering, continuous learning from user feedback, and confidence calibration.
+This document defines the technical specification for implementing five state-of-the-art (SOTA) retrieval and generation techniques into the Orivory platform. These enhancements target significant improvements in answer accuracy, temporal reasoning, multi-hop question answering, continuous learning from user feedback, and confidence calibration.
 
 ### 1.1 Current System Baseline
 
-MindLayer currently operates with:
+Orivory currently operates with:
 - **11-node LangGraph workflow** for answer generation
 - **Hybrid retrieval**: BM25 + Vector search with Reciprocal Rank Fusion (RRF)
 - **Jina-based reranking** for top-k document selection
@@ -63,7 +63,7 @@ Low Cost        | Calibration (P0)| Continual (P2)   | -
 - Decompose-then-recompose algorithm filters key information from noisy documents
 - **36.6% accuracy improvement** on PubHealth benchmark over naive RAG
 
-**Why It Matters for MindLayer:**
+**Why It Matters for Orivory:**
 Researchers frequently ask questions where the uploaded documents are insufficient. Current system retries retrieval up to 3 times using the same strategy. CRAG provides a principled fallback to external search and intelligent document refinement.
 
 ### 2.2 Implementation Design
@@ -345,7 +345,7 @@ class Settings(BaseSettings):
 - Time-aware retrieval combines relevance with recency weighting
 - Temporal reasoning enables "On March 15, you concluded..." style answers
 
-**Why It Matters for MindLayer:**
+**Why It Matters for Orivory:**
 Researchers often ask questions like "What did I conclude about X last quarter?" or "What was the status of Y in January?" Current vector search ignores temporal ordering entirely.
 
 ### 3.2 Implementation Design
@@ -759,7 +759,7 @@ def upgrade():
 - **10x efficiency improvement** (200 chunks → 20 chunks equivalent)
 - Achieves comparable recall with 10x less computation
 
-**Why It Matters for MindLayer:**
+**Why It Matters for Orivory:**
 Complex research questions often require reasoning across multiple pieces of information: "What is the relationship between X and Y, given Z?" Current single-pass retrieval misses these connections.
 
 ### 4.2 Implementation Design
@@ -1195,7 +1195,7 @@ app/
 - Active learning: prioritize uncertain predictions
 - Retrain reranker on failure cases (A/B tested)
 
-**Why It Matters for MindLayer:**
+**Why It Matters for Orivory:**
 Current system has no mechanism to learn from user corrections. A document that consistently fails to answer certain questions could be deprioritized or rewritten.
 
 ### 5.2 Implementation Design
@@ -1691,7 +1691,7 @@ app/
 - Adjust raw model confidence to calibrated confidence
 - Display calibrated confidence in UI
 
-**Why It Matters for MindLayer:**
+**Why It Matters for Orivory:**
 Raw model confidence is often poorly calibrated (e.g., 78% confidence but only 60% actual accuracy). Researchers need reliable uncertainty estimates to know when to trust answers.
 
 ### 6.2 Implementation Design
@@ -2482,4 +2482,4 @@ class Settings(BaseSettings):
 
 *Document Version: 1.0*
 *Last Updated: 2024*
-*Authors: MindLayer Engineering Team*
+*Authors: Orivory Engineering Team*

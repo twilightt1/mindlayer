@@ -1,7 +1,7 @@
 """
 Phase 3 — ChromaDB vector store for the personal Memory collection.
 
-A single shared collection ``mindlayer_memories`` is partitioned by
+A single shared collection ``Orivory_memories`` is partitioned by
 ``user_id`` via ChromaDB ``where={...}`` filter. We keep one collection
 (not one per user) to avoid expensive create/destroy churn; the
 ``user_id`` filter is the security boundary.
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-COLLECTION_NAME = "mindlayer_memories"
+COLLECTION_NAME = "Orivory_memories"
 
 _async_client: chromadb.AsyncHttpClient | None = None
 _sync_client: chromadb.HttpClient | None = None

@@ -21,7 +21,7 @@ from app.models.user import User
 from app.models.memory import Memory
 from app.models.entity import Entity, Relation, MemoryEntity
 from app.utils.dependencies import get_current_verified_user
-from app.schemas.mindlayer import (
+from app.schemas.Orivory import (
     EntityCreate,
     EntityResponse,
     EntityListResponse,

@@ -1,5 +1,5 @@
 """
-Entity / Relation models for MindLayer's knowledge graph.
+Entity / Relation models for Orivory's knowledge graph.
 
 An "entity" is a person, project, topic, concept, or date that
 appears across the user's memories. Examples: "Mom", "Project Atlas",

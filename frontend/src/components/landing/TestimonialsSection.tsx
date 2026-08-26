@@ -9,7 +9,7 @@ const testimonials = [
     name: "Sarah Chen",
     role: "Head of Product",
     company: "Stripe",
-    quote: "MindLayer has transformed how our team discovers information. What used to take hours now takes minutes.",
+    quote: "Orivory has transformed how our team discovers information. What used to take hours now takes minutes.",
   },
   {
     name: "Marcus Johnson",

@@ -1,6 +1,6 @@
 # Security Checklist
 
-Use this checklist before deploying MindLayer to a public environment.
+Use this checklist before deploying Orivory to a public environment.
 
 Legend:
 

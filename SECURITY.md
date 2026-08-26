@@ -14,7 +14,7 @@ If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue
 2. Send a detailed report to the maintainers via:
-   - GitHub [Security Advisories](https://github.com/twilightt1/mindlayer/security/advisories/new)
+   - GitHub [Security Advisories](https://github.com/twilightt1/orivory/security/advisories/new)
    - Or contact directly (if known)
 
 3. Include in your report:
@@ -32,7 +32,7 @@ If you discover a security vulnerability, please report it responsibly:
 
 ## Security Best Practices
 
-When deploying MindLayer:
+When deploying Orivory:
 
 ### 🔐 Authentication
 - Use strong JWT secrets (min 32 characters)
@@ -64,4 +64,4 @@ When deploying MindLayer:
 
 ---
 
-Thank you for helping keep MindLayer secure! 🔒
+Thank you for helping keep Orivory secure! 🔒

@@ -1,5 +1,5 @@
 """
-Feedback model for MindLayer.
+Feedback model for Orivory.
 
 Stores user feedback on RAG answers for continuous improvement.
 """

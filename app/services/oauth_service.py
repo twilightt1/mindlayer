@@ -1,4 +1,4 @@
-"""Google OAuth 2.0 via Authlib + token refresh for MindLayer ingestion."""
+"""Google OAuth 2.0 via Authlib + token refresh for Orivory ingestion."""
 import time
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client

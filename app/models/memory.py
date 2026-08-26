@@ -1,5 +1,5 @@
 """
-Memory model for MindLayer.
+Memory model for Orivory.
 
 A "memory" is a single piece of knowledge captured into the user's
 second brain. Memories can come from many sources (file upload, web
@@ -14,7 +14,7 @@ Design notes:
     - `salience` is a float in [0, 1] that the system can update over
       time based on usage / recency. Used for ranking.
     - `captured_at` is the original event time (e.g. the email date,
-      the file mtime). `indexed_at` is when MindLayer first stored it.
+      the file mtime). `indexed_at` is when Orivory first stored it.
 """
 from __future__ import annotations
 
