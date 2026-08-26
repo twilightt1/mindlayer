@@ -38,10 +38,10 @@ Orion Mind is an open-source, self-hosted AI second brain built with FastAPI, La
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Team workspaces | High | Pending |
-| Enterprise SSO | High | Pending |
-| Permissions system | High | Pending |
-| Audit logging | Medium | Pending |
+| Team workspaces | High | ✅ Done |
+| Enterprise SSO | High | 🔄 Partial |
+| Permissions system | High | ✅ Done |
+| Audit logging | Medium | ✅ Done |
 
 ### Week 49-52: Monetization
 
