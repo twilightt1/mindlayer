@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import auth, users, chat, admin, system_settings
 from app.api.v1 import memories, entities, sources, insights, discovery, workspaces
+from app.api.v1 import demo
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -20,3 +21,6 @@ api_router.include_router(sources.router)
 api_router.include_router(insights.router)      # /insights - Insight Cards
 api_router.include_router(discovery.router)     # /discovery - Multi-hop Discovery
 api_router.include_router(workspaces.router)    # /workspaces - Team Knowledge Base
+
+# Onboarding & Demo
+api_router.include_router(demo.router)         # /demo - Demo data for new users
