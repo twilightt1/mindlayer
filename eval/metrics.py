@@ -7,10 +7,15 @@ from typing import Any
 FALLBACK_MARKERS = (
     "i don't know",
     "i do not know",
+    "i don't recall",
+    "don't recall",
     "không tìm thấy",
     "không có thông tin",
     "outside the available support documentation",
     "not covered by the orivory knowledge base",
+    "outside what you've stored with",
+    "don't have information",
+    "cannot answer",
 )
 
 CITATION_PATTERNS = (

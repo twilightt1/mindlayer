@@ -32,7 +32,7 @@ If you discover a security vulnerability, please report it **responsibly**:
 
 ## 🔒 Security Best Practices
 
-When deploying Orion Mind:
+When deploying Orivory:
 
 ### Authentication
 - Use strong JWT secrets (min 32 characters)
@@ -77,4 +77,4 @@ When deploying Orion Mind:
 
 ---
 
-Thank you for helping keep Orion Mind secure! 🔒
+Thank you for helping keep Orivory secure! 🔒

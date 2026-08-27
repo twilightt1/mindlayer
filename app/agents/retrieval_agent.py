@@ -108,6 +108,13 @@ async def retrieval_agent(state: AgentState) -> AgentState:
     vector_tasks = [_vector(q) for q in queries]
     vector_results = await asyncio.gather(*vector_tasks, return_exceptions=True)
     
+    # Flatten vector results early so HyDE can append to it
+    flattened_vector_results: list[dict] = []
+    for res in vector_results:
+        if isinstance(res, list) and res:
+            flattened_vector_results.extend(res)
+            all_result_lists.append(res)
+    
     # ── HyDE Enhancement ────────────────────────────────────────────────────
     # If HyDE is enabled and we have a hypothetical document, use it for
     # additional retrieval to capture documents that match the "ideal answer" pattern
@@ -132,11 +139,6 @@ async def retrieval_agent(state: AgentState) -> AgentState:
                 "hyde_results_added": sum(1 for r in hyde_results if isinstance(r, list)),
             }
     # ── End HyDE Enhancement ───────────────────────────────────────────────
-    flattened_vector_results: list[dict] = []
-    for res in vector_results:
-        if isinstance(res, list) and res:
-            flattened_vector_results.extend(res)
-            all_result_lists.append(res)
     state["vector_results"] = flattened_vector_results
     timing["vector_ms"] = _elapsed_ms(vector_start)
 

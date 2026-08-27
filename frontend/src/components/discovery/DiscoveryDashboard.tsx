@@ -31,7 +31,7 @@ import {
 } from "@/lib/api/discovery";
 import { BentoGrid, BentoCard } from "@/components/ui/bento-grid";
 import { Timeline } from "@/components/ui/timeline";
-import { Spotlight } from "@/components/ui/spotlight";
+import { SpotlightCard } from "@/components/ui/Spotlight";
 import { StatCard } from "@/components/ui/stats";
 import { PageSkeleton } from "@/components/ui/skeleton";
 
@@ -172,7 +172,7 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <Spotlight className="rounded-2xl p-6">
+              <SpotlightCard className="rounded-2xl p-6">
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-4">
                     <Map className="w-5 h-5 text-primary" />
@@ -199,7 +199,7 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
                     </div>
                   )}
                 </div>
-              </Spotlight>
+              </SpotlightCard>
             </motion.div>
           ) : currentStep?.is_complete ? (
             <motion.div

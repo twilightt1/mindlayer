@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/components/auth";
 
 export type AnalyticsEvent = {
   name: string;

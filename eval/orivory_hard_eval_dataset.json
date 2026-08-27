@@ -1,0 +1,272 @@
+[
+  {
+    "id": "hard_001",
+    "query": "What changed between version 2.2.0 and 2.3.0?",
+    "category": "multi_hop",
+    "expected_sources": ["product_release_notes.md"],
+    "expected_keywords": ["2.2.0", "2.3.0", "Celery", "MinIO", "ChromaDB", "BM25", "Hybrid Retrieval"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "comparative_temporal",
+    "notes": "Requires synthesizing info from two different version sections"
+  },
+  {
+    "id": "hard_002",
+    "query": "If my payment fails, how long do I have before I can't upload new documents?",
+    "category": "temporal_reasoning",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["7-day grace period", "payment fails", "cannot upload", "new documents"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "implicative",
+    "notes": "Must infer from '7-day grace period' + 'admins cannot upload new documents'"
+  },
+  {
+    "id": "hard_003",
+    "query": "What's the fastest way to diagnose why my vector search returns no results?",
+    "category": "procedural",
+    "expected_sources": ["incident_response_runbook.md"],
+    "expected_keywords": ["ChromaDB", "empty results", "ready", "BM25", "vector-only failures"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "procedural_chain",
+    "notes": "Multiple step diagnostic procedure"
+  },
+  {
+    "id": "hard_004",
+    "query": "My 401 error started after I rotated my API key. What should I check first?",
+    "category": "cross_doc_reasoning",
+    "expected_sources": ["api_authentication_guide.md", "incident_response_runbook.md"],
+    "expected_keywords": ["API key", "401", "rotation", "grace period", "10 minutes"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "cross_document",
+    "notes": "Requires combining info from API auth + incident docs"
+  },
+  {
+    "id": "hard_005",
+    "query": "What's the difference between rate limits for Starter and Pro workspaces?",
+    "category": "comparative",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["60 requests per minute", "300 requests per minute", "Starter", "Pro"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "comparative",
+    "notes": "Comparative query - should retrieve both plan limits"
+  },
+  {
+    "id": "hard_006",
+    "query": "Can I use OAuth with Slack and also get SSO through SAML?",
+    "category": "multi_feature",
+    "expected_sources": ["integration_guide.md", "billing_and_plans_faq.md"],
+    "expected_keywords": ["Slack", "OAuth", "SSO", "SAML", "OIDC", "Enterprise"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "multi_feature",
+    "notes": "Requires understanding that OAuth != SSO, and SSO requires Enterprise"
+  },
+  {
+    "id": "hard_007",
+    "query": "How many times will Orivory retry a webhook if my server is down?",
+    "category": "numerical",
+    "expected_sources": ["webhook_troubleshooting.md"],
+    "expected_keywords": ["8 times", "24 hours", "exponential backoff"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "numerical_lookup",
+    "notes": "Specific numerical value in docs"
+  },
+  {
+    "id": "hard_008",
+    "query": "What happens to my Celery workers if Redis latency spikes during peak ingestion?",
+    "category": "scenario_based",
+    "expected_sources": ["incident_response_runbook.md"],
+    "expected_keywords": ["Redis latency", "worker queue", "restart workers", "Celery queues", "critical ingestion"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "scenario_resolution",
+    "notes": "Scenario-based query requiring procedural knowledge"
+  },
+  {
+    "id": "hard_009",
+    "query": "I want to upgrade from Starter to Enterprise. When does this take effect?",
+    "category": "policy_lookup",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["upgrades", "take effect immediately", "prorates"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "policy_lookup",
+    "notes": "Policy question - upgrade timing"
+  },
+  {
+    "id": "hard_010",
+    "query": "What auth header should I use and what's the exact format?",
+    "category": "exact_spec",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["Authorization", "Bearer", "Bearer <access_token>"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "exact_specification",
+    "notes": "Requires exact header format including Bearer scheme"
+  },
+  {
+    "id": "hard_011",
+    "query": "After rotating my key, how long before the old one is completely invalid?",
+    "category": "temporal_policy",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["10 minutes", "grace period", "revoke"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "temporal_policy",
+    "notes": "Must extract specific time value from rotation docs"
+  },
+  {
+    "id": "hard_012",
+    "query": "My Stripe integration is broken and billing shows wrong plan. What's the root cause?",
+    "category": "troubleshooting",
+    "expected_sources": ["integration_guide.md"],
+    "expected_keywords": ["Stripe", "sync fails", "stale plan data", "billing"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "troubleshooting_chain",
+    "notes": "Troubleshooting chain - must identify cause from symptoms"
+  },
+  {
+    "id": "hard_013",
+    "query": "Which version introduced the feature that lets me see why my retrieval returned those documents?",
+    "category": "feature_tracking",
+    "expected_sources": ["product_release_notes.md"],
+    "expected_keywords": ["2.1.0", "Agent Trace", "retrieval diagnostics", "BM25", "fusion", "reranking"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "feature_to_version",
+    "notes": "Reverse lookup: feature -> version number"
+  },
+  {
+    "id": "hard_014",
+    "query": "How should I verify that a webhook actually came from Orivory?",
+    "category": "security",
+    "expected_sources": ["webhook_troubleshooting.md"],
+    "expected_keywords": ["X-Orivory-Signature", "HMAC SHA-256", "webhook secret", "signature"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "security_implementation",
+    "notes": "Security implementation question"
+  },
+  {
+    "id": "hard_015",
+    "query": "If I'm on the Pro plan, what happens to my API access if I downgrade to Starter?",
+    "category": "implicative_cross",
+    "expected_sources": ["billing_and_plans_faq.md"],
+    "expected_keywords": ["downgrade", "end of billing cycle", "exceeds limits", "archive"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "implicative_chain",
+    "notes": "Must infer downgrade consequences from policy docs"
+  },
+  {
+    "id": "hard_016",
+    "query": "What permissions does my Slack bot need to cite answers in channels?",
+    "category": "permission_spec",
+    "expected_sources": ["integration_guide.md"],
+    "expected_keywords": ["Read messages", "citation previews", "Slack bot", "Post answers"],
+    "should_fallback": false,
+    "difficulty": "medium",
+    "reasoning_type": "permission_specification",
+    "notes": "Specific permission requirements"
+  },
+  {
+    "id": "hard_017",
+    "query": "Compare the webhook retry behavior with the Celery retry behavior - which retries more aggressively?",
+    "category": "comparative_cross",
+    "expected_sources": ["webhook_troubleshooting.md", "product_release_notes.md"],
+    "expected_keywords": ["webhook", "8 times", "24 hours", "Celery", "retry"],
+    "should_fallback": false,
+    "difficulty": "very_hard",
+    "reasoning_type": "comparative_analysis",
+    "notes": "Cross-document comparative analysis"
+  },
+  {
+    "id": "hard_018",
+    "query": "What's the complete step-by-step process after generating a new API key?",
+    "category": "procedural_complete",
+    "expected_sources": ["api_authentication_guide.md"],
+    "expected_keywords": ["Generate", "secret manager", "restart", "confirm", "revoke", "10-minute"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "procedural_sequence",
+    "notes": "Must extract and order all steps from rotation guide"
+  },
+  {
+    "id": "hard_019",
+    "query": "If I'm using ChromaDB with BM25, what's the fusion strategy called?",
+    "category": "technical_deep",
+    "expected_sources": ["product_release_notes.md"],
+    "expected_keywords": ["Reciprocal Rank Fusion", "RRF", "ChromaDB", "BM25", "hybrid"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "technical_deep_dive",
+    "notes": "Technical deep dive - specific algorithm name"
+  },
+  {
+    "id": "hard_020",
+    "query": "What should I do if my SEV-1 incident involves authentication and data isolation?",
+    "category": "escalation",
+    "expected_sources": ["incident_response_runbook.md"],
+    "expected_keywords": ["SEV-1", "escalate", "engineering", "authentication", "data isolation"],
+    "should_fallback": false,
+    "difficulty": "hard",
+    "reasoning_type": "escalation_protocol",
+    "notes": "Multi-factor escalation scenario"
+  },
+  {
+    "id": "fallback_001",
+    "query": "How do I bake a chocolate cake?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true,
+    "difficulty": "easy",
+    "reasoning_type": "irrelevant"
+  },
+  {
+    "id": "fallback_002",
+    "query": "What is the capital of France?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true,
+    "difficulty": "easy",
+    "reasoning_type": "irrelevant"
+  },
+  {
+    "id": "fallback_003",
+    "query": "Write me a Python function to sort a list",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true,
+    "difficulty": "easy",
+    "reasoning_type": "irrelevant"
+  },
+  {
+    "id": "fallback_004",
+    "query": "Should I sell my stocks today?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true,
+    "difficulty": "easy",
+    "reasoning_type": "irrelevant"
+  },
+  {
+    "id": "fallback_005",
+    "query": "What's the best restaurant in Ho Chi Minh City?",
+    "category": "out_of_scope",
+    "expected_sources": [],
+    "expected_keywords": [],
+    "should_fallback": true,
+    "difficulty": "easy",
+    "reasoning_type": "irrelevant"
+  }
+]

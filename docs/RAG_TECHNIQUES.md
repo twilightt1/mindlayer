@@ -16,7 +16,7 @@ of both.
 **Where.**
 - BM25: [`app/retrieval/bm25_retriever.py`](app/retrieval/bm25_retriever.py)
 - Dense: [`app/retrieval/vector_store.py`](app/retrieval/vector_store.py)
-- RRF: [`app/retrieval/rrf.py`](app/retrieval/rrf.py)
+- RRF: [`app/retrieval/hybrid_retriever.py`](app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
 
 **Trade-off.** Slightly higher latency than dense-only (two retrievers +
 fusion), but ~30% recall improvement on Vietnamese technical terms
@@ -36,7 +36,7 @@ score(d) = Σ_i  1 / (k + rank_i(d))     # k = 60 (Cormack et al.)
 calibration between retrievers (BM25 scores ≠ cosine scores). It also
 handles "the result only appears in one list" gracefully.
 
-**Where.** [`app/retrieval/rrf.py`](app/retrieval/rrf.py)
+**Where.** [`app/retrieval/hybrid_retriever.py`](app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
 
 **Test.** `tests/rag/test_rrf.py` — covers single-list inputs, equal rank, and
 overlapping docs.

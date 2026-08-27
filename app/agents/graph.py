@@ -1,6 +1,10 @@
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.state import CompiledStateGraph
 
+import logging
+
+log = logging.getLogger(__name__)
+
 from app.agents.answer_agent import answer_agent
 from app.agents.context_merge_agent import context_merge_agent
 from app.agents.crag_agent import crag_agent
@@ -27,6 +31,7 @@ from app.agents.routing import (
 from app.agents.state import AgentState
 from app.memory.temporal_encoder import temporal_agent
 from app.retrieval.hyde_agent import hyde_agent
+from app.agents.multihop_agent import multihop_agent, multihop_synthesis
 
 # Re-exports for backward compatibility. Pure routing helpers live in
 # ``app.agents.routing`` so they can be unit-tested without importing the
@@ -95,6 +100,8 @@ def build_graph() -> CompiledStateGraph:
     g.add_node("temporal", temporal_agent)  # Temporal: parse time-aware queries
     g.add_node("hyde", hyde_agent)  # HyDE: generate hypothetical document
     g.add_node("retrieval", retrieval_agent)
+    g.add_node("multihop", multihop_agent)  # Multi-hop: detect & decompose multi-hop queries
+    g.add_node("multihop_synthesize", multihop_synthesis)  # Multi-hop: synthesize results
     g.add_node("merge_context", context_merge_agent)
     g.add_node("grade_docs", evaluator_agent)
     g.add_node("crag", crag_agent)  # Corrective-RAG: self-critique + web fallback
@@ -130,7 +137,41 @@ def build_graph() -> CompiledStateGraph:
     g.add_edge("graph_context", "temporal")  # Temporal: parse time-aware queries
     g.add_edge("temporal", "hyde")  # HyDE generates hypothetical doc before retrieval
     g.add_edge("hyde", "retrieval")
-    g.add_edge("retrieval", "merge_context")
+    # Multi-hop reasoning: after retrieval, detect if multi-hop and loop if needed
+    g.add_edge("retrieval", "multihop")
+
+    def route_after_multihop(state: AgentState) -> str:
+        """
+        Route after multi-hop detection: loop for more hops or proceed to synthesis.
+        
+        Safeguards against infinite loops by checking hop count against MAX_MULTIHOP_HOPS.
+        """
+        from app.config import settings
+        
+        # Get current hop count from trace
+        multihop_trace = state.get("multihop_trace", {})
+        current_hops = multihop_trace.get("hop_count", 0)
+        
+        # Check if we're exceeding max hops
+        if state.get("multihop_pending") and current_hops >= settings.MULTIHOP_MAX_HOPS:
+            log.warning(f"Multi-hop: Reached max hops ({settings.MULTIHOP_MAX_HOPS}), forcing completion")
+            state["multihop_pending"] = False
+            state["multihop_trace"]["force_completed"] = True
+            return "multihop_synthesis"
+        
+        if state.get("multihop_pending"):
+            return "retrieval"  # Loop back for next hop
+        return "multihop_synthesis"  # All hops done, synthesize
+
+    g.add_conditional_edges(
+        "multihop",
+        route_after_multihop,
+        {
+            "retrieval": "retrieval",  # Loop back for next hop
+            "multihop_synthesis": "multihop_synthesis",  # Synthesize results
+        },
+    )
+    g.add_edge("multihop_synthesis", "merge_context")
     g.add_edge("merge_context", "grade_docs")
     g.add_conditional_edges(
         "grade_docs",
