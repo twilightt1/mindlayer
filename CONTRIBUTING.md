@@ -1,6 +1,6 @@
-# Contributing to Orion Mind
+# Contributing to Orivory
 
-Thank you for your interest in contributing to Orion Mind! This guide will help you get started.
+Thank you for your interest in contributing to Orivory! This guide will help you get started.
 
 ---
 
@@ -186,7 +186,7 @@ By participating, you agree to maintain a welcoming and respectful environment f
 
 <div align="center">
 
-**Thank you for contributing to Orion Mind!** 🚀
+**Thank you for contributing to Orivory!** 🚀
 
 *Your AI Second Brain from the Stars* ⭐🐺
 

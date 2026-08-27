@@ -30,15 +30,15 @@ class Settings(BaseSettings):
     API_BASE_URL: str = "http://localhost:8000"
 
     # ── App identity ──────────────────────────────────────────────────────────────
-    # Orivory — Personal AI Second Brain
-    APP_NAME: str = "Orivory"
+    # MindLayer — Personal AI Second Brain
+    APP_NAME: str = "MindLayer"
     APP_TAGLINE: str = "Personal AI Second Brain"
-    CONTACT_EMAIL: str = "hello@orivory.local"
+    CONTACT_EMAIL: str = "hello@mindlayer.local"
 
     # ── Email ─────────────────────────────────────────────────────────────────────
     SENDGRID_API_KEY: str = ""
-    EMAIL_FROM: str = "noreply@orivory.local"
-    EMAIL_FROM_NAME: str = "Orivory"
+    EMAIL_FROM: str = "noreply@mindlayer.local"
+    EMAIL_FROM_NAME: str = "MindLayer"
     # When SendGrid is not configured, emails are mocked. By default we log
     # only metadata (recipient, subject, body length) to avoid leaking OTP /
     # reset tokens into stdout. Set to True in development to log the full

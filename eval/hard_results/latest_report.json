@@ -1,0 +1,747 @@
+{
+  "generated_at": "2026-08-26T18:43:57.161909+00:00",
+  "metadata": {
+    "dataset": "eval\\orivory_hard_eval_dataset.json",
+    "sample_docs": "sample_docs",
+    "top_k": 5,
+    "mode": "offline"
+  },
+  "summary": {
+    "total_cases": 25,
+    "source_hit_rate": 1.0,
+    "keyword_coverage": 1.0,
+    "citation_rate": 0.8,
+    "fallback_accuracy": 1.0,
+    "avg_latency_ms": 0.8082359997206368,
+    "hallucination_flag_rate": 0.0,
+    "correction_rate": 0.0,
+    "passed_cases": 25,
+    "failed_cases": 0
+  },
+  "results": [
+    {
+      "id": "hard_001",
+      "query": "What changed between version 2.2.0 and 2.3.0?",
+      "category": "multi_hop",
+      "expected_sources": [
+        "product_release_notes.md"
+      ],
+      "returned_sources": [
+        "product_release_notes.md",
+        "demo_questions.md",
+        "incident_response_runbook.md",
+        "api_authentication_guide.md",
+        "billing_and_plans_faq.md"
+      ],
+      "expected_keywords": [
+        "2.2.0",
+        "2.3.0",
+        "Celery",
+        "MinIO",
+        "ChromaDB",
+        "BM25",
+        "Hybrid Retrieval"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 2.2.0, 2.3.0, Celery, MinIO, ChromaDB. # Product Release Notes These release notes describe recent Orivory product changes that support agents may need to reference. ## Version 2.4.0 — SSO and Audit Logs Released on 2026-04-15. New features: - Enterprise SAML and OIDC Single Sign-On. - Admin audit logs for user, quota, and document changes. - OAuth redirect exchange codes to avoid exposing tokens in URLs. - Configurable CORS allowed origins. ## Version 2.3.0 — Hybrid Retrieval Release [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.2979999955859967,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_002",
+      "query": "If my payment fails, how long do I have before I can't upload new documents?",
+      "category": "temporal_reasoning",
+      "expected_sources": [
+        "billing_and_plans_faq.md"
+      ],
+      "returned_sources": [
+        "billing_and_plans_faq.md",
+        "api_authentication_guide.md",
+        "demo_questions.md",
+        "integration_guide.md",
+        "product_release_notes.md"
+      ],
+      "expected_keywords": [
+        "7-day grace period",
+        "payment fails",
+        "cannot upload",
+        "new documents"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 7-day grace period, payment fails, cannot upload, new documents. # Billing and Plans FAQ This FAQ explains Orivory subscription plans, limits, billing behavior, and upgrade rules for a personal self-hosted workspace. ## Plans Orivory has three plans: | Plan | Monthly conversations | Documents | SSO | Webhooks | | --- | ---: | ---: | --- | --- | | Starter | 1,000 | 100 | No | Basic | | Pro | 10,000 | 2,000 | No | Advanced | | Enterprise | Custom | Custom | Yes | Advanced | ## SSO Availability Single Sign-On is  [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9400999988429248,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_003",
+      "query": "What's the fastest way to diagnose why my vector search returns no results?",
+      "category": "procedural",
+      "expected_sources": [
+        "incident_response_runbook.md"
+      ],
+      "returned_sources": [
+        "incident_response_runbook.md",
+        "product_release_notes.md",
+        "integration_guide.md",
+        "demo_questions.md",
+        "webhook_troubleshooting.md"
+      ],
+      "expected_keywords": [
+        "ChromaDB",
+        "empty results",
+        "ready",
+        "BM25",
+        "vector-only failures"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: ChromaDB, empty results, ready, BM25, vector-only failures. # Incident Response Runbook This runbook helps support and engineering teams respond to production incidents that affect Orivory customers. ## Severity Levels | Severity | Description | Response time | | --- | --- | --- | | SEV-1 | Full outage or data isolation risk | 15 minutes | | SEV-2 | Major feature unavailable for many customers | 30 minutes | | SEV-3 | Degraded performance or partial outage | 4 hours | | SEV-4 | Minor issue or cosmetic bug [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9274000040022656,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_004",
+      "query": "My 401 error started after I rotated my API key. What should I check first?",
+      "category": "cross_doc_reasoning",
+      "expected_sources": [
+        "api_authentication_guide.md",
+        "incident_response_runbook.md"
+      ],
+      "returned_sources": [
+        "demo_questions.md",
+        "api_authentication_guide.md",
+        "webhook_troubleshooting.md",
+        "incident_response_runbook.md",
+        "integration_guide.md"
+      ],
+      "expected_keywords": [
+        "API key",
+        "401",
+        "rotation",
+        "grace period",
+        "10 minutes"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: API key, 401, rotation, grace period, 10 minutes. # Demo Questions Use these questions after uploading the sample documents to a conversation. | Question | Expected source | | --- | --- | | How do I rotate an API key? | api_authentication_guide.md | | Why am I getting a 401 error? | api_authentication_guide.md | | Which plan supports SSO? | billing_and_plans_faq.md | | What are the rate limits for the Pro plan? | billing_and_plans_faq.md | | What are the webhook retry rules? | webhook_troublesho [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.2721000020974316,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_005",
+      "query": "What's the difference between rate limits for Starter and Pro workspaces?",
+      "category": "comparative",
+      "expected_sources": [
+        "billing_and_plans_faq.md"
+      ],
+      "returned_sources": [
+        "billing_and_plans_faq.md",
+        "demo_questions.md",
+        "api_authentication_guide.md",
+        "incident_response_runbook.md",
+        "product_release_notes.md"
+      ],
+      "expected_keywords": [
+        "60 requests per minute",
+        "300 requests per minute",
+        "Starter",
+        "Pro"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 60 requests per minute, 300 requests per minute, Starter, Pro. # Billing and Plans FAQ This FAQ explains Orivory subscription plans, limits, billing behavior, and upgrade rules for a personal self-hosted workspace. ## Plans Orivory has three plans: | Plan | Monthly conversations | Documents | SSO | Webhooks | | --- | ---: | ---: | --- | --- | | Starter | 1,000 | 100 | No | Basic | | Pro | 10,000 | 2,000 | No | Advanced | | Enterprise | Custom | Custom | Yes | Advanced | ## SSO Availability Single Sign-On is  [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.0005000003729947,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_006",
+      "query": "Can I use OAuth with Slack and also get SSO through SAML?",
+      "category": "multi_feature",
+      "expected_sources": [
+        "integration_guide.md",
+        "billing_and_plans_faq.md"
+      ],
+      "returned_sources": [
+        "billing_and_plans_faq.md",
+        "product_release_notes.md",
+        "demo_questions.md",
+        "api_authentication_guide.md",
+        "integration_guide.md"
+      ],
+      "expected_keywords": [
+        "Slack",
+        "OAuth",
+        "SSO",
+        "SAML",
+        "OIDC",
+        "Enterprise"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Slack, OAuth, SSO, SAML, OIDC. # Billing and Plans FAQ This FAQ explains Orivory subscription plans, limits, billing behavior, and upgrade rules for a personal self-hosted workspace. ## Plans Orivory has three plans: | Plan | Monthly conversations | Documents | SSO | Webhooks | | --- | ---: | ---: | --- | --- | | Starter | 1,000 | 100 | No | Basic | | Pro | 10,000 | 2,000 | No | Advanced | | Enterprise | Custom | Custom | Yes | Advanced | ## SSO Availability Single Sign-On is  [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9707999997772276,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_007",
+      "query": "How many times will Orivory retry a webhook if my server is down?",
+      "category": "numerical",
+      "expected_sources": [
+        "webhook_troubleshooting.md"
+      ],
+      "returned_sources": [
+        "webhook_troubleshooting.md",
+        "demo_questions.md",
+        "billing_and_plans_faq.md",
+        "integration_guide.md",
+        "incident_response_runbook.md"
+      ],
+      "expected_keywords": [
+        "8 times",
+        "24 hours",
+        "exponential backoff"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 8 times, 24 hours, exponential backoff. # Webhook Troubleshooting Guide Orivory can send webhooks for document ingestion, conversation events, and billing changes. This guide helps operators troubleshoot delivery issues. ## Webhook Retry Rules Webhook delivery uses exponential backoff. Orivory retries failed webhook requests up to 8 times over 24 hours. A webhook attempt is considered failed when the destination returns a non-2xx status code or does not respond within 10 seconds. ## Si [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9289999943575822,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_008",
+      "query": "What happens to my Celery workers if Redis latency spikes during peak ingestion?",
+      "category": "scenario_based",
+      "expected_sources": [
+        "incident_response_runbook.md"
+      ],
+      "returned_sources": [
+        "incident_response_runbook.md",
+        "demo_questions.md",
+        "product_release_notes.md",
+        "billing_and_plans_faq.md",
+        "webhook_troubleshooting.md"
+      ],
+      "expected_keywords": [
+        "Redis latency",
+        "worker queue",
+        "restart workers",
+        "Celery queues",
+        "critical ingestion"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Redis latency, worker queue, restart workers, Celery queues, critical ingestion. # Incident Response Runbook This runbook helps support and engineering teams respond to production incidents that affect Orivory customers. ## Severity Levels | Severity | Description | Response time | | --- | --- | --- | | SEV-1 | Full outage or data isolation risk | 15 minutes | | SEV-2 | Major feature unavailable for many customers | 30 minutes | | SEV-3 | Degraded performance or partial outage | 4 hours | | SEV-4 | Minor issue or cosmetic bug [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9614000009605661,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_009",
+      "query": "I want to upgrade from Starter to Enterprise. When does this take effect?",
+      "category": "policy_lookup",
+      "expected_sources": [
+        "billing_and_plans_faq.md"
+      ],
+      "returned_sources": [
+        "billing_and_plans_faq.md",
+        "webhook_troubleshooting.md",
+        "demo_questions.md",
+        "integration_guide.md",
+        "api_authentication_guide.md"
+      ],
+      "expected_keywords": [
+        "upgrades",
+        "take effect immediately",
+        "prorates"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: upgrades, take effect immediately, prorates. # Billing and Plans FAQ This FAQ explains Orivory subscription plans, limits, billing behavior, and upgrade rules for a personal self-hosted workspace. ## Plans Orivory has three plans: | Plan | Monthly conversations | Documents | SSO | Webhooks | | --- | ---: | ---: | --- | --- | | Starter | 1,000 | 100 | No | Basic | | Pro | 10,000 | 2,000 | No | Advanced | | Enterprise | Custom | Custom | Yes | Advanced | ## SSO Availability Single Sign-On is  [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.8674999990034848,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_010",
+      "query": "What auth header should I use and what's the exact format?",
+      "category": "exact_spec",
+      "expected_sources": [
+        "api_authentication_guide.md"
+      ],
+      "returned_sources": [
+        "api_authentication_guide.md",
+        "demo_questions.md",
+        "product_release_notes.md",
+        "webhook_troubleshooting.md",
+        "incident_response_runbook.md"
+      ],
+      "expected_keywords": [
+        "Authorization",
+        "Bearer",
+        "Bearer <access_token>"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Authorization, Bearer, Bearer <access_token>. # API Authentication Guide Orivory APIs use bearer tokens for authenticated requests. Users, admins, and integrations must authenticate before uploading memories or asking recall questions. ## Login Send email and password to `/api/v1/auth/login`. The response includes an `access_token`, `refresh_token`, and `token_type`. Access tokens expire after 15 minutes by default. Refresh tokens expire after 7 days by default. ## Authorization Header Inclu [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.8903999987524003,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_011",
+      "query": "After rotating my key, how long before the old one is completely invalid?",
+      "category": "temporal_policy",
+      "expected_sources": [
+        "api_authentication_guide.md"
+      ],
+      "returned_sources": [
+        "api_authentication_guide.md",
+        "billing_and_plans_faq.md",
+        "demo_questions.md",
+        "integration_guide.md",
+        "webhook_troubleshooting.md"
+      ],
+      "expected_keywords": [
+        "10 minutes",
+        "grace period",
+        "revoke"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 10 minutes, grace period, revoke. # API Authentication Guide Orivory APIs use bearer tokens for authenticated requests. Users, admins, and integrations must authenticate before uploading memories or asking recall questions. ## Login Send email and password to `/api/v1/auth/login`. The response includes an `access_token`, `refresh_token`, and `token_type`. Access tokens expire after 15 minutes by default. Refresh tokens expire after 7 days by default. ## Authorization Header Inclu [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.8415000047534704,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_012",
+      "query": "My Stripe integration is broken and billing shows wrong plan. What's the root cause?",
+      "category": "troubleshooting",
+      "expected_sources": [
+        "integration_guide.md"
+      ],
+      "returned_sources": [
+        "integration_guide.md",
+        "webhook_troubleshooting.md",
+        "demo_questions.md",
+        "billing_and_plans_faq.md",
+        "incident_response_runbook.md"
+      ],
+      "expected_keywords": [
+        "Stripe",
+        "sync fails",
+        "stale plan data",
+        "billing"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Stripe, sync fails, stale plan data, billing. # Integration Guide This guide describes common third-party integrations for Orivory workspaces, including Slack, Zendesk, Stripe, and CRM systems. ## Slack Integration Admins can connect Slack from **Admin → Integrations → Slack**. After connection, users can ask Orivory questions directly from selected channels. Required Slack permissions: - Read messages in selected channels. - Post answers as the Orivory bot. - Open modals for citation previe [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9370000043418258,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_013",
+      "query": "Which version introduced the feature that lets me see why my retrieval returned those documents?",
+      "category": "feature_tracking",
+      "expected_sources": [
+        "product_release_notes.md"
+      ],
+      "returned_sources": [
+        "product_release_notes.md",
+        "demo_questions.md",
+        "incident_response_runbook.md",
+        "api_authentication_guide.md",
+        "billing_and_plans_faq.md"
+      ],
+      "expected_keywords": [
+        "2.1.0",
+        "Agent Trace",
+        "retrieval diagnostics",
+        "BM25",
+        "fusion",
+        "reranking"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: 2.1.0, Agent Trace, retrieval diagnostics, BM25, fusion. # Product Release Notes These release notes describe recent Orivory product changes that support agents may need to reference. ## Version 2.4.0 — SSO and Audit Logs Released on 2026-04-15. New features: - Enterprise SAML and OIDC Single Sign-On. - Admin audit logs for user, quota, and document changes. - OAuth redirect exchange codes to avoid exposing tokens in URLs. - Configurable CORS allowed origins. ## Version 2.3.0 — Hybrid Retrieval Release [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9071000022231601,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_014",
+      "query": "How should I verify that a webhook actually came from Orivory?",
+      "category": "security",
+      "expected_sources": [
+        "webhook_troubleshooting.md"
+      ],
+      "returned_sources": [
+        "webhook_troubleshooting.md",
+        "integration_guide.md",
+        "api_authentication_guide.md",
+        "demo_questions.md",
+        "billing_and_plans_faq.md"
+      ],
+      "expected_keywords": [
+        "X-Orivory-Signature",
+        "HMAC SHA-256",
+        "webhook secret",
+        "signature"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: X-Orivory-Signature, HMAC SHA-256, webhook secret, signature. # Webhook Troubleshooting Guide Orivory can send webhooks for document ingestion, conversation events, and billing changes. This guide helps operators troubleshoot delivery issues. ## Webhook Retry Rules Webhook delivery uses exponential backoff. Orivory retries failed webhook requests up to 8 times over 24 hours. A webhook attempt is considered failed when the destination returns a non-2xx status code or does not respond within 10 seconds. ## Si [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.221799997438211,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_015",
+      "query": "If I'm on the Pro plan, what happens to my API access if I downgrade to Starter?",
+      "category": "implicative_cross",
+      "expected_sources": [
+        "billing_and_plans_faq.md"
+      ],
+      "returned_sources": [
+        "billing_and_plans_faq.md",
+        "api_authentication_guide.md",
+        "demo_questions.md",
+        "integration_guide.md",
+        "product_release_notes.md"
+      ],
+      "expected_keywords": [
+        "downgrade",
+        "end of billing cycle",
+        "exceeds limits",
+        "archive"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: downgrade, end of billing cycle, exceeds limits, archive. # Billing and Plans FAQ This FAQ explains Orivory subscription plans, limits, billing behavior, and upgrade rules for a personal self-hosted workspace. ## Plans Orivory has three plans: | Plan | Monthly conversations | Documents | SSO | Webhooks | | --- | ---: | ---: | --- | --- | | Starter | 1,000 | 100 | No | Basic | | Pro | 10,000 | 2,000 | No | Advanced | | Enterprise | Custom | Custom | Yes | Advanced | ## SSO Availability Single Sign-On is  [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.5555999998468906,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_016",
+      "query": "What permissions does my Slack bot need to cite answers in channels?",
+      "category": "permission_spec",
+      "expected_sources": [
+        "integration_guide.md"
+      ],
+      "returned_sources": [
+        "integration_guide.md",
+        "demo_questions.md",
+        "incident_response_runbook.md",
+        "product_release_notes.md",
+        "webhook_troubleshooting.md"
+      ],
+      "expected_keywords": [
+        "Read messages",
+        "citation previews",
+        "Slack bot",
+        "Post answers"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Read messages, citation previews, Slack bot, Post answers. # Integration Guide This guide describes common third-party integrations for Orivory workspaces, including Slack, Zendesk, Stripe, and CRM systems. ## Slack Integration Admins can connect Slack from **Admin → Integrations → Slack**. After connection, users can ask Orivory questions directly from selected channels. Required Slack permissions: - Read messages in selected channels. - Post answers as the Orivory bot. - Open modals for citation previe [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9024999963003211,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_017",
+      "query": "Compare the webhook retry behavior with the Celery retry behavior - which retries more aggressively?",
+      "category": "comparative_cross",
+      "expected_sources": [
+        "webhook_troubleshooting.md",
+        "product_release_notes.md"
+      ],
+      "returned_sources": [
+        "webhook_troubleshooting.md",
+        "demo_questions.md",
+        "product_release_notes.md",
+        "billing_and_plans_faq.md",
+        "incident_response_runbook.md"
+      ],
+      "expected_keywords": [
+        "webhook",
+        "8 times",
+        "24 hours",
+        "Celery",
+        "retry"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: webhook, 8 times, 24 hours, Celery, retry. # Webhook Troubleshooting Guide Orivory can send webhooks for document ingestion, conversation events, and billing changes. This guide helps operators troubleshoot delivery issues. ## Webhook Retry Rules Webhook delivery uses exponential backoff. Orivory retries failed webhook requests up to 8 times over 24 hours. A webhook attempt is considered failed when the destination returns a non-2xx status code or does not respond within 10 seconds. ## Si [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9047999992617406,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_018",
+      "query": "What's the complete step-by-step process after generating a new API key?",
+      "category": "procedural_complete",
+      "expected_sources": [
+        "api_authentication_guide.md"
+      ],
+      "returned_sources": [
+        "api_authentication_guide.md",
+        "demo_questions.md",
+        "incident_response_runbook.md",
+        "product_release_notes.md",
+        "integration_guide.md"
+      ],
+      "expected_keywords": [
+        "Generate",
+        "secret manager",
+        "restart",
+        "confirm",
+        "revoke",
+        "10-minute"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Generate, secret manager, restart, confirm, revoke. # API Authentication Guide Orivory APIs use bearer tokens for authenticated requests. Users, admins, and integrations must authenticate before uploading memories or asking recall questions. ## Login Send email and password to `/api/v1/auth/login`. The response includes an `access_token`, `refresh_token`, and `token_type`. Access tokens expire after 15 minutes by default. Refresh tokens expire after 7 days by default. ## Authorization Header Inclu [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.9157000022241846,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_019",
+      "query": "If I'm using ChromaDB with BM25, what's the fusion strategy called?",
+      "category": "technical_deep",
+      "expected_sources": [
+        "product_release_notes.md"
+      ],
+      "returned_sources": [
+        "product_release_notes.md",
+        "incident_response_runbook.md",
+        "api_authentication_guide.md",
+        "webhook_troubleshooting.md",
+        "demo_questions.md"
+      ],
+      "expected_keywords": [
+        "Reciprocal Rank Fusion",
+        "RRF",
+        "ChromaDB",
+        "BM25",
+        "hybrid"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: Reciprocal Rank Fusion, RRF, ChromaDB, BM25, hybrid. # Product Release Notes These release notes describe recent Orivory product changes that support agents may need to reference. ## Version 2.4.0 — SSO and Audit Logs Released on 2026-04-15. New features: - Enterprise SAML and OIDC Single Sign-On. - Admin audit logs for user, quota, and document changes. - OAuth redirect exchange codes to avoid exposing tokens in URLs. - Configurable CORS allowed origins. ## Version 2.3.0 — Hybrid Retrieval Release [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.8807999984128401,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "hard_020",
+      "query": "What should I do if my SEV-1 incident involves authentication and data isolation?",
+      "category": "escalation",
+      "expected_sources": [
+        "incident_response_runbook.md"
+      ],
+      "returned_sources": [
+        "incident_response_runbook.md",
+        "demo_questions.md",
+        "api_authentication_guide.md",
+        "integration_guide.md",
+        "product_release_notes.md"
+      ],
+      "expected_keywords": [
+        "SEV-1",
+        "escalate",
+        "engineering",
+        "authentication",
+        "data isolation"
+      ],
+      "should_fallback": false,
+      "answer": "Based on your stored memories, relevant details include: SEV-1, escalate, engineering, authentication, data isolation. # Incident Response Runbook This runbook helps support and engineering teams respond to production incidents that affect Orivory customers. ## Severity Levels | Severity | Description | Response time | | --- | --- | --- | | SEV-1 | Full outage or data isolation risk | 15 minutes | | SEV-2 | Major feature unavailable for many customers | 30 minutes | | SEV-3 | Degraded performance or partial outage | 4 hours | | SEV-4 | Minor issue or cosmetic bug [Source 1]",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": true,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 1.017499998852145,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "fallback_001",
+      "query": "How do I bake a chocolate cake?",
+      "category": "out_of_scope",
+      "expected_sources": [],
+      "returned_sources": [],
+      "expected_keywords": [],
+      "should_fallback": true,
+      "answer": "I don't recall that in your memories. This question appears to be outside what you've stored with Orivory.",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": false,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.01870000414783135,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "fallback_002",
+      "query": "What is the capital of France?",
+      "category": "out_of_scope",
+      "expected_sources": [],
+      "returned_sources": [],
+      "expected_keywords": [],
+      "should_fallback": true,
+      "answer": "I don't recall that in your memories. This question appears to be outside what you've stored with Orivory.",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": false,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.011500000255182385,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "fallback_003",
+      "query": "Write me a Python function to sort a list",
+      "category": "out_of_scope",
+      "expected_sources": [],
+      "returned_sources": [],
+      "expected_keywords": [],
+      "should_fallback": true,
+      "answer": "I don't recall that in your memories. This question appears to be outside what you've stored with Orivory.",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": false,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.008199996955227107,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "fallback_004",
+      "query": "Should I sell my stocks today?",
+      "category": "out_of_scope",
+      "expected_sources": [],
+      "returned_sources": [],
+      "expected_keywords": [],
+      "should_fallback": true,
+      "answer": "I don't recall that in your memories. This question appears to be outside what you've stored with Orivory.",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": false,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.017099999240599573,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    },
+    {
+      "id": "fallback_005",
+      "query": "What's the best restaurant in Ho Chi Minh City?",
+      "category": "out_of_scope",
+      "expected_sources": [],
+      "returned_sources": [],
+      "expected_keywords": [],
+      "should_fallback": true,
+      "answer": "I don't recall that in your memories. This question appears to be outside what you've stored with Orivory.",
+      "source_hit": 1.0,
+      "keyword_coverage": 1.0,
+      "has_citation": false,
+      "fallback_accuracy": 1.0,
+      "latency_ms": 0.008899995009414852,
+      "hallucination_flagged": false,
+      "correction_count": 0,
+      "passed": true
+    }
+  ]
+}

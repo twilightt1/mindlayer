@@ -10,16 +10,17 @@ import Link from "next/link";
 
 interface InsightCardsWidgetProps {
   maxItems?: number;
+  compact?: boolean;
   className?: string;
 }
 
-export function InsightCardsWidget({ maxItems = 3, className }: InsightCardsWidgetProps) {
+export function InsightCardsWidget({ maxItems = 3, compact = false, className }: InsightCardsWidgetProps) {
   const [insights, setInsights] = useState<InsightResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetch() {
+    async function fetchInsights() {
       try {
         const response = await listInsights({ 
           status: "new",
@@ -32,7 +33,7 @@ export function InsightCardsWidget({ maxItems = 3, className }: InsightCardsWidg
         setLoading(false);
       }
     }
-    fetch();
+    fetchInsights();
   }, [maxItems]);
 
   async function handleDismiss(id: string) {

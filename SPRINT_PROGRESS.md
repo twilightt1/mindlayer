@@ -1,4 +1,4 @@
-# Orion Mind — Project Progress
+# Orivory — Project Progress
 
 **Last Updated:** Auto-generated  
 **Status:** 🔄 Active Development
@@ -9,7 +9,7 @@
 
 ## 📋 Overview
 
-Orion Mind is an open-source, self-hosted AI second brain built with FastAPI, LangGraph, and ChromaDB.
+Orivory is an open-source, self-hosted AI second brain built with FastAPI, LangGraph, and ChromaDB.
 
 ### Project Highlights
 
@@ -96,4 +96,4 @@ Client → FastAPI → PostgreSQL/Redis/MinIO
 
 ---
 
-*Orion Mind — Your AI Second Brain from the Stars* ⭐🐺
+*Orivory — Your AI Second Brain from the Stars* ⭐🐺

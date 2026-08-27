@@ -168,7 +168,7 @@ export const SOURCES_TOUR_STEPS: OnboardingStep[] = [
 ];
 
 // All available tours
-export const ALL_TOURS = {
+export const ALL_TOURS: Record<string, OnboardingStep[]> = {
   [DASHBOARD_TOUR_ID]: DASHBOARD_TOUR_STEPS,
   [DISCOVERY_TOUR_ID]: DISCOVERY_TOUR_STEPS,
   [INSIGHTS_TOUR_ID]: INSIGHTS_TOUR_STEPS,

@@ -96,7 +96,7 @@ START → router ─┬─ chitchat (no retrieval)  → END
   on tokenized + Vietnamese-syllable-segmented text
 - **ChromaDB** vector store ([`app/retrieval/vector_store.py`](app/retrieval/vector_store.py))
   with `text-embedding-3-small` (configurable)
-- **Reciprocal Rank Fusion** ([`app/retrieval/rrf.py`](app/retrieval/rrf.py))
+- **Reciprocal Rank Fusion** ([`app/retrieval/hybrid_retriever.py`](app/retrieval/hybrid_retriever.py))
   to combine ranked lists: `score(d) = Σ 1 / (k + rank_i(d))`, k=60
 
 ### Query transformation

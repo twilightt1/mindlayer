@@ -41,9 +41,9 @@ Researchers need to query their accumulated knowledge — papers, notes, documen
 
 ### 1.2 Current System Baseline
 
-The v1.0 system operates with:
+The v2.0 system operates with:
 
-- **11-node LangGraph workflow** for answer generation
+- **21-node LangGraph workflow** for answer generation (includes CRAG, Temporal, HyDE, Multi-hop)
 - **Hybrid retrieval**: BM25 + Vector search with Reciprocal Rank Fusion (RRF)
 - **Jina-based reranking** for top-k document selection
 - **Parent-child chunking** for granular retrieval with readable context
@@ -165,7 +165,7 @@ The v1.0 system operates with:
 | **Celery Workers** | Async ingestion, embeddings, scheduled tasks | Celery + Redis |
 | **MinIO** | Object storage for original files | MinIO S3-compatible |
 
-### 2.3 Current LangGraph Workflow (11 Nodes)
+### 2.3 Current LangGraph Workflow (21 Nodes)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -202,11 +202,12 @@ The v1.0 system operates with:
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.4 Target LangGraph Workflow (15 Nodes with SOTA)
+### 2.4 Current LangGraph Workflow with SOTA (21 Nodes)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                      TARGET LANGGRAPH WORKFLOW (v2.0)                        │
+│                      CURRENT LANGGRAPH WORKFLOW (v2.0)                       │
+│                         (All SOTA techniques implemented)                      │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │    ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────────────┐│
@@ -385,7 +386,7 @@ Answer Output (SSE) + Feedback Collection Hook
 |------|------------|----------|
 | **Production-Ready Foundation** | 187 CI-safe tests passing, full-repo ruff clean | Test suite coverage |
 | **Orchestration** | LangGraph StateGraph provides clean, inspectable workflow with 6 retry edges | `app/graph.py` |
-| **Hybrid Retrieval** | BM25 + Vector + RRF fusion is proven for recall | `app/retrieval/rrf.py` |
+| **Hybrid Retrieval** | BM25 + Vector + RRF fusion is proven for recall | `app/retrieval/hybrid_retriever.py` |
 | **Vector Infrastructure** | ChromaDB with HNSW + cosine similarity is production-viable | `app/retrieval/vector_store.py` |
 | **Async Processing** | Celery + Redis broker enables scalable background job processing | `app/tasks/` |
 | **API Design** | SSE streaming for real-time responses; clean REST endpoints | `app/api/` |
@@ -398,12 +399,12 @@ Answer Output (SSE) + Feedback Collection Hook
 
 | Area | Issue | Impact | User Impact |
 |------|-------|--------|-------------|
-| **No Fallback Path** | When retrieval fails, answer quality degrades silently | High | Wrong answers for gaps in knowledge |
-| **Flat Memory** | No temporal ordering or time-aware retrieval | Medium | Can't answer "what did I conclude last month?" |
-| **Single-Hop Only** | Cannot handle multi-hop reasoning queries | High | Wrong answers for "what is X's relationship to Y?" |
+| ~~No Fallback Path~~ | **FIXED**: CRAG self-critique + web fallback | ✅ | Correct answers for gaps in knowledge |
+| ~~Flat Memory~~ | **FIXED**: Temporal memory with sinusoidal encoding | ✅ | Can answer "what did I conclude last month?" |
+| ~~Single-Hop Only~~ | **FIXED**: Multi-hop with EfficientRAG pattern | ✅ | Correct answers for "what is X's relationship to Y?" |
 | **Static Retriever** | No feedback loop to improve retrieval over time | Medium | Same retrieval failures repeat |
 | **Opaque Confidence** | No calibrated confidence scores | High | Users don't know when to trust answers |
-| **No Document Freshness** | No mechanism to prefer recent or authoritative sources | Medium | Stale information prioritized |
+| ~~No Document Freshness~~ | **FIXED**: Temporal recency weighting | ✅ | Recent information prioritized |
 | **Chunking Strategy** | Fixed chunk size, no semantic-aware chunking | Low-Medium | Suboptimal retrieval granularity |
 | **Rate Limiting** | Coarse-grained rate limits, no per-query-type limits | Low | No granular resource management |
 

@@ -11,11 +11,14 @@ This document defines the technical specification for implementing five state-of
 ### 1.1 Current System Baseline
 
 Orivory currently operates with:
-- **11-node LangGraph workflow** for answer generation
+- **21-node LangGraph workflow** for answer generation (includes CRAG, Temporal, HyDE, Multi-hop)
 - **Hybrid retrieval**: BM25 + Vector search with Reciprocal Rank Fusion (RRF)
 - **Jina-based reranking** for top-k document selection
 - **Source attribution** from chunks to citations
 - **Agent trace recording** for observability
+- **CRAG self-critique** with web search fallback
+- **Temporal memory** with sinusoidal encoding
+- **Multi-hop reasoning** with EfficientRAG pattern
 
 ### 1.2 SOTA Techniques to Implement
 

@@ -1,0 +1,137 @@
+{
+  "evaluation_modes": [
+    "offline",
+    "heuristic_judge"
+  ],
+  "retrieval_quality": {
+    "source_hit_rate": 1.0,
+    "keyword_coverage": 1.0,
+    "citation_rate": 0.8333333333333334,
+    "fallback_accuracy": 1.0
+  },
+  "answer_quality": {
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.75,
+    "reasoning_quality": 0.5933333333333334,
+    "overall_score": 0.7811111111111111,
+    "pass_rate": 1.0
+  },
+  "scores_by_difficulty": {
+    "extreme": {
+      "count": 18,
+      "avg_score": 0.7333333333333334,
+      "faithfulness": 1.0,
+      "reasoning_quality": 0.5
+    },
+    "hard": {
+      "count": 7,
+      "avg_score": 0.7833333333333333,
+      "faithfulness": 1.0,
+      "reasoning_quality": 0.65
+    },
+    "easy": {
+      "count": 5,
+      "avg_score": 0.95,
+      "faithfulness": 1.0,
+      "reasoning_quality": 0.85
+    }
+  },
+  "scores_by_reasoning_type": {
+    "abstraction_mapping": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "temporal_ordering": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "feature_separation": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "prohibition_inference": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "conditional_logic": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "negative_inference": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "comparative_definition": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "temporal_numeric": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "version_comparison": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "boundary_value": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "diagnostic_decomposition": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "state_machine": {
+      "count": 2,
+      "avg_score": 0.7583333333333333
+    },
+    "exception_logic": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "boolean_logic": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "constraint_satisfying": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "tradeoff_reasoning": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "negation_understanding": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "logical_inconsistency": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "causal_chain": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "implication_chain": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "order_analysis": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "edge_case_inference": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    },
+    "direct_lookup": {
+      "count": 1,
+      "avg_score": 0.7833333333333333
+    },
+    "numeric_calculation": {
+      "count": 1,
+      "avg_score": 0.7333333333333334
+    }
+  }
+}

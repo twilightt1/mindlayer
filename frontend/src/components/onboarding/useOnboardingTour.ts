@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { useOnboarding } from "./OnboardingProvider";
+import { useOnboarding, OnboardingStep } from "./OnboardingProvider";
 import {
   ALL_TOURS,
   DASHBOARD_TOUR_ID,
@@ -63,13 +63,11 @@ export function useOnboardingTour() {
   // Check if all steps of current tour are completed
   const isAllStepsCompleted = useCallback(() => {
     if (!state.isActive) return false;
-    const tourId = Object.keys(ALL_TOURS).find(
-      (id) => ALL_TOURS[id] === state.currentStep
-    );
-    if (!tourId) return true; // Unknown tour, consider completed
     
-    const steps = ALL_TOURS[tourId];
-    return steps?.every((step) => isStepCompleted(step.id)) ?? true;
+    const steps = ALL_TOURS[state.currentStep as unknown as string];
+    if (!steps) return true; // Unknown tour, consider completed
+    
+    return steps.every((step: OnboardingStep) => isStepCompleted(step.id));
   }, [state, isStepCompleted]);
 
   // Start a specific tour
