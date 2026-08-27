@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="MindLayer API",
+    title="Orivory API",
     version="1.0.0",
     description="Personal AI Second Brain — multi-source RAG, time-aware retrieval, knowledge graph, agentic actions.",
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
