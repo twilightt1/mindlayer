@@ -101,7 +101,7 @@ def build_graph() -> CompiledStateGraph:
     g.add_node("hyde", hyde_agent)  # HyDE: generate hypothetical document
     g.add_node("retrieval", retrieval_agent)
     g.add_node("multihop", multihop_agent)  # Multi-hop: detect & decompose multi-hop queries
-    g.add_node("multihop_synthesize", multihop_synthesis)  # Multi-hop: synthesize results
+    g.add_node("multihop_synthesis", multihop_synthesis)  # Multi-hop: synthesize results
     g.add_node("merge_context", context_merge_agent)
     g.add_node("grade_docs", evaluator_agent)
     g.add_node("crag", crag_agent)  # Corrective-RAG: self-critique + web fallback
