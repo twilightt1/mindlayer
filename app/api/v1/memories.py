@@ -42,7 +42,7 @@ from app.schemas.Orivory import (
     RecallRequest,
     RecallResponse,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import enforce_llm_quota, get_current_verified_user
 
 log = logging.getLogger(__name__)
 
@@ -234,6 +234,7 @@ async def recall_memory(
     body: RecallRequest,
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> RecallResponse:
     """Personal-context recall: find memories matching the query.
 

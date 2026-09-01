@@ -108,9 +108,10 @@ async def share_referral(
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)
 async def get_leaderboard(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LeaderboardResponse:
-    """Get top referrers leaderboard."""
+    """Get top referrers leaderboard (authenticated — no raw user UUIDs to anon callers)."""
     entries = await get_referral_leaderboard(db)
     return LeaderboardResponse(
         entries=[LeaderboardEntry(**e) for e in entries]

@@ -1,8 +1,11 @@
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.redis_client import get_redis
@@ -47,3 +50,22 @@ async def require_admin(current_user: User = Depends(get_current_active_user)) -
     if current_user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return current_user
+
+
+async def enforce_llm_quota(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Rate limit + quota guard for endpoints that trigger LLM/embedding spend.
+
+    Without this, any verified user could loop /insights/generate or
+    /memories/recall and run up unbounded LLM cost — the quota system was
+    only enforced on the chat path. Use as ``Depends(enforce_llm_quota)``.
+    """
+    from app.middleware.rate_limiter import check_rate_limit
+    from app.services.quota_service import check_and_increment
+
+    await check_rate_limit(
+        str(current_user.id), window_seconds=60, limit=getattr(settings, "RATE_LIMIT_PER_MINUTE", 60)
+    )
+    await check_and_increment(current_user.id, db)

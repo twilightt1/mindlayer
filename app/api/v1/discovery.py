@@ -43,7 +43,7 @@ from app.database import get_db
 from app.middleware.response_cache import CacheInvalidation
 from app.models.memory import Memory
 from app.models.user import User
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import enforce_llm_quota, get_current_verified_user
 
 log = logging.getLogger(__name__)
 
@@ -192,6 +192,7 @@ def _session_to_response(session: DiscoverySession) -> DiscoverySessionResponse:
 async def get_document_graph(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
     doc_ids: str | None = Query(default=None, description="Comma-separated doc IDs to include"),
 ) -> GraphResponse:
     """Get document relationship graph.
@@ -337,6 +338,7 @@ async def get_next_step(
     session_id: str,
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> DiscoveryStepResponse:
     """Get the next step in a discovery journey."""
     session = _session_store.get(session_id)
@@ -390,6 +392,7 @@ async def advance_discovery(
     session_id: str,
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> DiscoverySessionResponse:
     """Advance to the next step in discovery journey."""
     session = _session_store.get(session_id)
@@ -442,6 +445,7 @@ async def complete_discovery(
     session_id: str,
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> DiscoverySessionResponse:
     """Complete a discovery session and get synthesized insight."""
     session = _session_store.get(session_id)
@@ -525,6 +529,7 @@ async def find_references(
 async def get_graph_metrics(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> GraphMetricsResponse:
     """Get metrics for user's document graph."""
     result = await db.execute(

@@ -24,7 +24,7 @@ from app.services.analytics_service import (
     get_page_views,
     record_events,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import get_current_verified_user, require_admin
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -126,10 +126,10 @@ async def get_page_stats(
 
 @router.get("/dau", response_model=DAUResponse)
 async def get_dau_stats(
-    current_user: Annotated[User, Depends(get_current_verified_user)],
+    current_user: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
     days: int = Query(default=7, ge=1, le=90, description="Days to look back"),
 ) -> DAUResponse:
-    """Get daily active users (admin only for org-level, user for own stats)."""
+    """Platform-wide daily active users (admin only — aggregates ALL users)."""
     items = await get_daily_active_users(db, days)
     return DAUResponse(items=[DAUItem(**item) for item in items])
