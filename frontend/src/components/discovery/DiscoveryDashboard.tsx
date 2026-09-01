@@ -31,7 +31,7 @@ import {
 } from "@/lib/api/discovery";
 import { BentoGrid, BentoCard } from "@/components/ui/bento-grid";
 import { Timeline } from "@/components/ui/timeline";
-import { SpotlightCard } from "@/components/ui/Spotlight";
+import { SpotlightCard } from "@/components/ui/spotlight";
 import { StatCard } from "@/components/ui/stats";
 import { PageSkeleton } from "@/components/ui/skeleton";
 

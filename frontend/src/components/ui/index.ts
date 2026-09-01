@@ -1,6 +1,6 @@
 // UI Components - Aceternity-inspired
 export { Sparkles } from "./sparkles";
-export { SpotlightCard } from "./Spotlight";
+export { SpotlightCard } from "./spotlight";
 export { BentoGrid, BentoCard, BentoCardFeatured } from "./bento-grid";
 export { Timeline, SimpleTimeline } from "./timeline";
 export { Stats, StatCard } from "./stats";
