@@ -150,24 +150,32 @@ def build_graph() -> CompiledStateGraph:
         """
         Route after multi-hop detection: loop for more hops or proceed to synthesis.
 
-        Safeguards against infinite loops by checking hop count against MAX_MULTIHOP_HOPS.
+        Uses the *executed* hop counter (executed_hops), not the LLM-estimated
+        total (hop_count) — the estimate never increments per iteration, so the
+        old check never terminated for multi-hop queries and burned 2 LLM calls
+        per cycle until the recursion limit.
         """
         from app.config import settings
 
-        # Get current hop count from trace
         multihop_trace = state.get("multihop_trace", {})
-        current_hops = multihop_trace.get("hop_count", 0)
+        executed_hops = multihop_trace.get("executed_hops", 0)
 
-        # Check if we're exceeding max hops
-        if state.get("multihop_pending") and current_hops >= settings.MULTIHOP_MAX_HOPS:
+        if not state.get("multihop_pending"):
+            return "multihop_synthesis"
+
+        if executed_hops >= settings.MULTIHOP_MAX_HOPS:
             log.warning(f"Multi-hop: Reached max hops ({settings.MULTIHOP_MAX_HOPS}), forcing completion")
             state["multihop_pending"] = False
             state["multihop_trace"]["force_completed"] = True
             return "multihop_synthesis"
 
-        if state.get("multihop_pending"):
-            return "retrieval"  # Loop back for next hop
-        return "multihop_synthesis"  # All hops done, synthesize
+        subqueries = state.get("multihop_subqueries") or []
+        if executed_hops >= len(subqueries):
+            # All planned subqueries executed
+            state["multihop_pending"] = False
+            return "multihop_synthesis"
+
+        return "retrieval"  # Loop back for next hop
 
     g.add_conditional_edges(
         "multihop",

@@ -303,7 +303,13 @@ class TestMultihopAgent:
         assert result["multihop_trace"].get("mode") == "multi_hop"
         assert result["multihop_trace"].get("hop_count") == 2
         assert result["multihop_subqueries"] is not None
-        assert result["multihop_pending"] is True
+        # Single-pass design: subqueries are merged into search_variants for
+        # one retrieval pass; no pending synthesis loop.
+        assert result["multihop_pending"] is False
+        merged = result["search_variants"]
+        assert "What is X?" in merged
+        assert "How does X compare to Y?" in merged
+        assert result["multihop_trace"]["executed_hops"] == 2
 
 
 class TestBranchSolveMerge:

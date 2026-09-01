@@ -351,13 +351,27 @@ async def multihop_agent(state: AgentState) -> AgentState:
         for sq in subqueries
     ]
 
-    # Step 3: Execute hops (simplified - actual retrieval happens in retrieval_agent)
-    # Store subqueries in state for retrieval agent to use
+    # Step 3: Single-pass hop execution — subqueries feed the retrieval agent
+    # via search_variants, so ONE retrieval pass (which queries all variants in
+    # parallel) covers every hop. The previous design looped retrieval →
+    # multihop per hop but never consumed the subqueries, never incremented a
+    # hop counter, and never accumulated hop results: it re-retrieved the same
+    # query until the graph recursion limit, and its synthesis output was
+    # consumed by nothing.
     state["multihop_subqueries"] = subqueries
+    state["multihop_trace"]["executed_hops"] = len(subqueries)
 
-    # Step 4: Flag for answer synthesis after retrieval
-    state["multihop_pending"] = True
-    state["multihop_hop_results"] = []
+    variants = state.get("search_variants") or []
+    merged_variants = list(variants)
+    for sq in subqueries:
+        q = (sq.get("query") or "").strip()
+        if q and q not in merged_variants:
+            merged_variants.append(q)
+    state["search_variants"] = merged_variants
+
+    # No synthesis pending — the merged, budgeted context built downstream is
+    # what the answer agent consumes.
+    state["multihop_pending"] = False
 
     return state
 

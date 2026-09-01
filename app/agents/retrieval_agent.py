@@ -27,8 +27,11 @@ def _elapsed_ms(start: float) -> float:
 
 
 def _query_hash(state: AgentState) -> str:
+    # Include retry_count: a retrieval retry after "irrelevant context" must
+    # not replay the byte-identical cached result (the retry would re-grade
+    # the same chunks to the same verdict — MAX_RETRIES becomes pure burn).
     history_tail = state.get("history", [])[-2:]
-    payload = f"{state['query']}::{history_tail}"
+    payload = f"{state['query']}::{history_tail}::retry={state.get('retry_count', 0)}"
     return hashlib.md5(payload.encode()).hexdigest()
 
 
