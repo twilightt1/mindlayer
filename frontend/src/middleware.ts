@@ -22,22 +22,22 @@ const AUTH_ROUTES = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Get token from cookies or headers
-  const token = request.cookies.get("auth_token")?.value 
-    || request.headers.get("authorization")?.replace("Bearer ", "");
-  
-  const isAuthenticated = !!token;
+
+  // The auth_state cookie mirrors "a session exists" (set/cleared by
+  // AuthProvider via setTokens/clearTokens). It is a UX gate only, not a
+  // credential — pages still verify the real token client-side via
+  // useProtectedRoute, and the API validates the actual bearer token.
+  const hasSession = !!request.cookies.get("auth_state")?.value;
   const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
 
   // Redirect authenticated users away from auth pages
-  if (isAuthenticated && isAuthRoute) {
+  if (hasSession && isAuthRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Redirect unauthenticated users to login
-  if (!isAuthenticated && isProtectedRoute) {
+  if (!hasSession && isProtectedRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

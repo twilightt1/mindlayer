@@ -2,6 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
+import {
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+  clearTokens,
+} from "@/lib/api-client";
+
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -38,36 +45,6 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const TOKEN_KEY = "auth_token";
-const REFRESH_KEY = "refresh_token";
-
-// ============================================================================
-// TOKEN MANAGEMENT
-// ============================================================================
-
-function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
-}
-
-function setTokens(accessToken: string, refreshToken?: string | null) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-  }
-}
-
-function clearTokens() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
 
 // ============================================================================
 // API HELPERS
@@ -186,15 +163,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Register
   const register = useCallback(async (email: string, password: string, name?: string) => {
     setIsLoading(true);
-    
+
     try {
-      await fetch(`${API_BASE}/api/v1/auth/register`, {
+      const response = await fetch(`${API_BASE}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      // Registration successful, needs email verification
+      // Surface failures (duplicate email 409, validation 422, rate limit 429)
+      // instead of pretending registration succeeded.
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Registration failed" }));
+        throw new Error(error.detail || error.message || `Registration failed (HTTP ${response.status})`);
+      }
+
+      // Registration successful, needs email verification.
+      // The signup page routes users to login with a verification notice.
       return { requiresVerification: true };
     } finally {
       setIsLoading(false);

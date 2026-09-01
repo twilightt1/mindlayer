@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { DiscoveryPage } from '../pages/discovery-page';
-import { mockDiscoveryFlow, flowTypes } from '../fixtures/sample';
+import { DiscoveryPage } from './pages/discovery-page';
+import { mockDiscoveryFlow, flowTypes } from './fixtures/sample';
 
 test.describe('Discovery Dashboard', () => {
   let discoveryPage: DiscoveryPage;

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { WorkspacesPage } from '../pages/workspaces-page';
-import { mockWorkspace, mockMember, workspaceRoles } from '../fixtures/sample';
+import { WorkspacesPage } from './pages/workspaces-page';
+import { mockWorkspace, mockMember, workspaceRoles } from './fixtures/sample';
 
 test.describe('Workspaces Dashboard', () => {
   let workspacesPage: WorkspacesPage;

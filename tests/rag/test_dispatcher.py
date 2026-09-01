@@ -18,7 +18,6 @@ from app.models.memory import Memory
 from app.models.source import Source
 from app.models.user import User
 
-
 pytestmark = pytest.mark.asyncio
 
 

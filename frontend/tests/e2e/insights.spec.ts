@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { InsightsPage } from '../pages/insights-page';
-import { mockInsight, filterOptions } from '../fixtures/sample';
+import { InsightsPage } from './pages/insights-page';
+import { mockInsight, filterOptions } from './fixtures/sample';
 
 test.describe('Insights Dashboard', () => {
   let insightsPage: InsightsPage;

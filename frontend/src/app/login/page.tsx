@@ -1,21 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  // Post-registration notice: the account was created and an OTP code was
+  // emailed — the user must verify before logging in.
+  useEffect(() => {
+    if (searchParams.get("registered")) {
+      const registeredEmail = searchParams.get("email");
+      if (registeredEmail && !email) setEmail(registeredEmail);
+      setNotice("Account created. Check your email for a verification code, then sign in.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +117,17 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* Notice */}
+            {notice && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 text-sm"
+              >
+                {notice}
+              </motion.div>
+            )}
 
             {/* Error */}
             {error && (
@@ -224,5 +247,14 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams requires a Suspense boundary during static prerender.
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

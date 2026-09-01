@@ -35,7 +35,9 @@ export default function SignupPage() {
 
     try {
       await register(email, password, name || undefined);
-      router.push("/dashboard");
+      // Registration requires email verification — an OTP code is emailed
+      // to the user. Route to login with a notice instead of /dashboard.
+      router.push("/login?registered=1&email=" + encodeURIComponent(email));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     }

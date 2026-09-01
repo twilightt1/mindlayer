@@ -39,6 +39,13 @@ async def test_bm25_lazy_ensure_rebuilds_missing_index(monkeypatch):
 
     monkeypatch.setattr(retriever, "rebuild_async", fake_rebuild_async)
 
+    # Hermetic: pin the shared generation to "unavailable" so the result
+    # doesn't depend on leftover Redis state from other tests/runs.
+    async def no_remote_gen(conversation_id: str) -> int | None:
+        return None
+
+    monkeypatch.setattr(retriever, "_read_generation_async", no_remote_gen)
+
     result = await retriever.ensure_async(db=object(), conversation_id="conv-1")
 
     assert result == {

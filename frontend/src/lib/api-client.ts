@@ -5,6 +5,8 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export { API_BASE };
+
 export const API_CONFIG = {
   baseUrl: API_BASE,
   endpoints: {
@@ -48,6 +50,20 @@ export const API_CONFIG = {
 
 const TOKEN_KEY = "auth_token";
 const REFRESH_KEY = "refresh_token";
+// Non-sensitive cookie mirrored from localStorage so the Next.js server
+// middleware (src/middleware.ts) can gate protected routes before hydration.
+// It signals "a session exists" only — it is NOT a credential.
+const AUTH_STATE_COOKIE = "auth_state";
+
+function setAuthStateCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = `${AUTH_STATE_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 7}; samesite=strict`;
+}
+
+function clearAuthStateCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = `${AUTH_STATE_COOKIE}=; path=/; max-age=0; samesite=strict`;
+}
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -65,12 +81,14 @@ export function setTokens(accessToken: string, refreshToken?: string | null) {
   if (refreshToken) {
     localStorage.setItem(REFRESH_KEY, refreshToken);
   }
+  setAuthStateCookie();
 }
 
 export function clearTokens() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  clearAuthStateCookie();
 }
 
 // ============================================================================
@@ -85,15 +103,9 @@ export interface ApiError {
 
 export class ApiClient {
   private baseUrl: string;
-  private token: string | null;
 
   constructor(baseUrl: string = API_BASE) {
     this.baseUrl = baseUrl;
-    this.token = getAccessToken();
-  }
-
-  setToken(token: string | null) {
-    this.token = token;
   }
 
   getBaseUrl(): string {
@@ -104,8 +116,12 @@ export class ApiClient {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+    // Read the token per-request — caching it at construction time misses
+    // tokens set later in the session (login/refresh), producing unauthenticated
+    // calls after client-side login.
+    const token = getAccessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
     return headers;
   }
