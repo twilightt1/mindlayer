@@ -4,6 +4,8 @@ CI-safe: httpx clients are faked (no network); feedparser parses inline bytes.
 """
 from __future__ import annotations
 
+import ipaddress
+
 import pytest
 
 from app.ingestion.connectors.registry import REGISTRY, get_connector_for_source
@@ -22,10 +24,19 @@ class FakeResponse:
         self.content = content or text.encode("utf-8")
         self.status_code = status_code
         self.headers = headers or {"content-type": "text/html"}
+        self.url = "https://fake.invalid/"
+        self.is_redirect = False
+        self.is_closed = False
 
     def raise_for_status(self):
         if self.status_code >= 400:
             raise RuntimeError(f"HTTP {self.status_code}")
+
+    async def aiter_bytes(self):
+        yield self.content
+
+    async def aclose(self):
+        self.is_closed = True
 
 
 class FakeClient:
@@ -40,6 +51,19 @@ class FakeClient:
     async def __aexit__(self, *exc):
         return False
 
+    def build_request(self, method, url, **kwargs):
+        return (method, url, kwargs)
+
+    async def send(self, request, stream=False):
+        _, url, _ = request
+        result = self._by_url.get(url)
+        if isinstance(result, Exception):
+            raise result
+        if result is None:
+            raise RuntimeError("not found")
+        return result
+
+    # Legacy direct-get shim (used by tests that bypass fetch_guarded)
     async def get(self, url):
         result = self._by_url.get(url)
         if isinstance(result, Exception):
@@ -59,6 +83,18 @@ class _HttpxShim:
 
     def AsyncClient(self, **kwargs):
         return FakeClient(self._by_url)
+
+
+@pytest.fixture(autouse=True)
+def _allow_fake_urls(monkeypatch):
+    """Bypass live DNS validation for the fake hosts used in these tests."""
+    import app.utils.ssrf as ssrf
+
+    monkeypatch.setattr(
+        ssrf,
+        "resolve_and_validate_url",
+        lambda url: [ipaddress.ip_address("93.184.216.34")],
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────

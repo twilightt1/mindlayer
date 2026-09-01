@@ -35,6 +35,7 @@ import httpx
 
 from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem, ItemError
+from app.utils.ssrf import fetch_guarded, validate_url
 
 log = logging.getLogger(__name__)
 
@@ -163,7 +164,8 @@ class RSSConnector(BaseConnector):
         ) as client:
             for feed_url in feed_urls:
                 try:
-                    resp = await client.get(feed_url)
+                    validate_url(feed_url)
+                    resp = await fetch_guarded(client, feed_url)
                     resp.raise_for_status()
                 except Exception as e:
                     log.warning("RSSConnector: failed to fetch %s — %s", feed_url, e)
