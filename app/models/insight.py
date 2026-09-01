@@ -121,17 +121,17 @@ class InsightCard(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text("NOW()"),
         index=True,
     )
     shown_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=True,
     )
     dismissed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=True,
     )
 

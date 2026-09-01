@@ -344,3 +344,29 @@ async def test_hallucination_malformed_json_fail_closed_blocks_answer(monkeypatc
     assert result["is_hallucination"] is True
     assert result["answers_question"] is False
     assert result["agent_trace"]["hallucination"]["failure_mode"] == "fail_closed"
+
+
+def test_rrf_output_has_stable_id_and_best_child():
+    """Fused chunks must carry a stable 'id' — CRAG indexes doc['id'] directly
+    (regression: retrieval chunks had parent_id but no id -> KeyError)."""
+    from app.retrieval.hybrid_retriever import reciprocal_rank_fusion
+
+    bm25 = [
+        {"content": "alpha long content", "parent_id": "p1", "score": 0.9},
+        {"content": "beta long content", "parent_id": "p2", "score": 0.5},
+    ]
+    vector = [
+        {"content": "beta long content", "parent_id": "p2", "score": 0.95},
+        {"content": "alpha long content", "parent_id": "p1", "score": 0.4},
+    ]
+    fused = reciprocal_rank_fusion([bm25, vector])
+    by_id = {d["id"]: d for d in fused}
+    assert {"p1", "p2"} <= set(by_id)
+    # Best-ranked child kept per parent: p1 ranks better in bm25 (rank 0),
+    # p2 ranks better in vector (rank 0)
+    assert by_id["p1"]["score"] == 0.9
+    assert by_id["p2"]["score"] == 0.95
+    # Chunks without a parent_id fall back to a deterministic content hash id
+    orphan = [{"content": "orphan text", "score": 1.0}]
+    fused2 = reciprocal_rank_fusion([orphan])
+    assert fused2[0]["id"] and len(fused2[0]["id"]) == 32

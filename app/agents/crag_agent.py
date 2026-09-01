@@ -625,8 +625,11 @@ async def crag_agent(state: AgentState) -> AgentState:
         return state
 
     query = state.get("rewritten_query", state.get("query", ""))
-    retrieved_docs = state.get("fused_chunks", [])
-
+    # Grade the SAME population the answer agent will consume
+    # (reranked_chunks = post-merge, evaluator-filtered context). Grading the
+    # upstream fused_chunks instead meant CRAG's verdicts — and, critically,
+    # its web-fallback documents — never reached the answer.
+    retrieved_docs = state.get("reranked_chunks", [])
     if not retrieved_docs:
         log.debug("No retrieved docs to grade")
         state["crag_trace"]["no_documents"] = True
@@ -639,6 +642,13 @@ async def crag_agent(state: AgentState) -> AgentState:
             c.get("content", "")[:500]
             for c in state["graph_context_chunks"][:3]
         )
+
+    # Normalize doc identity: every graded doc must have an "id" so the
+    # score/grade lookups below can never KeyError, and so graded ids match
+    # the fallback ids grade_retrieval assigns (doc_{i}) for unkeyed chunks.
+    for i, doc in enumerate(retrieved_docs):
+        if not doc.get("id"):
+            doc["id"] = f"doc_{i}"
 
     # Step 1: Grade retrieved documents
     log.info(f"CRAG: Grading {len(retrieved_docs)} retrieved documents")
@@ -721,7 +731,7 @@ async def crag_agent(state: AgentState) -> AgentState:
         weighted_docs.sort(key=lambda x: x.get("crag_score", 0), reverse=True)
 
         # Update state
-        state["fused_chunks"] = weighted_docs
+        state["reranked_chunks"] = weighted_docs
         state["crag_trace"]["merged_result"] = {
             "total_documents": len(weighted_docs),
             "local_weighted": sum(1 for d in weighted_docs if d.get("metadata", {}).get("source") == "local"),
@@ -755,7 +765,7 @@ async def crag_agent(state: AgentState) -> AgentState:
                 source="local",
             )).grade.value
 
-        state["fused_chunks"] = retrieved_docs
+        state["reranked_chunks"] = retrieved_docs
         state["agent_trace"]["crag"] = {
             "mode": "local_pass",
             "grade_summary": f"{grading_result.relevant_count}R/{grading_result.partial_count}P/{grading_result.irrelevant_count}I",

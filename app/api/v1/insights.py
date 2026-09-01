@@ -113,6 +113,13 @@ class InsightRefreshResponse(BaseModel):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+def _to_aware_utc(dt: datetime | None) -> datetime | None:
+    """Normalize a datetime to timezone-aware UTC (legacy rows may be naive)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+
 def _insight_response(card: InsightCard) -> InsightResponse:
     """Map ORM InsightCard to API response."""
     # Parse source_docs from JSONB
@@ -420,12 +427,22 @@ async def refresh_insights_endpoint(
     recent_result = await db.execute(recent_query)
     recent_memories = recent_result.scalars().all()
 
-    # Check for new memories since last refresh
+    # Check for new memories since last refresh.
+    # Normalize both sides to aware UTC datetimes — legacy insight cards may
+    # carry naive timestamps, and comparing naive vs aware raises TypeError.
     last_insight_time = max(
-        (card.created_at for card in existing_cards),
-        default=datetime.min,
+        (
+            aware
+            for card in existing_cards
+            if (aware := _to_aware_utc(card.created_at)) is not None
+        ),
+        default=datetime.min.replace(tzinfo=UTC),
     )
-    new_memories = [m for m in recent_memories if m.captured_at and m.captured_at > last_insight_time]
+    new_memories = [
+        m
+        for m in recent_memories
+        if _to_aware_utc(m.captured_at) is not None and _to_aware_utc(m.captured_at) > last_insight_time
+    ]
 
     # Refresh existing insights
     updates = await refresh_insights(

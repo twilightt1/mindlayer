@@ -21,6 +21,7 @@ from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.ingestion.connectors.registry import get_connector_for_source
 from app.ingestion.types import ConnectorItem, ItemError, SyncResult
@@ -143,9 +144,12 @@ class SourceSyncService:
         Create or update a Memory + MemorySource pair for one item.
         Returns (outcome, memory_id), where outcome is 'added' | 'updated' | 'skipped'.
         """
-        # Find an existing memory linked to this (source, ref)
+        # Find an existing memory linked to this (source, ref).
+        # Eager-load the memory relationship — lazy loading on AsyncSession
+        # raises MissingGreenlet.
         existing_link = await self.db.scalar(
             select(MemorySource)
+            .options(selectinload(MemorySource.memory))
             .where(
                 MemorySource.source_id == source.id,
                 MemorySource.item_ref == item.source_ref,

@@ -247,7 +247,7 @@ class TestCRAGAgent:
         """When CRAG is disabled, should skip processing."""
         mock_settings.CRAG_ENABLED = False
 
-        state = {"query": "test query", "fused_chunks": [{"id": "doc1", "content": "test"}]}
+        state = {"query": "test query", "reranked_chunks": [{"id": "doc1", "content": "test"}]}
 
         result = await crag_agent(state)
 
@@ -259,7 +259,7 @@ class TestCRAGAgent:
         """When no documents, should skip processing."""
         mock_settings.CRAG_ENABLED = True
 
-        state = {"query": "test query", "fused_chunks": []}
+        state = {"query": "test query", "reranked_chunks": []}
 
         result = await crag_agent(state)
 
@@ -290,7 +290,7 @@ class TestCRAGAgent:
         state = {
             "query": "test",
             "rewritten_query": "test",
-            "fused_chunks": [
+            "reranked_chunks": [
                 {"id": "doc1", "content": "content1"},
                 {"id": "doc2", "content": "content2"},
                 {"id": "doc3", "content": "content3"},
@@ -361,7 +361,7 @@ class TestCRAGAgent:
         state = {
             "query": "test",
             "rewritten_query": "test",
-            "fused_chunks": [
+            "reranked_chunks": [
                 {"id": "doc1", "content": "content1"},
                 {"id": "doc2", "content": "content2"},
             ],
@@ -470,7 +470,7 @@ class TestIntegration:
 
         state = {
             "rewritten_query": "test",
-            "fused_chunks": [
+            "reranked_chunks": [
                 {"id": "doc1", "content": "good content"},
                 {"id": "doc2", "content": "bad content"},
             ],
@@ -479,10 +479,10 @@ class TestIntegration:
         result = await crag_agent(state)
 
         # Check scores are added
-        assert "crag_score" in result["fused_chunks"][0]
-        assert "crag_grade" in result["fused_chunks"][0]
-        assert result["fused_chunks"][0]["crag_grade"] == "relevant"
-        assert result["fused_chunks"][1]["crag_grade"] == "irrelevant"
+        assert "crag_score" in result["reranked_chunks"][0]
+        assert "crag_grade" in result["reranked_chunks"][0]
+        assert result["reranked_chunks"][0]["crag_grade"] == "relevant"
+        assert result["reranked_chunks"][1]["crag_grade"] == "irrelevant"
 
     @pytest.mark.asyncio
     @patch("app.agents.crag_agent.execute_web_fallback")
@@ -527,14 +527,14 @@ class TestIntegration:
 
         state = {
             "rewritten_query": "test",
-            "fused_chunks": [{"id": "doc1", "content": "local", "metadata": {"source": "local"}}],
+            "reranked_chunks": [{"id": "doc1", "content": "local", "metadata": {"source": "local"}}],
         }
 
         result = await crag_agent(state)
 
         # Check web document was added
-        assert len(result["fused_chunks"]) == 2
+        assert len(result["reranked_chunks"]) == 2
 
         # Check web doc has lower score (0.7 * 0.8 = 0.56)
-        web_doc = next(d for d in result["fused_chunks"] if d["id"] == "web_0")
+        web_doc = next(d for d in result["reranked_chunks"] if d["id"] == "web_0")
         assert web_doc["crag_score"] == pytest.approx(0.56, rel=0.01)
