@@ -1,0 +1,35 @@
+# Git / CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# Python
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Env / secrets — NEVER bake into the image (injected via env_file at runtime)
+.env
+.env.*
+!.env.example
+
+# Frontend (built separately via frontend/Dockerfile)
+frontend
+
+# Dev-only assets not needed at runtime
+docs
+notebooks
+tests
+eval
+*.md
+.DS_Store
+.python-version
+uv.lock
+Makefile
