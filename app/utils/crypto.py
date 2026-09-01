@@ -66,7 +66,7 @@ def decrypt_str(value: str) -> str:
         return _fernet().decrypt(token.encode("utf-8")).decode("utf-8")
     except InvalidToken:
         # Wrong/rotated key — fail loud rather than silently returning garbage.
-        raise ValueError("Failed to decrypt value: key mismatch or corrupted data")
+        raise ValueError("Failed to decrypt value: key mismatch or corrupted data") from None
 
 
 def is_encrypted(value: str) -> bool:

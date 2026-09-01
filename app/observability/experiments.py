@@ -75,7 +75,9 @@ class Experiment:
 
     def run(self, enable_ragas: bool = True) -> ExperimentResult:
         """Run every variant and persist per-run results to the tracker."""
-        from eval.run_eval import run_evaluation  # local import to avoid hard dep at module load
+        from eval.run_eval import (
+            run_evaluation,  # local import to avoid hard dep at module load
+        )
 
         runs: list[dict[str, Any]] = []
         for variant in self.variants:

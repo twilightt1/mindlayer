@@ -13,24 +13,27 @@ Uses Jina Reranker to score individual sentences against the query.
 Falls back to returning the original chunk if API fails.
 """
 from __future__ import annotations
+
 import logging
 import re
+
 import httpx
+
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 JINA_URL    = "https://api.jina.ai/v1/rerank"
-MIN_SCORE   = 0.1                                            
-MIN_LENGTH  = 150                                               
+MIN_SCORE   = 0.1
+MIN_LENGTH  = 150
 MAX_SENTENCES_PER_CHUNK = 20
 
 
 def _split_sentences(text: str) -> list[str]:
     """Simple sentence splitter — handles English and Vietnamese."""
-                                                 
+
     sents = re.split(r"(?<=[.!?])\s+", text.strip())
-                                                             
+
     result = []
     for s in sents:
         parts = [p.strip() for p in s.split("\n") if p.strip()]
@@ -50,20 +53,20 @@ async def compress_chunk(query: str, chunk_content: str) -> str:
     if len(sentences) <= 2:
         return chunk_content
 
-                                   
+
     sentences = sentences[:MAX_SENTENCES_PER_CHUNK]
 
     try:
         scores = await _score_sentences(query, sentences)
-        kept   = [s for s, score in zip(sentences, scores) if score >= MIN_SCORE]
+        kept   = [s for s, score in zip(sentences, scores, strict=False) if score >= MIN_SCORE]
 
         if not kept:
-                                                    
-            ranked = sorted(zip(sentences, scores), key=lambda x: x[1], reverse=True)
+
+            ranked = sorted(zip(sentences, scores, strict=False), key=lambda x: x[1], reverse=True)
             kept   = [s for s, _ in ranked[:2]]
 
         compressed = " ".join(kept)
-                                                           
+
         if len(compressed) < len(chunk_content) * 0.85:
             return compressed
         return chunk_content
@@ -83,7 +86,7 @@ async def compress_chunks(query: str, chunks: list[dict]) -> list[dict]:
     return list(await asyncio.gather(*[_compress_one(c) for c in chunks]))
 
 
-                                                                               
+
 
 async def _score_sentences(query: str, sentences: list[str]) -> list[float]:
     async with httpx.AsyncClient(timeout=20.0) as client:
@@ -103,7 +106,7 @@ async def _score_sentences(query: str, sentences: list[str]) -> list[float]:
         resp.raise_for_status()
         data = resp.json()
 
-                                                   
+
     scores = [0.0] * len(sentences)
     for item in data.get("results", []):
         idx = item.get("index", -1)

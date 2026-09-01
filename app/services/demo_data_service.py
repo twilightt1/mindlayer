@@ -8,14 +8,13 @@ Called on first login or when user requests demo data.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
-from app.models.source import MemorySource
 
 log = logging.getLogger(__name__)
 
@@ -268,19 +267,19 @@ async def create_demo_memories(
 ) -> list[Memory]:
     """
     Create demo memories for a new user.
-    
+
     This helps new users understand Orivory's capabilities
     by providing sample data that demonstrates various features.
     """
     log.info(f"Creating demo memories for user {user_id}")
-    
+
     memories = []
-    base_time = datetime.now(timezone.utc) - timedelta(days=7)
-    
+    base_time = datetime.now(UTC) - timedelta(days=7)
+
     for i, memory_data in enumerate(SAMPLE_MEMORIES):
         # Stagger the capture times
         captured_at = base_time + timedelta(hours=i * 4)
-        
+
         memory = Memory(
             user_id=user_id,
             title=memory_data["title"],
@@ -289,18 +288,18 @@ async def create_demo_memories(
             tags=memory_data.get("tags", []),
             source_type=memory_data.get("source_type", "manual_note"),
             captured_at=captured_at,
-            indexed_at=datetime.now(timezone.utc),
+            indexed_at=datetime.now(UTC),
         )
-        
+
         db.add(memory)
         memories.append(memory)
-    
+
     await db.commit()
-    
+
     # Refresh to get IDs
     for memory in memories:
         await db.refresh(memory)
-    
+
     log.info(f"Created {len(memories)} demo memories for user {user_id}")
     return memories
 
@@ -319,17 +318,17 @@ async def seed_user_demo_data(
 ) -> dict:
     """
     Seed demo data for a user if they don't have any.
-    
+
     Returns info about what was created.
     """
     has_memories = await check_user_has_memories(user_id, db)
-    
+
     if has_memories:
         log.info(f"User {user_id} already has memories, skipping demo data")
         return {"created": False, "reason": "user_has_existing_data"}
-    
+
     memories = await create_demo_memories(user_id, db)
-    
+
     return {
         "created": True,
         "memory_count": len(memories),

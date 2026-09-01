@@ -18,7 +18,6 @@ from app.observability.cost import (
 from app.observability.experiments import Experiment, Variant
 from app.observability.tracker import RunTracker, stopwatch
 
-
 # ---------------------------------------------------------------------------
 # RunTracker
 # ---------------------------------------------------------------------------
@@ -165,7 +164,7 @@ class TestCostTracker:
 
     def test_recent(self, tmp_path: Path) -> None:
         tracker = CostTracker(db_path=tmp_path / "c.db")
-        for i in range(5):
+        for _i in range(5):
             tracker.record("agent", "openai/gpt-4o-mini", 100, 50)
         recent = tracker.recent(limit=3)
         assert len(recent) == 3

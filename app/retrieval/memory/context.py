@@ -19,7 +19,7 @@ search, rewriting) is pure or talks to ChromaDB.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -50,7 +50,7 @@ async def fetch_personal_context(
     Returns:
         List of ``Memory`` objects, sorted by ``captured_at`` desc.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cutoff = now - timedelta(days=lookback_days)
 
     # 1) Pinned memories (cap at `cap` to avoid runaway).

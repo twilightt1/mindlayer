@@ -22,11 +22,10 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.source import Source
-from app.models.memory import Memory
-from app.models.source import MemorySource
-from app.ingestion.types import ConnectorItem, ItemError, SyncResult
 from app.ingestion.connectors.registry import get_connector_for_source
+from app.ingestion.types import ConnectorItem, ItemError, SyncResult
+from app.models.memory import Memory
+from app.models.source import MemorySource, Source
 
 log = logging.getLogger(__name__)
 

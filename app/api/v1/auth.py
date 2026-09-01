@@ -1,51 +1,62 @@
 """Auth endpoints — register, verify, login, Google OAuth, forgot password."""
 from __future__ import annotations
-import logging
+
 import json
+import logging
 import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
-from app.redis_client import get_redis
 from app.middleware.rate_limiter import check_rate_limit
-from app.utils.dependencies import get_current_user
-from app.utils.security import create_access_token, decode_access_token
-from app.services import auth_service
-from app.services.oauth_service import google_oauth
+from app.redis_client import get_redis
 from app.schemas.auth import (
-    RegisterRequest, RegisterResponse,
-    OTPVerifyRequest, OTPVerifyResponse,
+    AuthRedirectExchangeRequest,
+    ForgotPasswordOTPVerifyRequest,
+    ForgotPasswordOTPVerifyResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    OnboardingRequest,
+    OnboardingResponse,
+    OTPVerifyRequest,
+    OTPVerifyResponse,
+    RefreshTokenRequest,
+    RegisterRequest,
+    RegisterResponse,
     ResendVerificationRequest,
-    OnboardingRequest, OnboardingResponse,
-    LoginRequest, LoginResponse,
-    ForgotPasswordRequest, ForgotPasswordResponse,
-    ForgotPasswordOTPVerifyRequest, ForgotPasswordOTPVerifyResponse,
-    ResetPasswordRequest, ResetPasswordResponse,
-    RefreshTokenRequest, LogoutRequest, AuthRedirectExchangeRequest,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     UserResponse,
 )
-from app.config import settings
+from app.services import auth_service
+from app.services.oauth_service import google_oauth
+from app.utils.dependencies import get_current_user
+from app.utils.security import create_access_token, decode_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 log    = logging.getLogger(__name__)
 
 
-                                                                                
+
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(
     request: Request,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db)
 ):
-                                                   
+
     await check_rate_limit(f"ip:{request.client.host}", window_seconds=60, limit=5)
     await auth_service.register_email(db, body.email, body.password)
     return RegisterResponse(message="Registration successful. Check your email for a verification code.")
 
 
-                                                                                
+
 @router.post("/verify-email/otp", response_model=OTPVerifyResponse)
 async def verify_email_otp(body: OTPVerifyRequest, db: AsyncSession = Depends(get_db)):
     user  = await auth_service.verify_email_otp(db, body.email, body.otp_code)
@@ -56,7 +67,7 @@ async def verify_email_otp(body: OTPVerifyRequest, db: AsyncSession = Depends(ge
     return OTPVerifyResponse(message="Email verified.", access_token=token)
 
 
-                                                                                
+
 @router.get("/verify-email/link")
 async def verify_email_link(
     token: str = Query(...),
@@ -81,14 +92,14 @@ async def verify_email_link(
     return RedirectResponse(f"{settings.FRONTEND_URL}/onboarding?code={exchange_code}")
 
 
-                                                                                
+
 @router.post("/verify-email/resend", status_code=200)
 async def resend_verification(body: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
     await auth_service.resend_verification(db, body.email)
     return {"message": "If the account exists and is unverified, a new code has been sent."}
 
 
-                                                                                
+
 @router.post("/onboarding", response_model=OnboardingResponse)
 async def onboarding(
     body: OnboardingRequest,
@@ -103,14 +114,14 @@ async def onboarding(
     )
 
 
-                                                                                
+
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: Request,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
-                                                     
+
     await check_rate_limit(f"ip:{request.client.host}", window_seconds=60, limit=10)
     user, access, refresh = await auth_service.login_email(db, body.email, body.password)
     return LoginResponse(
@@ -120,7 +131,7 @@ async def login(
     )
 
 
-                                                                                
+
 @router.get("/google/authorize")
 async def google_authorize():
     redis = await get_redis()
@@ -183,7 +194,7 @@ async def exchange_auth_code(body: AuthRedirectExchangeRequest):
     return json.loads(payload)
 
 
-                                                                                
+
 @router.post("/refresh")
 async def refresh_token(body: RefreshTokenRequest):
     redis = await get_redis()
@@ -200,9 +211,10 @@ async def refresh_token(body: RefreshTokenRequest):
     await redis.delete(f"refresh:{token_hash}")
     await redis.srem(f"refresh_user:{user_id}", token_hash)
 
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.user import User
-    from sqlalchemy import select
     async with AsyncSessionLocal() as db:
         user = await db.scalar(select(User).where(User.id == user_id))
 
@@ -214,7 +226,7 @@ async def refresh_token(body: RefreshTokenRequest):
     return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
 
 
-                                                                                 
+
 @router.post("/logout", status_code=200)
 async def logout(
     request: Request,
@@ -225,7 +237,7 @@ async def logout(
     if body and body.refresh_token:
         await auth_service._invalidate_one_refresh(body.refresh_token)
 
-                                        
+
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
@@ -233,8 +245,8 @@ async def logout(
             payload = decode_access_token(token)
             jti = payload.get("jti")
             if jti:
-                                                                        
-                                                                                                     
+
+
                 exp_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 if hasattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES') else 3600
                 await redis.setex(f"blacklist:{jti}", exp_seconds, "1")
         except Exception as e:
@@ -243,7 +255,7 @@ async def logout(
     return {"message": "Logged out successfully."}
 
 
-                                                                                
+
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     await auth_service.create_password_reset_session(db, body.email)

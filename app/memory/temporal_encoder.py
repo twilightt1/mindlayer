@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -69,7 +70,7 @@ class TemporalFeatures:
 class TemporalEncoder:
     """
     Encodes temporal information using sinusoidal positional encoding.
-    
+
     Similar to transformer attention positional encoding, but adapted for
     1D temporal sequences with support for:
     - Absolute position (days since epoch)
@@ -84,7 +85,7 @@ class TemporalEncoder:
     ):
         self.reference_date = reference_date or datetime.utcnow()
         self.dimension = dimension
-        
+
         # Generate angular frequencies for each time bucket
         # Use seconds as base unit for consistency
         self.frequencies = []
@@ -99,13 +100,13 @@ class TemporalEncoder:
     def encode_absolute(self, timestamp: datetime) -> list[float]:
         """
         Encode absolute time as fixed-dimensional vector.
-        
+
         Uses sinusoidal encoding with multiple frequencies to capture
         different time scales.
         """
         # Time offset in days from reference (normalized for numerical stability)
         time_diff_days = (timestamp - self.reference_date).total_seconds() / (24 * 60 * 60)
-        
+
         vector = []
         for i in range(self.dimension):
             freq_idx = i % len(self.frequencies)
@@ -116,7 +117,7 @@ class TemporalEncoder:
                 self.frequencies[freq_idx] * time_diff_days / (i / 10 + 1)
             )
             vector.append(value)
-        
+
         return vector
 
     def encode_relative(
@@ -125,15 +126,15 @@ class TemporalEncoder:
         query_timestamp: datetime | None = None,
     ) -> list[float]:
         """
-        Encode relative time difference for queries like 
+        Encode relative time difference for queries like
         "documents from the last month".
         """
         query_time = query_timestamp or datetime.utcnow()
         time_diff = (query_time - doc_timestamp).total_seconds()
-        
+
         # Compress large differences (logarithmic)
         compressed_diff = math.copysign(math.log1p(abs(time_diff)), time_diff)
-        
+
         vector = []
         for i in range(self.dimension):
             freq_idx = i % len(self.frequencies)
@@ -141,37 +142,37 @@ class TemporalEncoder:
                 self.frequencies[freq_idx] * compressed_diff / (i + 1)
             )
             vector.append(value)
-        
+
         return vector
 
     def encode_cyclical(self, timestamp: datetime) -> dict[str, list[float]]:
         """
         Encode cyclical patterns in time (day of week, month, etc.).
-        
+
         Returns a dict with feature names and their sin/cos encodings.
         """
         features = {}
-        
+
         # Day of week (0-6)
         dow = timestamp.weekday()
         features["day_of_week"] = self._periodic(dow, 7)
-        
+
         # Day of year (0-365)
         doy = timestamp.timetuple().tm_yday
         features["day_of_year"] = self._periodic(doy, 365)
-        
+
         # Month (1-12)
         month = timestamp.month
         features["month"] = self._periodic(month, 12)
-        
+
         # Hour of day (0-23)
         hour = timestamp.hour
         features["hour"] = self._periodic(hour, 24)
-        
+
         # Quarter (1-4)
         quarter = (timestamp.month - 1) // 3 + 1
         features["quarter"] = self._periodic(quarter, 4)
-        
+
         return features
 
     @staticmethod
@@ -183,17 +184,17 @@ class TemporalEncoder:
     def encode_document(self, timestamp: datetime) -> TemporalFeatures:
         """
         Generate all temporal features for a document.
-        
+
         Args:
             timestamp: Document creation/modification time
-        
+
         Returns:
             TemporalFeatures with vector, decay weight, and cyclical features
         """
         # Calculate decay weight (exponential decay)
         days_old = (datetime.utcnow() - timestamp).days
         decay_weight = math.exp(-0.693 * days_old / DEFAULT_HALF_LIFE_DAYS)
-        
+
         return TemporalFeatures(
             timestamp=timestamp,
             temporal_vector=self.encode_absolute(timestamp),
@@ -207,7 +208,7 @@ class TemporalEncoder:
 class TemporalQueryParser:
     """
     Parses temporal information from natural language queries.
-    
+
     Extracts:
     - Explicit time ranges ("between 2024-01 and 2024-06")
     - Relative references ("last month", "recently", "this quarter")
@@ -220,7 +221,7 @@ class TemporalQueryParser:
         (r"between\s+(\d{4}-\d{2})\s+and\s+(\d{4}-\d{2})", "explicit_range"),
         (r"from\s+(\w+\s+\d{4})\s+to\s+(\w+\s+\d{4})", "explicit_range"),
         (r"(\w+\s+\d{4})\s*[-–]\s*(\w+\s+\d{4})", "explicit_range"),
-        
+
         # Relative periods
         (r"last\s+(hour|day|week|month|quarter|year)s?", "relative_period"),
         (r"past\s+(\d+)\s+(hours?|days?|weeks?|months?)", "relative_count"),
@@ -241,30 +242,30 @@ class TemporalQueryParser:
     def parse(self, query: str) -> TemporalQuery:
         """
         Parse temporal information from query.
-        
+
         Args:
             query: Natural language query
-        
+
         Returns:
             TemporalQuery with extracted temporal information
         """
         import re
-        
+
         query_lower = query.lower()
-        
+
         # Check for explicit time ranges
         for pattern, pattern_type in self.TIME_RANGE_PATTERNS:
             match = re.search(pattern, query_lower)
             if match:
                 return self._handle_match(match, pattern_type, query)
-        
+
         # No temporal pattern found
         return TemporalQuery(has_temporal=False)
 
     def _handle_match(self, match: re.Match, pattern_type: str, query: str) -> TemporalQuery:
         """Handle matched temporal pattern."""
         now = datetime.utcnow()
-        
+
         if pattern_type == "explicit_range":
             # Parse year-month dates
             try:
@@ -273,7 +274,7 @@ class TemporalQueryParser:
                 start = datetime.strptime(start_str, "%Y-%m")
                 end = datetime.strptime(end_str, "%Y-%m")
                 end = end + timedelta(days=31)  # Go to end of month
-                
+
                 return TemporalQuery(
                     has_temporal=True,
                     time_range=(start, end),
@@ -282,16 +283,16 @@ class TemporalQueryParser:
                 )
             except ValueError:
                 pass
-        
+
         if pattern_type == "relative_period":
             period = match.group(1)
             return self._get_relative_period(period, now)
-        
+
         if pattern_type == "relative_count":
             count = int(match.group(1))
             unit = match.group(2).rstrip("s")  # Remove plural
             delta = self.GRANULARITY_MAP.get(unit, timedelta(days=1))
-            
+
             start = now - (delta * count)
             return TemporalQuery(
                 has_temporal=True,
@@ -299,11 +300,11 @@ class TemporalQueryParser:
                 recency_weight=1.0,
                 granularity=unit,
             )
-        
+
         if pattern_type == "current_period":
             period = match.group(1)
             return self._get_current_period(period, now)
-        
+
         if pattern_type in ("recent", "past"):
             # Default to last 30 days for "recently"
             start = now - timedelta(days=30)
@@ -314,7 +315,7 @@ class TemporalQueryParser:
                 granularity="day",
                 relative_reference="recent",
             )
-        
+
         return TemporalQuery(has_temporal=False)
 
     def _get_relative_period(self, period: str, now: datetime) -> TemporalQuery:
@@ -348,7 +349,7 @@ class TemporalQueryParser:
         else:
             start = now - timedelta(days=1)
             end = now
-        
+
         return TemporalQuery(
             has_temporal=True,
             time_range=(start, end),
@@ -367,31 +368,31 @@ def calculate_temporal_score(
 ) -> float:
     """
     Adjust document score based on temporal relevance.
-    
+
     Args:
         doc_timestamp: Document creation time
         query: Parsed temporal query
         base_score: Original retrieval score
-    
+
     Returns:
         Adjusted score incorporating temporal factors
     """
     if not query.has_temporal:
         return base_score
-    
+
     # Check if document is within time range
     if query.time_range:
         start, end = query.time_range
         if not (start <= doc_timestamp <= end):
             # Document is outside time range - penalize heavily
             return base_score * 0.1
-    
+
     # Apply recency weighting
     if query.recency_weight > 0:
         # Calculate how recent the document is (0-1)
         days_old = (datetime.utcnow() - doc_timestamp).days
         recency = math.exp(-0.693 * days_old / DEFAULT_HALF_LIFE_DAYS)
-        
+
         # Blend recency with base score
         # High recency_weight means we care more about recency
         adjusted = (
@@ -399,7 +400,7 @@ def calculate_temporal_score(
             query.recency_weight * recency
         )
         return adjusted
-    
+
     return base_score
 
 
@@ -408,43 +409,43 @@ def calculate_temporal_score(
 async def temporal_agent(state: AgentState) -> AgentState:
     """
     Temporal agent node for LangGraph workflow.
-    
+
     This node:
     1. Parses temporal information from query
     2. Stores temporal query in state
     3. Will be used by retrieval agent for time-aware filtering
-    
+
     Args:
         state: Current agent state
-    
+
     Returns:
         Updated agent state with temporal query
     """
     state.setdefault("agent_trace", {})
     state.setdefault("temporal_trace", {})
-    
+
     query = state.get("rewritten_query", state.get("query", ""))
     query_type = state.get("query_type", "")
-    
+
     # Skip temporal parsing for non-RAG queries
     if query_type in ("chitchat", "save_note"):
         state["temporal_trace"]["skipped"] = True
         state["temporal_query"] = TemporalQuery(has_temporal=False)
         return state
-    
+
     # Parse temporal information
     parser = TemporalQueryParser()
     temporal_query = parser.parse(query)
-    
+
     state["temporal_query"] = temporal_query
-    
+
     state["temporal_trace"] = {
         "has_temporal": temporal_query.has_temporal,
         "granularity": temporal_query.granularity,
         "recency_weight": temporal_query.recency_weight,
         "relative_reference": temporal_query.relative_reference,
     }
-    
+
     if temporal_query.has_temporal and temporal_query.time_range:
         start, end = temporal_query.time_range
         state["temporal_trace"]["time_range"] = {
@@ -456,5 +457,5 @@ async def temporal_agent(state: AgentState) -> AgentState:
         log.info(f"Temporal: Detected recency query, weight={temporal_query.recency_weight}")
     else:
         log.debug("Temporal: No temporal information detected")
-    
+
     return state

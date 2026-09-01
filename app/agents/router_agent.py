@@ -3,7 +3,11 @@ import re
 
 from openai import AsyncOpenAI
 
-from app.agents.llm_parsing import coerce_float, coerce_string_list, parse_llm_json_object
+from app.agents.llm_parsing import (
+    coerce_float,
+    coerce_string_list,
+    parse_llm_json_object,
+)
 from app.agents.state import AgentState
 from app.config import settings
 

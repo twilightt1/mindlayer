@@ -1,12 +1,15 @@
 from __future__ import annotations
-import logging
-import chromadb
+
 import asyncio
+import logging
 import time
+from collections.abc import Callable
+
+import chromadb
 import httpx
-from typing import Callable
+
 from app.config import settings
-from app.retrieval.embedder import embed_texts, embed_query, embed_texts_sync
+from app.retrieval.embedder import embed_query, embed_texts, embed_texts_sync
 
 log = logging.getLogger(__name__)
 _async_client: chromadb.AsyncHttpClient | None = None
@@ -23,7 +26,7 @@ def with_retry(retries: int = 3, base_delay: float = 1.0):
                         return await func(*args, **kwargs)
                     except (ValueError, httpx.ConnectError, httpx.HTTPError, Exception) as e:
                         last_exc = e
-                                                                                                        
+
                         if any(msg in str(e) for msg in ["Could not connect", "connection", "Refused"]) or \
                            isinstance(e, (ValueError, httpx.ConnectError)):
                             delay = base_delay * (2 ** i)
@@ -81,7 +84,7 @@ def _col_name(conversation_id: str) -> str:
     return f"rag_conv_{conversation_id}"
 
 
-                                                                                
+
 
 async def upsert_chunks(conversation_id: str, chunks: list[dict]) -> None:
     if not chunks:
@@ -118,7 +121,7 @@ def upsert_chunks_sync(conversation_id: str, chunks: list[dict]) -> None:
     )
 
 
-                                                                                
+
 
 async def search(
     query: str,
@@ -136,11 +139,11 @@ async def search(
     if count == 0:
         return []
 
-                                                                        
+
     embed_input = hyde_text if hyde_text else query
     embedding   = await embed_query(embed_input)
 
-                                           
+
     results = await collection.query(
         query_embeddings=[embedding],
         n_results=min(top_k, count),
@@ -162,12 +165,12 @@ async def search(
         for i, (doc, dist, meta) in enumerate(zip(
             results["documents"][0],
             results["distances"][0],
-            results["metadatas"][0],
+            results["metadatas"][0], strict=False,
         ))
     ]
 
 
-                                                                                
+
 
 async def delete_document_chunks(conversation_id: str, document_id: str) -> None:
     try:

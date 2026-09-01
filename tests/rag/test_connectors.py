@@ -57,7 +57,7 @@ class _HttpxShim:
     def __init__(self, by_url):
         self._by_url = by_url
 
-    def AsyncClient(self, **kwargs):  # noqa: N802 - mimic httpx API
+    def AsyncClient(self, **kwargs):
         return FakeClient(self._by_url)
 
 

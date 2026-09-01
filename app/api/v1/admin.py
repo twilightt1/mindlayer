@@ -1,23 +1,25 @@
 """Admin endpoints."""
 from __future__ import annotations
-from uuid import UUID
+
 from datetime import datetime
 from typing import Any
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.utils.dependencies import require_admin
-from app.models.user import User
-from app.models.user_quota import UserQuota
+from app.models.conversation import Conversation
 from app.models.document import Document
 from app.models.message import Message
-from app.models.conversation import Conversation
+from app.models.user import User
+from app.models.user_quota import UserQuota
 from app.schemas.auth import UserResponse
 from app.services.audit_service import AuditService
 from app.services.diagnostics_service import build_diagnostics
+from app.utils.dependencies import require_admin
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

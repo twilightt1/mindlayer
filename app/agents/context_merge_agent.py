@@ -4,8 +4,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from app.config import settings
 from app.agents.state import AgentState
+from app.config import settings
 
 MAX_GROUNDING_CHUNKS = 10
 

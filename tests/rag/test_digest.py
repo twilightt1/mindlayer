@@ -1,7 +1,7 @@
 """P2.2 tests: proactive digest helpers (pure logic, no DB)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -22,22 +22,22 @@ class TestAgeLabel:
 
 class TestSameCalendarDay:
     def test_exact_anniversary(self):
-        past = datetime(2024, 6, 17, 9, 0, tzinfo=timezone.utc)
-        today = datetime(2026, 6, 17, 12, 0, tzinfo=timezone.utc)
+        past = datetime(2024, 6, 17, 9, 0, tzinfo=UTC)
+        today = datetime(2026, 6, 17, 12, 0, tzinfo=UTC)
         assert _same_calendar_day(past, today, tolerance_days=2)
 
     def test_within_tolerance(self):
-        past = datetime(2024, 6, 15, tzinfo=timezone.utc)
-        today = datetime(2026, 6, 17, tzinfo=timezone.utc)
+        past = datetime(2024, 6, 15, tzinfo=UTC)
+        today = datetime(2026, 6, 17, tzinfo=UTC)
         assert _same_calendar_day(past, today, tolerance_days=2)
 
     def test_outside_tolerance(self):
-        past = datetime(2024, 6, 10, tzinfo=timezone.utc)
-        today = datetime(2026, 6, 17, tzinfo=timezone.utc)
+        past = datetime(2024, 6, 10, tzinfo=UTC)
+        today = datetime(2026, 6, 17, tzinfo=UTC)
         assert not _same_calendar_day(past, today, tolerance_days=2)
 
     def test_leap_day_does_not_crash(self):
-        past = datetime(2024, 2, 29, tzinfo=timezone.utc)  # leap day
-        today = datetime(2026, 2, 28, tzinfo=timezone.utc)  # non-leap year
+        past = datetime(2024, 2, 29, tzinfo=UTC)  # leap day
+        today = datetime(2026, 2, 28, tzinfo=UTC)  # non-leap year
         # Should fall back to Feb 28 and match, not raise.
         assert _same_calendar_day(past, today, tolerance_days=2)

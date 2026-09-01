@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 # Default judge prompt templates
@@ -36,7 +35,7 @@ Score scale:
 @dataclass
 class JudgeResult:
     """Result from LLM judge evaluation."""
-    
+
     faithfulness: float  # 0-1: Answer aligns with context
     answer_relevancy: float  # 0-1: Answer addresses the question
     reasoning_quality: float  # 0-1: Logic and reasoning quality
@@ -49,25 +48,25 @@ class JudgeResult:
 @dataclass
 class CaseJudgeResult:
     """Judge result for a single evaluation case."""
-    
+
     case_id: str
     query: str
     answer: str
     context: str
     reasoning_type: str
     difficulty: str
-    
+
     # Scores
     faithfulness: float
     answer_relevancy: float
     reasoning_quality: float
     overall_score: float
-    
+
     # Reasoning trace
     judge_reasoning: str
     errors: list[str]
     suggestions: list[str]
-    
+
     # Metadata
     model_used: str | None = None
     latency_ms: float | None = None
@@ -82,7 +81,7 @@ def _build_judge_prompt(
     ground_truth: str | None = None,
 ) -> str:
     """Build the evaluation prompt for the judge."""
-    
+
     # Add specific instructions based on reasoning type
     reasoning_hints = {
         "constraint_satisfying": "Look for whether the answer identifies the STRICTEST constraint.",
@@ -109,10 +108,10 @@ def _build_judge_prompt(
         "direct_lookup": "Verify if correct values are retrieved from docs.",
         "irrelevant": "N/A - this is an out-of-scope query.",
     }
-    
+
     reasoning_hint = reasoning_hints.get(reasoning_type, "General reasoning evaluation.")
     difficulty_multiplier = {"extreme": 3, "hard": 2, "medium": 1, "easy": 0.5}.get(difficulty, 1)
-    
+
     prompt = f"""Evaluate the following RAG answer:
 
 ## Question
@@ -127,10 +126,10 @@ def _build_judge_prompt(
 ## Evaluation Criteria
 1. **Faithfulness** (0-1): Does the answer stay true to the retrieved context?
    - Deduct points for: hallucination, adding info not in context, contradicting context
-   
+
 2. **Answer Relevancy** (0-1): Does the answer directly address the question?
    - Deduct points for: off-topic content, incomplete answers, answering wrong question
-   
+
 3. **Reasoning Quality** (0-1): Is the reasoning logical and correct?
    - Reasoning type: {reasoning_type}
    - Hint: {reasoning_hint}
@@ -151,7 +150,7 @@ Provide a JSON response with:
     "suggestions": ["<suggestion1>", "<suggestion2>"]
 }}
 
-IMPORTANT: 
+IMPORTANT:
 - Difficulty is {difficulty} (multiplier: {difficulty_multiplier}x stricter for harder cases)
 - Be STRICT for extreme/hard cases
 - Score must be a number between 0.0 and 1.0
@@ -171,7 +170,7 @@ async def evaluate_with_llm_judge(
 ) -> JudgeResult:
     """
     Evaluate answer quality using LLM-as-Judge.
-    
+
     Args:
         query: The original question
         answer: The generated answer
@@ -181,21 +180,21 @@ async def evaluate_with_llm_judge(
         ground_truth: Optional ground truth answer
         model: LLM model to use for judging
         api_key: API key for LLM provider
-    
+
     Returns:
         JudgeResult with scores and reasoning
     """
     try:
         from openai import AsyncOpenAI
     except ImportError:
-        raise ImportError("openai package required for LLM judge. Install with: pip install openai")
-    
+        raise ImportError("openai package required for LLM judge. Install with: pip install openai") from None
+
     api_key = api_key or __import__("os").getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable or api_key parameter required")
-    
+
     client = AsyncOpenAI(api_key=api_key)
-    
+
     prompt = _build_judge_prompt(
         query=query,
         answer=answer,
@@ -204,7 +203,7 @@ async def evaluate_with_llm_judge(
         difficulty=difficulty,
         ground_truth=ground_truth,
     )
-    
+
     response = await client.chat.completions.create(
         model=model,
         messages=[
@@ -214,16 +213,16 @@ async def evaluate_with_llm_judge(
         temperature=0.1,  # Low temperature for consistent evaluation
         response_format={"type": "json_object"},
     )
-    
+
     content = response.choices[0].message.content
     if not content:
         raise ValueError("Empty response from LLM judge")
-    
+
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        raise ValueError(f"Invalid JSON from LLM judge: {content[:200]}")
-    
+        raise ValueError(f"Invalid JSON from LLM judge: {content[:200]}") from None
+
     return JudgeResult(
         faithfulness=float(data.get("faithfulness", 0.0)),
         answer_relevancy=float(data.get("answer_relevancy", 0.0)),
@@ -242,17 +241,17 @@ def evaluate_case_offline(
 ) -> CaseJudgeResult:
     """
     Perform offline heuristic evaluation without LLM.
-    
+
     This uses rule-based heuristics as a fallback when LLM is not available.
     Much less accurate than LLM-as-Judge but gives some signal.
     """
     from eval.metrics import calculate_keyword_coverage, is_fallback_answer
-    
+
     # Heuristic scores
     faithfulness = 0.0
     answer_relevancy = 0.0
     reasoning_quality = 0.0
-    
+
     # Faithfulness heuristic: check if answer uses context keywords
     expected_keywords = case.get("expected_keywords", [])
     if expected_keywords:
@@ -260,7 +259,7 @@ def evaluate_case_offline(
         faithfulness = kw_coverage
     else:
         faithfulness = 1.0 if is_fallback_answer(answer) else 0.8
-    
+
     # Answer relevancy: did we get sources?
     if case.get("should_fallback") and is_fallback_answer(answer):
         answer_relevancy = 1.0
@@ -268,7 +267,7 @@ def evaluate_case_offline(
         answer_relevancy = 0.7  # Got context but can't verify quality
     else:
         answer_relevancy = 0.3
-    
+
     # Reasoning quality: based on difficulty
     difficulty_scores = {
         "extreme": 0.5,
@@ -277,20 +276,20 @@ def evaluate_case_offline(
         "easy": 0.85,
     }
     reasoning_quality = difficulty_scores.get(case.get("difficulty", "medium"), 0.65)
-    
+
     overall = (faithfulness + answer_relevancy + reasoning_quality) / 3
-    
+
     errors = []
     suggestions = []
-    
+
     if faithfulness < 0.5:
         errors.append("Low keyword coverage from context")
         suggestions.append("Verify retrieved documents match query intent")
-    
+
     if answer_relevancy < 0.5:
         errors.append("Answer may not address the question")
         suggestions.append("Review retrieval strategy")
-    
+
     return CaseJudgeResult(
         case_id=case.get("id", "unknown"),
         query=case.get("query", ""),
@@ -317,17 +316,17 @@ async def run_llm_judge_evaluation(
 ) -> list[CaseJudgeResult]:
     """Run LLM-as-Judge on a batch of cases."""
     import asyncio
-    
+
     results: list[CaseJudgeResult] = []
-    
+
     async def evaluate_one(case: dict[str, Any]) -> CaseJudgeResult:
         case_id = case.get("id", "unknown")
         answer = answers.get(case_id, "")
         context = contexts.get(case_id, "")
-        
+
         import time
         start = time.perf_counter()
-        
+
         try:
             judge_result = await evaluate_with_llm_judge(
                 query=case.get("query", ""),
@@ -339,7 +338,7 @@ async def run_llm_judge_evaluation(
                 model=model,
                 api_key=api_key,
             )
-            
+
             return CaseJudgeResult(
                 case_id=case_id,
                 query=case.get("query", ""),
@@ -357,13 +356,13 @@ async def run_llm_judge_evaluation(
                 model_used=model,
                 latency_ms=(time.perf_counter() - start) * 1000,
             )
-        except Exception as e:
+        except Exception:
             # Fallback to offline evaluation
             return evaluate_case_offline(case, answer, context)
-    
+
     # Run evaluations concurrently
     results = await asyncio.gather(*[evaluate_one(case) for case in dataset])
-    
+
     return list(results)
 
 
@@ -378,23 +377,23 @@ def summarize_judge_results(results: list[CaseJudgeResult]) -> dict[str, Any]:
             "avg_overall_score": 0.0,
             "pass_rate": 0.0,
         }
-    
+
     # Filter out fallback cases for reasoning metrics
     reasoning_cases = [r for r in results if r.reasoning_type != "irrelevant"]
-    
+
     total = len(results)
     reasoning_total = len(reasoning_cases)
-    
+
     # Overall scores
     avg_faithfulness = sum(r.faithfulness for r in results) / total
     avg_answer_relevancy = sum(r.answer_relevancy for r in results) / total
     avg_reasoning_quality = sum(r.reasoning_quality for r in results) / total
     avg_overall = sum(r.overall_score for r in results) / total
-    
+
     # Pass rate (overall >= 0.7)
     passed = sum(1 for r in results if r.overall_score >= 0.7)
     pass_rate = passed / total
-    
+
     # Reasoning-specific scores
     reasoning_faithfulness = (
         sum(r.faithfulness for r in reasoning_cases) / reasoning_total
@@ -404,7 +403,7 @@ def summarize_judge_results(results: list[CaseJudgeResult]) -> dict[str, Any]:
         sum(r.reasoning_quality for r in reasoning_cases) / reasoning_total
         if reasoning_total > 0 else 0.0
     )
-    
+
     # Scores by difficulty
     by_difficulty: dict[str, dict[str, float]] = {}
     for difficulty in ["extreme", "hard", "medium", "easy"]:
@@ -416,7 +415,7 @@ def summarize_judge_results(results: list[CaseJudgeResult]) -> dict[str, Any]:
                 "faithfulness": sum(r.faithfulness for r in diff_cases) / len(diff_cases),
                 "reasoning_quality": sum(r.reasoning_quality for r in diff_cases) / len(diff_cases),
             }
-    
+
     # Scores by reasoning type
     by_reasoning_type: dict[str, dict[str, float]] = {}
     for rtype in set(r.reasoning_type for r in reasoning_cases):
@@ -426,7 +425,7 @@ def summarize_judge_results(results: list[CaseJudgeResult]) -> dict[str, Any]:
                 "count": len(type_cases),
                 "avg_score": sum(r.overall_score for r in type_cases) / len(type_cases),
             }
-    
+
     return {
         "total_cases": total,
         "reasoning_cases": reasoning_total,
@@ -466,44 +465,44 @@ def generate_judge_report(results: list[CaseJudgeResult], summary: dict[str, Any
         "| Difficulty | Count | Overall | Faithfulness | Reasoning |",
         "|------------|-------|--------|--------------|-----------|",
     ]
-    
+
     for diff, scores in summary.get("by_difficulty", {}).items():
         lines.append(
             f"| {diff.capitalize()} | {scores['count']} | "
             f"{scores['avg_score']:.1%} | {scores['faithfulness']:.1%} | "
             f"{scores['reasoning_quality']:.1%} |"
         )
-    
+
     lines.extend(["", "## Scores by Reasoning Type", ""])
-    
+
     for rtype, scores in summary.get("by_reasoning_type", {}).items():
         lines.append(
             f"- **{rtype}**: {scores['avg_score']:.1%} ({scores['count']} cases)"
         )
-    
+
     lines.extend(["", "## Detailed Results", ""])
-    
+
     for result in results:
         status = "✅" if result.overall_score >= 0.7 else "❌"
         lines.extend([
-            f"",
+            "",
             f"### {status} {result.case_id}",
-            f"",
+            "",
             f"**Query:** {result.query[:100]}...",
-            f"",
-            f"| Metric | Score |",
-            f"|--------|-------|",
+            "",
+            "| Metric | Score |",
+            "|--------|-------|",
             f"| Faithfulness | {result.faithfulness:.1%} |",
             f"| Answer Relevancy | {result.answer_relevancy:.1%} |",
             f"| Reasoning Quality | {result.reasoning_quality:.1%} |",
             f"| **Overall** | **{result.overall_score:.1%}** |",
-            f"",
+            "",
             f"**Judge Reasoning:** {result.judge_reasoning}",
         ])
-        
+
         if result.errors:
             lines.append(f"**Errors:** {', '.join(result.errors)}")
         if result.suggestions:
             lines.append(f"**Suggestions:** {', '.join(result.suggestions)}")
-    
+
     return "\n".join(lines)

@@ -46,7 +46,7 @@ async def graph_context_agent(state: AgentState) -> AgentState:
             "enabled": True,
             **state["graph_context_trace"],
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("Graph context failed", extra={"error": str(exc)})
         state["graph_context_chunks"] = []
         state["graph_context_trace"] = {"error": str(exc)}

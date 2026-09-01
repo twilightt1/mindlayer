@@ -4,28 +4,24 @@ Tests for Discovery Agent - Multi-hop Discovery Experience
 Q2 Growth Track: Graph visualization, guided discovery, cross-document references.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 
-from app.agents import discovery_agent
+import pytest
+
 from app.agents.discovery_agent import (
-    DocumentNode,
-    RelationshipEdge,
-    DocumentGraph,
-    DiscoverySession,
     DiscoveryFlowType,
     DiscoveryStatus,
-    CrossDocumentReference,
-    DiscoveryInsight,
-    create_discovery_session,
+    DocumentGraph,
+    DocumentNode,
+    RelationshipEdge,
     advance_session,
-    complete_session,
-    get_strongest_connections,
-    find_bridging_documents,
-    compute_graph_metrics,
     analyze_document_graph,
+    complete_session,
+    compute_graph_metrics,
+    create_discovery_session,
+    find_bridging_documents,
     find_cross_references,
+    get_strongest_connections,
     synthesize_discovery,
 )
 
@@ -42,7 +38,7 @@ class TestDocumentNode:
             salience=0.85,
             connection_count=5,
         )
-        
+
         assert node.id == "doc-123"
         assert node.title == "Test Document"
         assert len(node.entity_ids) == 2
@@ -61,7 +57,7 @@ class TestRelationshipEdge:
             weight=0.75,
             evidence="Document 1 references Document 2",
         )
-        
+
         assert edge.source_id == "doc-1"
         assert edge.target_id == "doc-2"
         assert edge.relationship_type == "cites"
@@ -80,9 +76,9 @@ class TestDocumentGraph:
             target_id="doc-2",
             relationship_type="cites",
         )
-        
+
         graph = DocumentGraph(nodes=[node1, node2], edges=[edge])
-        
+
         assert len(graph.nodes) == 2
         assert len(graph.edges) == 1
 
@@ -90,11 +86,11 @@ class TestDocumentGraph:
         """Test getting a node by ID."""
         node = DocumentNode(id="doc-1", title="Doc 1")
         graph = DocumentGraph(nodes=[node])
-        
+
         found = graph.get_node("doc-1")
         assert found is not None
         assert found.title == "Doc 1"
-        
+
         not_found = graph.get_node("doc-nonexistent")
         assert not_found is None
 
@@ -111,7 +107,7 @@ class TestDocumentGraph:
                 RelationshipEdge(source_id="doc-1", target_id="doc-3", relationship_type="extends"),
             ],
         )
-        
+
         neighbors = graph.get_neighbors("doc-1")
         assert "doc-2" in neighbors
         assert "doc-3" in neighbors
@@ -150,7 +146,7 @@ class TestDiscoverySession:
             starting_doc_id="doc-1",
             flow_type=DiscoveryFlowType.EXPLORE_RELATED,
         )
-        
+
         assert session.user_id == "user-123"
         assert session.starting_doc_id == "doc-1"
         assert session.flow_type == DiscoveryFlowType.EXPLORE_RELATED
@@ -169,7 +165,7 @@ class TestCreateDiscoverySession:
             starting_doc_id="doc-1",
             flow_type=DiscoveryFlowType.EXPLORE_RELATED,
         )
-        
+
         assert session.user_id == "user-123"
         assert session.starting_doc_id == "doc-1"
         assert session.path == ["doc-1"]
@@ -182,7 +178,7 @@ class TestCreateDiscoverySession:
             flow_type=DiscoveryFlowType.TRACE_ORIGIN,
             target_doc_id="doc-final",
         )
-        
+
         assert session.target_doc_id == "doc-final"
 
 
@@ -195,15 +191,15 @@ class TestAdvanceSession:
             user_id="user-123",
             starting_doc_id="doc-1",
         )
-        
+
         connection = {
             "from_doc": "doc-1",
             "to_doc": "doc-2",
             "insight": "Found connection",
         }
-        
+
         session = advance_session(session, "doc-2", connection)
-        
+
         assert "doc-2" in session.path
         assert len(session.path) == 2
         assert session.current_step == 1
@@ -220,9 +216,9 @@ class TestCompleteSession:
             user_id="user-123",
             starting_doc_id="doc-1",
         )
-        
+
         session = complete_session(session)
-        
+
         assert session.status == DiscoveryStatus.COMPLETED
         assert session.completed_at is not None
 
@@ -243,9 +239,9 @@ class TestGetStrongestConnections:
                 RelationshipEdge(source_id="doc-1", target_id="doc-3", relationship_type="extends", weight=0.3),
             ],
         )
-        
+
         connections = get_strongest_connections(graph, "doc-1", limit=5)
-        
+
         assert len(connections) == 2
         assert connections[0] == ("doc-2", 0.9)  # Highest weight first
 
@@ -270,9 +266,9 @@ class TestFindBridgingDocuments:
                 RelationshipEdge(source_id="doc-2", target_id="doc-5", relationship_type="contradicts"),
             ],
         )
-        
+
         bridging = find_bridging_documents(graph)
-        
+
         # doc-1 has 3 neighbors (>=3) and 2+ diverse types (cites, extends, mentions), so it's bridging
         assert "doc-1" in bridging
 
@@ -287,9 +283,9 @@ class TestFindBridgingDocuments:
                 RelationshipEdge(source_id="doc-1", target_id="doc-2", relationship_type="cites"),
             ],
         )
-        
+
         bridging = find_bridging_documents(graph)
-        
+
         assert len(bridging) == 0
 
 
@@ -300,7 +296,7 @@ class TestComputeGraphMetrics:
         """Test metrics for empty graph."""
         graph = DocumentGraph()
         metrics = compute_graph_metrics(graph)
-        
+
         assert metrics["total_nodes"] == 0
         assert metrics["total_edges"] == 0
 
@@ -315,9 +311,9 @@ class TestComputeGraphMetrics:
                 RelationshipEdge(source_id="doc-1", target_id="doc-2", relationship_type="cites", weight=0.8),
             ],
         )
-        
+
         metrics = compute_graph_metrics(graph)
-        
+
         assert metrics["total_nodes"] == 2
         assert metrics["total_edges"] == 1
         assert metrics["avg_connections_per_node"] == 1.0
@@ -347,9 +343,9 @@ class TestAnalyzeDocumentGraph:
             {"id": "doc-1", "title": "Document 1", "content": "Content about X"},
             {"id": "doc-2", "title": "Document 2", "content": "Content about Y"},
         ]
-        
+
         graph = await analyze_document_graph(documents)
-        
+
         assert len(graph.nodes) == 1
         assert len(graph.edges) == 1
         assert graph.edges[0].relationship_type == "cites"
@@ -363,9 +359,9 @@ class TestAnalyzeDocumentGraph:
         mock_get_client.return_value = mock_client
 
         documents = [{"id": "doc-1", "title": "Test", "content": "Content"}]
-        
+
         graph = await analyze_document_graph(documents)
-        
+
         assert len(graph.nodes) == 0
         assert len(graph.edges) == 0
 
@@ -389,9 +385,9 @@ class TestFindCrossReferences:
 
         doc1 = {"id": "doc-1", "title": "Doc 1", "content": "Content 1"}
         doc2 = {"id": "doc-2", "title": "Doc 2", "content": "Content 2"}
-        
+
         references = await find_cross_references(doc1, doc2)
-        
+
         assert len(references) == 1
         assert references[0].reference_type == "cites"
         assert references[0].relevance_score == 0.85
@@ -406,9 +402,9 @@ class TestFindCrossReferences:
 
         doc1 = {"id": "doc-1", "title": "Doc 1", "content": "Content 1"}
         doc2 = {"id": "doc-2", "title": "Doc 2", "content": "Content 2"}
-        
+
         references = await find_cross_references(doc1, doc2)
-        
+
         assert references == []
 
 
@@ -435,14 +431,14 @@ class TestSynthesizeDiscovery:
         )
         session.path = ["doc-1", "doc-2"]
         session.connections_found = [{"insight": "Connection found"}]
-        
+
         documents = [
             {"id": "doc-1", "title": "Doc 1", "content": "Content 1"},
             {"id": "doc-2", "title": "Doc 2", "content": "Content 2"},
         ]
-        
+
         synthesis = await synthesize_discovery(session, documents)
-        
+
         assert synthesis.title == "Key Insight"
         assert synthesis.confidence == 0.9
         assert len(synthesis.evidence) == 2
@@ -457,7 +453,7 @@ class TestSynthesizeDiscovery:
 
         session = create_discovery_session(user_id="user-123", starting_doc_id="doc-1")
         documents = [{"id": "doc-1", "title": "Doc 1", "content": "Content"}]
-        
+
         synthesis = await synthesize_discovery(session, documents)
-        
+
         assert synthesis.confidence == 0.3  # Default low confidence on error

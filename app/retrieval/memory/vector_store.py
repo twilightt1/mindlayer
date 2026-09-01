@@ -14,7 +14,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -25,7 +26,7 @@ from app.retrieval.embedder import embed_texts, embed_texts_sync
 # Lazily imported so this module is importable in test/CLI contexts
 # that don't have ChromaDB running.
 if TYPE_CHECKING:
-    import chromadb  # noqa: F401  (only for type hints)
+    import chromadb
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def _with_retry(retries: int = 3, base_delay: float = 1.0):
                 for i in range(retries):
                     try:
                         return await func(*args, **kwargs)
-                    except Exception as e:  # noqa: BLE001
+                    except Exception as e:
                         last_exc = e
                         if any(
                             msg in str(e)
@@ -79,7 +80,7 @@ def _with_retry(retries: int = 3, base_delay: float = 1.0):
                 for i in range(retries):
                     try:
                         return func(*args, **kwargs)
-                    except Exception as e:  # noqa: BLE001
+                    except Exception as e:
                         last_exc = e
                         if any(
                             msg in str(e)
@@ -273,7 +274,7 @@ async def delete_memory(memory_id: str) -> None:
         collection = await _get_collection()
         await collection.delete(ids=[memory_id])
         log.info("Deleted memory from ChromaDB", extra={"memory_id": memory_id})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning(
             "Failed to delete memory from ChromaDB",
             extra={"memory_id": memory_id, "error": str(e)},
@@ -288,7 +289,7 @@ async def delete_memories(memory_ids: list[str]) -> None:
         collection = await _get_collection()
         await collection.delete(ids=memory_ids)
         log.info("Deleted memories from ChromaDB", extra={"n": len(memory_ids)})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning(
             "Failed to batch-delete memories from ChromaDB",
             extra={"n": len(memory_ids), "error": str(e)},
@@ -307,7 +308,7 @@ def delete_memories_sync(memory_ids: list[str]) -> None:
         )
         collection.delete(ids=memory_ids)
         log.info("Deleted memories from ChromaDB (sync)", extra={"n": len(memory_ids)})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning(
             "Failed to batch-delete memories from ChromaDB (sync)",
             extra={"n": len(memory_ids), "error": str(e)},
@@ -328,7 +329,7 @@ async def search_memories(
     """
     try:
         collection = await _get_collection()
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("Chroma unavailable for search", extra={"error": str(e)})
         return []
 
@@ -356,7 +357,7 @@ async def search_memories(
 
     out: list[dict[str, Any]] = []
     for i, (doc, dist, meta, mid) in enumerate(
-        zip(docs, distances, metadatas, ids)
+        zip(docs, distances, metadatas, ids, strict=False)
     ):
         out.append(
             {

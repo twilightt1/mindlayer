@@ -14,14 +14,14 @@ Usage:
     variant = get_active_variant("router", conversation_id="abc-123")
     prompt = PromptRegistry.get("router", variant)
 """
-from app.agents.prompts.registry import (  # noqa: F401
+from app.agents.prompts.registry import (
     PromptNotFoundError,
     PromptRegistry,
     PromptVariant,
     get_active_variant,
     list_variants,
 )
-from app.agents.prompts.versions import (  # noqa: F401
+from app.agents.prompts.versions import (
     PROMPT_VERSIONS,
     get_default_variants,
 )

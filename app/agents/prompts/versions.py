@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from app.agents.prompts.variant import PromptVariant
 
-
 # ---------------------------------------------------------------------------
 # Router agent prompts
 # ---------------------------------------------------------------------------

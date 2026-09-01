@@ -6,35 +6,39 @@ write endpoints so users/agents can correct extracted entities and relations.
 """
 from __future__ import annotations
 
-from uuid import UUID
 from datetime import datetime
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, distinct
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.graph.clustering import detect_clusters
-from app.graph.extraction import normalize_entity_name, normalize_entity_type, normalize_relation_type
-from app.models.user import User
+from app.graph.extraction import (
+    normalize_entity_name,
+    normalize_entity_type,
+    normalize_relation_type,
+)
+from app.models.entity import Entity, MemoryEntity, Relation
 from app.models.memory import Memory
-from app.models.entity import Entity, Relation, MemoryEntity
-from app.utils.dependencies import get_current_verified_user
+from app.models.user import User
 from app.schemas.Orivory import (
     EntityCreate,
-    EntityResponse,
     EntityListResponse,
+    EntityResponse,
     EntityUpdate,
+    GraphClustersResponse,
+    GraphEdge,
+    GraphNode,
+    GraphSnapshot,
+    MemoryResponse,
     RelationCreate,
     RelationResponse,
     RelationUpdate,
-    GraphClustersResponse,
-    GraphSnapshot,
-    GraphNode,
-    GraphEdge,
-    MemoryResponse,
 )
+from app.utils.dependencies import get_current_verified_user
 
 router = APIRouter(prefix="/entities", tags=["entities"])
 

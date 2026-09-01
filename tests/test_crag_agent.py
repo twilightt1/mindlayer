@@ -4,20 +4,21 @@ Tests for Corrective-RAG (CRAG) Agent
 Reference: Yan et al., arXiv 2401.15884
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.agents.crag_agent import (
-    RetrievalGrade,
     GradedDocument,
     GradingResult,
-    _classify_score,
+    RetrievalGrade,
     _calculate_consensus,
-    grade_single_document,
-    grade_retrieval,
+    _classify_score,
+    crag_agent,
     execute_web_fallback,
     expand_query,
-    crag_agent,
+    grade_retrieval,
+    grade_single_document,
 )
 
 
@@ -47,14 +48,14 @@ class TestRetrievalGrade:
         # High consensus (similar scores)
         high = _calculate_consensus([0.8, 0.85, 0.82])
         assert high > 0.5  # Should be relatively high
-        
+
         # Low consensus (different scores)
         low = _calculate_consensus([0.1, 0.9, 0.5])
         assert low < high  # Lower than high consensus
-        
+
         # Single item = perfect consensus
         assert _calculate_consensus([0.5]) == 1.0
-        
+
         # Two identical items = perfect consensus
         assert _calculate_consensus([0.5, 0.5]) == 1.0
 
@@ -74,7 +75,7 @@ class TestGradeRetrieval:
     async def test_grade_retrieval_empty_docs(self):
         """Empty document list should return empty result."""
         result = await grade_retrieval([], "What are transformers?")
-        
+
         assert result.graded_documents == []
         assert result.needs_web_fallback is False
         assert result.relevant_count == 0
@@ -91,7 +92,7 @@ class TestGradeRetrieval:
         ]
 
         result = await grade_retrieval(sample_docs, "What are transformers?")
-        
+
         assert len(result.graded_documents) == 3
         assert result.needs_web_fallback is False
         assert result.relevant_count == 3
@@ -108,7 +109,7 @@ class TestGradeRetrieval:
         ]
 
         result = await grade_retrieval(sample_docs, "What are transformers?")
-        
+
         assert len(result.graded_documents) == 3
         # 2/3 docs are RELEVANT = 66% usable (above 50% threshold)
         assert result.relevant_count == 2
@@ -131,7 +132,7 @@ class TestGradeRetrieval:
         mock_get_client.return_value = mock_client
 
         result = await grade_retrieval(sample_docs, "What is quantum computing?")
-        
+
         assert result.needs_web_fallback is True
         assert result.irrelevant_count == 3
         assert result.fallback_reason is not None
@@ -159,7 +160,7 @@ class TestGradeSingleDocument:
             content="Transformers are important.",
             query="What are transformers?",
         )
-        
+
         assert result.doc_id == "test_doc"
         assert result.score == 0.85
         assert result.grade == RetrievalGrade.RELEVANT
@@ -178,7 +179,7 @@ class TestGradeSingleDocument:
             content="Some content",
             query="Some query",
         )
-        
+
         assert result.grade == RetrievalGrade.IRRELEVANT
         assert result.score == 0.0
         assert "failed" in result.reasoning.lower()
@@ -203,7 +204,7 @@ class TestExpandQuery:
             "What are transformers?",
             "Previous context about neural networks"
         )
-        
+
         assert result == "transformer self-attention architecture"
         assert len(result) < 100  # Should be concise
 
@@ -217,7 +218,7 @@ class TestExpandQuery:
 
         original = "What are transformers?"
         result = await expand_query(original, "context")
-        
+
         assert result == original
 
     @pytest.mark.asyncio
@@ -233,7 +234,7 @@ class TestExpandQuery:
 
         original = "What are transformers?"
         result = await expand_query(original, "context")
-        
+
         assert result == original
 
 
@@ -247,9 +248,9 @@ class TestCRAGAgent:
         mock_settings.CRAG_ENABLED = False
 
         state = {"query": "test query", "fused_chunks": [{"id": "doc1", "content": "test"}]}
-        
+
         result = await crag_agent(state)
-        
+
         assert result["crag_trace"].get("enabled") is False
 
     @pytest.mark.asyncio
@@ -259,9 +260,9 @@ class TestCRAGAgent:
         mock_settings.CRAG_ENABLED = True
 
         state = {"query": "test query", "fused_chunks": []}
-        
+
         result = await crag_agent(state)
-        
+
         assert result["crag_trace"].get("no_documents") is True
 
     @pytest.mark.asyncio
@@ -295,9 +296,9 @@ class TestCRAGAgent:
                 {"id": "doc3", "content": "content3"},
             ],
         }
-        
+
         result = await crag_agent(state)
-        
+
         assert result["crag_trace"]["enabled"] is True
         assert result["agent_trace"]["crag"]["mode"] == "local_pass"
 
@@ -323,7 +324,7 @@ class TestCRAGAgent:
             partial_count=0,
             irrelevant_count=2,
         )
-        
+
         # Second call: re-grading after web fallback
         mock_grade.side_effect = [
             GradingResult(
@@ -348,7 +349,7 @@ class TestCRAGAgent:
                 irrelevant_count=2,
             ),
         ]
-        
+
         mock_fallback.return_value = MagicMock(
             merged_documents=[
                 {"id": "web_0", "content": "web content", "metadata": {"source": "web"}},
@@ -365,9 +366,9 @@ class TestCRAGAgent:
                 {"id": "doc2", "content": "content2"},
             ],
         }
-        
+
         result = await crag_agent(state)
-        
+
         assert result["crag_trace"]["enabled"] is True
         assert result["crag_trace"]["web_fallback"]["triggered"] is True
         assert result["agent_trace"]["crag"]["mode"] == "web_fallback"
@@ -384,12 +385,12 @@ class TestWebFallback:
     async def test_web_fallback_with_tavily(self, mock_settings, mock_expand, mock_tavily):
         """Test web fallback with Tavily API."""
         mock_settings.TAVILY_API_KEY = "test-key"
-        
+
         mock_expand.return_value = "expanded query"
         mock_tavily.return_value = []
 
         result = await execute_web_fallback("test query")
-        
+
         assert result.search_query_used == "expanded query"
         mock_tavily.assert_called_once()
 
@@ -400,12 +401,12 @@ class TestWebFallback:
     async def test_web_fallback_duckduckgo_fallback(self, mock_settings, mock_expand, mock_ddg):
         """Test fallback to DuckDuckGo when Tavily is not configured."""
         mock_settings.TAVILY_API_KEY = ""
-        
+
         mock_expand.return_value = "expanded query"
         mock_ddg.return_value = []
 
         result = await execute_web_fallback("test query")
-        
+
         assert result.search_query_used == "expanded query"
         mock_ddg.assert_called_once()
 
@@ -416,10 +417,10 @@ class TestWebFallback:
     async def test_web_fallback_filters_blocked_domains(self, mock_settings, mock_expand, mock_tavily):
         """Test that blocked domains are filtered from results."""
         from app.agents.crag_agent import WebSearchResult
-        
+
         mock_settings.TAVILY_API_KEY = "test-key"
         mock_expand.return_value = "test query"
-        
+
         # Tavily returns a blocked domain
         mock_tavily.return_value = [
             WebSearchResult(
@@ -439,7 +440,7 @@ class TestWebFallback:
         ]
 
         result = await execute_web_fallback("test query")
-        
+
         assert len(result.web_documents) == 1
         assert result.web_documents[0].domain == "example.com"
         assert "spam-site.org" in result.domains_excluded
@@ -474,9 +475,9 @@ class TestIntegration:
                 {"id": "doc2", "content": "bad content"},
             ],
         }
-        
+
         result = await crag_agent(state)
-        
+
         # Check scores are added
         assert "crag_score" in result["fused_chunks"][0]
         assert "crag_grade" in result["fused_chunks"][0]
@@ -515,7 +516,7 @@ class TestIntegration:
                 irrelevant_count=1,
             ),
         ]
-        
+
         mock_fallback.return_value = MagicMock(
             merged_documents=[
                 {"id": "web_0", "content": "web content", "metadata": {"source": "web"}},
@@ -528,12 +529,12 @@ class TestIntegration:
             "rewritten_query": "test",
             "fused_chunks": [{"id": "doc1", "content": "local", "metadata": {"source": "local"}}],
         }
-        
+
         result = await crag_agent(state)
-        
+
         # Check web document was added
         assert len(result["fused_chunks"]) == 2
-        
+
         # Check web doc has lower score (0.7 * 0.8 = 0.56)
         web_doc = next(d for d in result["fused_chunks"] if d["id"] == "web_0")
         assert web_doc["crag_score"] == pytest.approx(0.56, rel=0.01)

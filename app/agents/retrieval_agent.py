@@ -107,14 +107,14 @@ async def retrieval_agent(state: AgentState) -> AgentState:
 
     vector_tasks = [_vector(q) for q in queries]
     vector_results = await asyncio.gather(*vector_tasks, return_exceptions=True)
-    
+
     # Flatten vector results early so HyDE can append to it
     flattened_vector_results: list[dict] = []
     for res in vector_results:
         if isinstance(res, list) and res:
             flattened_vector_results.extend(res)
             all_result_lists.append(res)
-    
+
     # ── HyDE Enhancement ────────────────────────────────────────────────────
     # If HyDE is enabled and we have a hypothetical document, use it for
     # additional retrieval to capture documents that match the "ideal answer" pattern
@@ -123,17 +123,17 @@ async def retrieval_agent(state: AgentState) -> AgentState:
         if hyde_state and hyde_state.get("passages"):
             hyde_passages = hyde_state["passages"]
             log.debug(f"HyDE: Adding {len(hyde_passages)} hypothetical passages to vector search")
-            
+
             # Search for each hypothetical passage
             hyde_tasks = [_vector(p) for p in hyde_passages]
             hyde_results = await asyncio.gather(*hyde_tasks, return_exceptions=True)
-            
+
             # Add HyDE results to fusion pool
             for res in hyde_results:
                 if isinstance(res, list) and res:
                     flattened_vector_results.extend(res)
                     all_result_lists.append(res)
-            
+
             state["agent_trace"]["hyde_enhanced"] = {
                 "passage_count": len(hyde_passages),
                 "hyde_results_added": sum(1 for r in hyde_results if isinstance(r, list)),

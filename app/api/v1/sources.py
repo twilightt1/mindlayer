@@ -16,26 +16,26 @@ source's ``source_type`` and persists results as Memory rows.
 """
 from __future__ import annotations
 
-from uuid import UUID
 from datetime import datetime
 from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
+from app.ingestion.connectors.registry import get_connector_for_source
 from app.models.source import Source
-from app.utils.dependencies import get_current_verified_user
+from app.models.user import User
 from app.schemas.source import (
     SourceCreate,
-    SourceUpdate,
-    SourceResponse,
     SourceListResponse,
+    SourceResponse,
     SourceSyncResponse,
+    SourceUpdate,
 )
-from app.ingestion.connectors.registry import get_connector_for_source
+from app.utils.dependencies import get_current_verified_user
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 

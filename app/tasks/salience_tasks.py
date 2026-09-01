@@ -34,7 +34,7 @@ def decay_stale_salience() -> dict:
 
     Returns a summary dict: rows_decayed.
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     cutoff = now - datetime.timedelta(days=STALE_AFTER_DAYS)
 
     # last activity = last_used_at if set, else captured_at

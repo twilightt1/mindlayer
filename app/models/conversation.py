@@ -2,9 +2,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Integer, TIMESTAMP, ForeignKey, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 
 if TYPE_CHECKING:

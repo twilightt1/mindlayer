@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import json
 import logging
+
 from app.redis_client import get_redis
 
 log = logging.getLogger(__name__)
-TTL = 7200           
+TTL = 7200
 
 
 def _key(conversation_id: str, parent_id: str) -> str:
@@ -25,10 +27,10 @@ async def get_parent(conversation_id: str, parent_id: str, db=None) -> dict | No
     cached = await redis.get(_key(conversation_id, parent_id))
 
     if cached:
-        await redis.expire(_key(conversation_id, parent_id), TTL)               
+        await redis.expire(_key(conversation_id, parent_id), TTL)
         return json.loads(cached)
 
-                 
+
     if db is not None:
         return await _load_from_db(db, parent_id, conversation_id)
 
@@ -49,25 +51,25 @@ async def get_parents_batch(
     result:  dict[str, dict] = {}
     missing: list[str]       = []
 
-    for pid, val in zip(parent_ids, values):
+    for pid, val in zip(parent_ids, values, strict=False):
         if val:
             result[pid] = json.loads(val)
         else:
             missing.append(pid)
 
-                                
+
     if result:
         pipe = redis.pipeline()
         for pid in result:
             pipe.expire(_key(conversation_id, pid), TTL)
         await pipe.execute()
 
-                           
+
     if missing and db is not None:
         db_parents = await _load_batch_from_db(db, missing, conversation_id)
         result.update(db_parents)
 
-                                    
+
         if db_parents:
             pipe = redis.pipeline()
             for pid, p in db_parents.items():
@@ -90,10 +92,11 @@ async def invalidate_conversation(conversation_id: str) -> None:
             break
 
 
-                                                                                
+
 
 async def _load_from_db(db, parent_id: str, conversation_id: str) -> dict | None:
     from sqlalchemy import select
+
     from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
 
@@ -120,6 +123,7 @@ async def _load_batch_from_db(
     conversation_id: str,
 ) -> dict[str, dict]:
     from sqlalchemy import select
+
     from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
 
@@ -142,10 +146,11 @@ async def _load_batch_from_db(
     }
 
 
-                                                                                
+
 
 def store_parents_sync(conversation_id: str, parents: list[dict]) -> None:
     import redis as redis_lib
+
     from app.config import settings
 
     r    = redis_lib.from_url(settings.REDIS_URL, decode_responses=True)

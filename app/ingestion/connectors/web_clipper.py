@@ -141,7 +141,7 @@ class WebClipperConnector(BaseConnector):
                         "tags": _merge_tags(item.tags, configured_tags),
                         "metadata": metadata,
                     }))
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     # Record as a sync error and skip — never fabricate a memory.
                     log.warning("WebClipperConnector: failed to clip %s — %s", url, e)
                     self.fetch_errors.append(

@@ -1,7 +1,16 @@
 from __future__ import annotations
-from uuid import UUID
+
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
+from uuid import UUID
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class _EmailNormalizingModel(BaseModel):
@@ -50,7 +59,7 @@ class OnboardingRequest(BaseModel):
 class OnboardingResponse(BaseModel):
     access_token:  str
     refresh_token: str
-    user:          "UserResponse"
+    user:          UserResponse
 
 
 class LoginRequest(_EmailNormalizingModel):
@@ -62,7 +71,7 @@ class LoginResponse(BaseModel):
     access_token:  str
     refresh_token: str
     token_type:    str = "bearer"
-    user:          "UserResponse"
+    user:          UserResponse
 
 
 class ForgotPasswordRequest(_EmailNormalizingModel):
@@ -117,7 +126,7 @@ class ChangePasswordRequest(BaseModel):
     new_password:     str = Field(min_length=8, max_length=128)
 
     @model_validator(mode="after")
-    def passwords_differ(self) -> "ChangePasswordRequest":
+    def passwords_differ(self) -> ChangePasswordRequest:
         if self.current_password == self.new_password:
             raise ValueError("New password must differ from current password.")
         return self

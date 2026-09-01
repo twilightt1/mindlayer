@@ -3,31 +3,37 @@ Chat router — conversations, messages, documents (nested), SSE streaming.
 All document operations are scoped to the parent conversation.
 """
 from __future__ import annotations
+
 import asyncio
 import logging
 from contextlib import suppress
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.state import AgentState
+from app.api.v1.sse import format_sse
+from app.config import settings
 from app.database import get_db
-from app.utils.dependencies import get_current_active_user
+from app.middleware.rate_limiter import check_rate_limit
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.schemas.conversation import (
-    ConversationCreate, ConversationUpdate, ConversationResponse,
-    ConversationDetail, DocumentResponse, MessageResponse, ChatRequest,
+    ChatRequest,
+    ConversationCreate,
+    ConversationDetail,
+    ConversationResponse,
+    ConversationUpdate,
+    DocumentResponse,
+    MessageResponse,
 )
 from app.services import document_service
 from app.services.quota_service import check_and_increment
-from app.agents.state import AgentState
-from app.middleware.rate_limiter import check_rate_limit
-from app.config import settings
-from app.api.v1.sse import format_sse
+from app.utils.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 log    = logging.getLogger(__name__)
@@ -67,7 +73,7 @@ def _source_event_payload(chunk: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-                                                                                
+
 async def _get_conversation(
     conversation_id: UUID,
     current_user=Depends(get_current_active_user),
@@ -84,7 +90,7 @@ async def _get_conversation(
     return conv
 
 
-                                                                                
+
 @router.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     current_user=Depends(get_current_active_user),
@@ -152,7 +158,9 @@ async def delete_conversation(
     from app.ingestion.document_memory import delete_document_memories_async
     from app.models.document import Document
     from app.retrieval.bm25_retriever import bm25_retriever
-    from app.retrieval.memory.vector_store import delete_memories as delete_memory_vectors
+    from app.retrieval.memory.vector_store import (
+        delete_memories as delete_memory_vectors,
+    )
     from app.retrieval.vector_retriever import delete_conversation_collection
 
     conv_id = str(conversation.id)
@@ -175,7 +183,7 @@ async def delete_conversation(
     await bm25_retriever.publish_invalidate_async(conv_id)
 
 
-                                                                                
+
 @router.get(
     "/conversations/{conversation_id}/messages",
     response_model=list[MessageResponse],
@@ -192,7 +200,7 @@ async def list_messages(
     return result.scalars().all()
 
 
-                                                                                
+
 @router.post("/conversations/{conversation_id}/message")
 async def send_message(
     body: ChatRequest,
@@ -200,7 +208,7 @@ async def send_message(
     current_user=Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-                        
+
     await check_rate_limit(str(current_user.id), window_seconds=60, limit=settings.RATE_LIMIT_PER_MINUTE)
     await check_and_increment(current_user.id, db)
 
@@ -333,7 +341,7 @@ async def send_message(
     )
 
 
-                                                                                
+
 @router.get(
     "/conversations/{conversation_id}/documents",
     response_model=list[DocumentResponse],

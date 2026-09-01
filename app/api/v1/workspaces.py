@@ -21,29 +21,27 @@ Endpoints:
 
 from __future__ import annotations
 
-from uuid import UUID
-from datetime import datetime, timezone, timedelta
-import secrets
-import hashlib
-
 import logging
+import secrets
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, EmailStr
-from sqlalchemy import select, func, or_
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
 from app.models.workspace import (
-    Workspace,
-    TeamMembership,
-    WorkspaceInvite,
-    WorkspaceType,
-    WorkspaceStatus,
+    InviteStatus,
     MemberRole,
     MemberStatus,
-    InviteStatus,
+    TeamMembership,
+    Workspace,
+    WorkspaceInvite,
+    WorkspaceStatus,
 )
 from app.utils.dependencies import get_current_verified_user
 
@@ -73,7 +71,7 @@ class WorkspaceUpdate(BaseModel):
 class WorkspaceResponse(BaseModel):
     """Workspace response."""
     model_config = {"from_attributes": True}
-    
+
     id: UUID
     name: str
     description: str | None
@@ -90,7 +88,7 @@ class WorkspaceResponse(BaseModel):
 class MemberResponse(BaseModel):
     """Team member response."""
     model_config = {"from_attributes": True}
-    
+
     id: UUID
     workspace_id: UUID
     user_id: UUID
@@ -116,7 +114,7 @@ class InviteCreate(BaseModel):
 class InviteResponse(BaseModel):
     """Invite response."""
     model_config = {"from_attributes": True}
-    
+
     id: UUID
     workspace_id: UUID
     inviter_id: UUID
@@ -177,7 +175,7 @@ async def check_workspace_access(
     workspace = await db.get(Workspace, workspace_id)
     if not workspace:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found.")
-    
+
     if workspace.owner_id == user_id:
         # Owner has full access
         return TeamMembership(
@@ -186,15 +184,15 @@ async def check_workspace_access(
             role=MemberRole.OWNER.value,
             status=MemberStatus.ACTIVE.value,
         )
-    
+
     # Check membership
     membership = await get_workspace_membership(db, workspace_id, user_id)
     if not membership:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied.")
-    
+
     if require_edit and not membership.can_edit():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Edit permission required.")
-    
+
     return membership
 
 
@@ -217,7 +215,7 @@ async def list_workspaces(
         Workspace.owner_id == current_user.id,
         Workspace.status != WorkspaceStatus.DELETED.value,
     )
-    
+
     # Get workspaces where user is a member
     member_query = select(Workspace).join(
         TeamMembership,
@@ -227,22 +225,22 @@ async def list_workspaces(
         TeamMembership.status == MemberStatus.ACTIVE.value,
         Workspace.status != WorkspaceStatus.DELETED.value,
     )
-    
+
     if workspace_type:
         owned_query = owned_query.where(Workspace.workspace_type == workspace_type)
         member_query = member_query.where(Workspace.workspace_type == workspace_type)
-    
+
     # Combine queries
     combined_query = owned_query.union(member_query)
     count_query = select(func.count()).select_from(combined_query.subquery())
-    
+
     total = (await db.execute(count_query)).scalar_one()
-    
+
     result = await db.execute(
         combined_query.order_by(Workspace.updated_at.desc()).limit(100)
     )
     workspaces = result.scalars().all()
-    
+
     return WorkspaceListResponse(
         items=[WorkspaceResponse.model_validate(w) for w in workspaces],
         total=total,
@@ -266,7 +264,7 @@ async def create_workspace(
     )
     db.add(workspace)
     await db.flush()
-    
+
     # Add owner as member with owner role
     membership = TeamMembership(
         workspace_id=workspace.id,
@@ -275,10 +273,10 @@ async def create_workspace(
         status=MemberStatus.ACTIVE.value,
     )
     db.add(membership)
-    
+
     await db.commit()
     await db.refresh(workspace)
-    
+
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -290,7 +288,7 @@ async def get_workspace(
 ) -> WorkspaceResponse:
     """Get a workspace."""
     await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     workspace = await db.get(Workspace, workspace_id)
     return WorkspaceResponse.model_validate(workspace)
 
@@ -304,12 +302,12 @@ async def update_workspace(
 ) -> WorkspaceResponse:
     """Update a workspace."""
     membership = await check_workspace_access(db, workspace_id, current_user.id, require_edit=True)
-    
+
     if not membership.can_edit():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Edit permission required.")
-    
+
     workspace = await db.get(Workspace, workspace_id)
-    
+
     if body.name is not None:
         workspace.name = body.name
     if body.description is not None:
@@ -318,12 +316,12 @@ async def update_workspace(
         workspace.settings = body.settings
     if body.status is not None:
         workspace.status = body.status
-    
-    workspace.updated_at = datetime.now(timezone.utc)
-    
+
+    workspace.updated_at = datetime.now(UTC)
+
     await db.commit()
     await db.refresh(workspace)
-    
+
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -335,14 +333,14 @@ async def delete_workspace(
 ) -> None:
     """Delete a workspace (soft delete)."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_delete():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owner can delete workspace.")
-    
+
     workspace = await db.get(Workspace, workspace_id)
     workspace.status = WorkspaceStatus.DELETED.value
-    workspace.updated_at = datetime.now(timezone.utc)
-    
+    workspace.updated_at = datetime.now(UTC)
+
     await db.commit()
 
 
@@ -356,7 +354,7 @@ async def list_members(
 ) -> MemberListResponse:
     """List workspace members."""
     await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     result = await db.execute(
         select(TeamMembership).where(
             TeamMembership.workspace_id == workspace_id,
@@ -364,7 +362,7 @@ async def list_members(
         )
     )
     members = result.scalars().all()
-    
+
     return MemberListResponse(
         items=[MemberResponse.model_validate(m) for m in members],
         total=len(members),
@@ -381,20 +379,20 @@ async def add_member(
 ) -> MemberResponse:
     """Add a member directly by user ID (for existing users)."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_manage_members():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Manage members permission required.")
-    
+
     # Check if user exists
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
-    
+
     # Check if already a member
     existing = await get_workspace_membership(db, workspace_id, user_id)
     if existing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "User is already a member.")
-    
+
     # Create membership
     new_membership = TeamMembership(
         workspace_id=workspace_id,
@@ -403,15 +401,15 @@ async def add_member(
         status=MemberStatus.ACTIVE.value,
     )
     db.add(new_membership)
-    
+
     # Update member count
     workspace = await db.get(Workspace, workspace_id)
     workspace.member_count += 1
-    workspace.updated_at = datetime.now(timezone.utc)
-    
+    workspace.updated_at = datetime.now(UTC)
+
     await db.commit()
     await db.refresh(new_membership)
-    
+
     return MemberResponse.model_validate(new_membership)
 
 
@@ -425,25 +423,25 @@ async def update_member(
 ) -> MemberResponse:
     """Update a member's role."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_manage_members():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Manage members permission required.")
-    
+
     # Can't change owner's role
     workspace = await db.get(Workspace, workspace_id)
     if workspace.owner_id == target_user_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot change owner's role.")
-    
+
     target_membership = await get_workspace_membership(db, workspace_id, target_user_id)
     if not target_membership:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found.")
-    
+
     if body.role:
         target_membership.role = body.role
-    
+
     await db.commit()
     await db.refresh(target_membership)
-    
+
     return MemberResponse.model_validate(target_membership)
 
 
@@ -456,27 +454,27 @@ async def remove_member(
 ) -> None:
     """Remove a member from workspace."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     # Can remove if manage members or removing self
     can_remove = membership.can_manage_members() or current_user.id == target_user_id
     if not can_remove:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied.")
-    
+
     # Can't remove owner
     workspace = await db.get(Workspace, workspace_id)
     if workspace.owner_id == target_user_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot remove owner.")
-    
+
     target_membership = await get_workspace_membership(db, workspace_id, target_user_id)
     if not target_membership:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found.")
-    
+
     target_membership.status = MemberStatus.LEFT.value
-    
+
     # Update member count
     workspace.member_count = max(1, workspace.member_count - 1)
-    workspace.updated_at = datetime.now(timezone.utc)
-    
+    workspace.updated_at = datetime.now(UTC)
+
     await db.commit()
 
 
@@ -490,10 +488,10 @@ async def list_invites(
 ) -> InviteListResponse:
     """List pending invites for workspace."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_manage_members():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Manage members permission required.")
-    
+
     result = await db.execute(
         select(WorkspaceInvite).where(
             WorkspaceInvite.workspace_id == workspace_id,
@@ -501,7 +499,7 @@ async def list_invites(
         )
     )
     invites = result.scalars().all()
-    
+
     return InviteListResponse(
         items=[InviteResponse.model_validate(i) for i in invites],
         total=len(invites),
@@ -517,10 +515,10 @@ async def create_invite(
 ) -> InviteResponse:
     """Create an invite for a workspace."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_manage_members():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Manage members permission required.")
-    
+
     # Check if user already has invite
     existing = await db.execute(
         select(WorkspaceInvite).where(
@@ -531,18 +529,18 @@ async def create_invite(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pending invite already exists for this email.")
-    
+
     # Check if user is already a member
     invitee = await db.execute(
         select(User).where(User.email == body.email.lower())
     )
     invitee_user = invitee.scalar_one_or_none()
-    
+
     if invitee_user:
         existing_membership = await get_workspace_membership(db, workspace_id, invitee_user.id)
         if existing_membership:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "User is already a member.")
-    
+
     # Create invite
     invite = WorkspaceInvite(
         workspace_id=workspace_id,
@@ -552,12 +550,12 @@ async def create_invite(
         role=body.role,
         invite_token=generate_invite_token(),
         message=body.message,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
     )
     db.add(invite)
     await db.commit()
     await db.refresh(invite)
-    
+
     return InviteResponse.model_validate(invite)
 
 
@@ -570,14 +568,14 @@ async def cancel_invite(
 ) -> None:
     """Cancel a pending invite."""
     membership = await check_workspace_access(db, workspace_id, current_user.id)
-    
+
     if not membership.can_manage_members():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Manage members permission required.")
-    
+
     invite = await db.get(WorkspaceInvite, invite_id)
     if not invite or invite.workspace_id != workspace_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite not found.")
-    
+
     invite.status = InviteStatus.DECLINED.value
     await db.commit()
 
@@ -594,22 +592,22 @@ async def accept_invite(
         select(WorkspaceInvite).where(WorkspaceInvite.invite_token == invite_token)
     )
     invite = result.scalar_one_or_none()
-    
+
     if not invite:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite not found.")
-    
+
     if invite.status != InviteStatus.PENDING.value:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invite is {invite.status}.")
-    
+
     if invite.is_expired():
         invite.status = InviteStatus.EXPIRED.value
         await db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invite has expired.")
-    
+
     # Verify email matches
     if invite.email != current_user.email.lower():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This invite is for a different email.")
-    
+
     # Create membership
     membership = TeamMembership(
         workspace_id=invite.workspace_id,
@@ -618,18 +616,18 @@ async def accept_invite(
         status=MemberStatus.ACTIVE.value,
     )
     db.add(membership)
-    
+
     # Update invite status
     invite.status = InviteStatus.ACCEPTED.value
     invite.user_id = current_user.id
-    invite.accepted_at = datetime.now(timezone.utc)
-    
+    invite.accepted_at = datetime.now(UTC)
+
     # Update member count
     workspace = await db.get(Workspace, invite.workspace_id)
     workspace.member_count += 1
-    workspace.updated_at = datetime.now(timezone.utc)
-    
+    workspace.updated_at = datetime.now(UTC)
+
     await db.commit()
     await db.refresh(membership)
-    
+
     return MemberResponse.model_validate(membership)

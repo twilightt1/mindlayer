@@ -80,7 +80,7 @@ class MemoryRetriever:
         if include_personal_context:
             try:
                 context = await fetch_personal_context(self.db, self.user_id)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 log.warning("fetch_personal_context failed", extra={"error": str(e)})
 
         # 2) LLM rewrite + entity extraction
@@ -96,7 +96,7 @@ class MemoryRetriever:
         # 3) Embed (use rewritten if LLM succeeded, else original)
         try:
             embedding = await embed_query(rewritten if not llm_fallback else query)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.error("embed_query failed", extra={"error": str(e)})
             return self._empty_response(
                 query, rewritten, entities, llm_fallback, llm_reasoning,
@@ -111,7 +111,7 @@ class MemoryRetriever:
                 user_id=str(self.user_id),
                 top_k=top_k * self.rerank_factor,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.error("search_memories failed", extra={"error": str(e)})
             candidates = []
 

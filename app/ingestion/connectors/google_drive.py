@@ -27,8 +27,8 @@ from typing import Any
 import httpx
 import pdfplumber
 
-from app.ingestion.base import BaseConnector
 from app.ingestion.backoff import with_retry
+from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import google_token_refresher
 
@@ -79,27 +79,27 @@ async def _list_all_files(
     cursor: str | None = initial_cursor
     files: list[dict] = []
     last_cursor: str | None = None
-    
+
     while True:
         if cursor:
             params["pageToken"] = cursor
-        
+
         resp = await with_retry(
             lambda: client.get(url, headers=headers, params=params, timeout=30.0)
         )
         data = resp.json()
         files.extend(data.get("files", []))
-        
+
         page_token = data.get("nextPageToken")
         if not page_token:
             # Exhausted → next sync restarts from beginning
             # (dispatcher dedupes by source_ref)
             last_cursor = None
             break
-            
+
         last_cursor = page_token
         cursor = page_token
-        
+
     return files, last_cursor
 
 async def _fetch_text_content(

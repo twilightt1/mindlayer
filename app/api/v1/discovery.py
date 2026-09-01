@@ -16,42 +16,34 @@ Endpoints:
 
 from __future__ import annotations
 
-from uuid import UUID
-from datetime import datetime, timezone
-from typing import Annotated
-
 import logging
+from datetime import datetime
+from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, desc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models.user import User
-from app.models.memory import Memory
 from app.agents.discovery_agent import (
-    DiscoverySession,
     DiscoveryFlowType,
+    DiscoverySession,
     DiscoveryStatus,
-    DocumentGraph,
-    DocumentNode,
-    RelationshipEdge,
-    CrossDocumentReference,
-    DiscoveryInsight,
-    analyze_document_graph,
-    get_next_discovery_step,
-    find_cross_references,
-    synthesize_discovery,
-    create_discovery_session,
     advance_session,
+    analyze_document_graph,
     complete_session,
-    get_strongest_connections,
-    find_bridging_documents,
     compute_graph_metrics,
+    create_discovery_session,
+    find_cross_references,
+    get_next_discovery_step,
+    synthesize_discovery,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.database import get_db
 from app.middleware.response_cache import CacheInvalidation
+from app.models.memory import Memory
+from app.models.user import User
+from app.utils.dependencies import get_current_verified_user
 
 log = logging.getLogger(__name__)
 
@@ -203,7 +195,7 @@ async def get_document_graph(
     doc_ids: str | None = Query(default=None, description="Comma-separated doc IDs to include"),
 ) -> GraphResponse:
     """Get document relationship graph.
-    
+
     Analyzes user's documents to build a graph of relationships.
     """
     # Fetch user's memories
@@ -211,13 +203,13 @@ async def get_document_graph(
     if doc_ids:
         doc_id_list = [d.strip() for d in doc_ids.split(",")]
         query = query.where(Memory.id.in_([UUID(d) for d in doc_id_list]))
-    
+
     result = await db.execute(query)
     memories = result.scalars().all()
-    
+
     if not memories:
         return GraphResponse(nodes=[], edges=[])
-    
+
     # Prepare documents
     documents = [
         {
@@ -229,10 +221,10 @@ async def get_document_graph(
         }
         for m in memories
     ]
-    
+
     # Analyze graph
     graph = await analyze_document_graph(documents)
-    
+
     # Convert to response
     nodes = [
         DocumentNodeResponse(
@@ -244,7 +236,7 @@ async def get_document_graph(
         )
         for n in graph.nodes
     ]
-    
+
     edges = [
         RelationshipEdgeResponse(
             source_id=e.source_id,
@@ -255,7 +247,7 @@ async def get_document_graph(
         )
         for e in graph.edges
     ]
-    
+
     return GraphResponse(nodes=nodes, edges=edges)
 
 
@@ -266,19 +258,19 @@ async def create_session(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DiscoverySessionResponse:
     """Create a new discovery session.
-    
+
     Starts a guided discovery journey from a document.
     """
     # Verify document exists
     doc = await db.get(Memory, UUID(body.starting_doc_id))
     if not doc or doc.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.")
-    
+
     if body.target_doc_id:
         target = await db.get(Memory, UUID(body.target_doc_id))
         if not target or target.user_id != current_user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Target document not found.")
-    
+
     # Create session
     flow_type = _parse_flow_type(body.flow_type)
     session = create_discovery_session(
@@ -287,13 +279,13 @@ async def create_session(
         flow_type=flow_type,
         target_doc_id=body.target_doc_id,
     )
-    
+
     # Store session
     _session_store[session.id] = session
-    
+
     # Invalidate user's sessions cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
-    
+
     return _session_to_response(session)
 
 
@@ -311,13 +303,13 @@ async def list_sessions(
         if s.user_id == str(current_user.id)
         and (status_filter is None or s.status.value == status_filter)
     ]
-    
+
     # Sort by creation date
     user_sessions.sort(key=lambda s: s.created_at, reverse=True)
-    
+
     total = len(user_sessions)
     paginated = user_sessions[offset:offset + limit]
-    
+
     return SessionListResponse(
         items=[_session_to_response(s) for s in paginated],
         total=total,
@@ -333,10 +325,10 @@ async def get_session(
 ) -> DiscoverySessionResponse:
     """Get a discovery session."""
     session = _session_store.get(session_id)
-    
+
     if not session or session.user_id != str(current_user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found.")
-    
+
     return _session_to_response(session)
 
 
@@ -348,10 +340,10 @@ async def get_next_step(
 ) -> DiscoveryStepResponse:
     """Get the next step in a discovery journey."""
     session = _session_store.get(session_id)
-    
+
     if not session or session.user_id != str(current_user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found.")
-    
+
     if session.status == DiscoveryStatus.COMPLETED:
         return DiscoveryStepResponse(
             next_doc_id="",
@@ -361,13 +353,13 @@ async def get_next_step(
             step_goal="",
             is_complete=True,
         )
-    
+
     # Fetch user's documents
     result = await db.execute(
         select(Memory).where(Memory.user_id == current_user.id)
     )
     memories = result.scalars().all()
-    
+
     documents = [
         {
             "id": str(m.id),
@@ -376,13 +368,13 @@ async def get_next_step(
         }
         for m in memories
     ]
-    
+
     # Build graph
     graph = await analyze_document_graph(documents)
-    
+
     # Get next step
     step = await get_next_discovery_step(session, documents, graph)
-    
+
     return DiscoveryStepResponse(
         next_doc_id=step["next_doc_id"],
         next_doc_title=step["next_doc_title"],
@@ -401,33 +393,33 @@ async def advance_discovery(
 ) -> DiscoverySessionResponse:
     """Advance to the next step in discovery journey."""
     session = _session_store.get(session_id)
-    
+
     if not session or session.user_id != str(current_user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found.")
-    
+
     if session.status == DiscoveryStatus.COMPLETED:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Session already completed.")
-    
+
     # Get next step
     result = await db.execute(
         select(Memory).where(Memory.user_id == current_user.id)
     )
     memories = result.scalars().all()
-    
+
     documents = [
         {"id": str(m.id), "title": m.title, "content": m.content}
         for m in memories
     ]
-    
+
     graph = await analyze_document_graph(documents)
     step = await get_next_discovery_step(session, documents, graph)
-    
+
     if not step["next_doc_id"]:
         # No more steps, complete session
         session = complete_session(session)
         _session_store[session_id] = session
         return _session_to_response(session)
-    
+
     # Advance session
     connection = {
         "from_doc": session.path[-1] if session.path else None,
@@ -435,13 +427,13 @@ async def advance_discovery(
         "insight": step["insight_preview"],
         "step_goal": step["step_goal"],
     }
-    
+
     session = advance_session(session, step["next_doc_id"], connection)
     _session_store[session_id] = session
-    
+
     # Invalidate user's sessions cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
-    
+
     return _session_to_response(session)
 
 
@@ -453,23 +445,23 @@ async def complete_discovery(
 ) -> DiscoverySessionResponse:
     """Complete a discovery session and get synthesized insight."""
     session = _session_store.get(session_id)
-    
+
     if not session or session.user_id != str(current_user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found.")
-    
+
     # Synthesize findings
     result = await db.execute(
         select(Memory).where(Memory.user_id == current_user.id)
     )
     memories = result.scalars().all()
-    
+
     documents = [
         {"id": str(m.id), "title": m.title, "content": m.content}
         for m in memories
     ]
-    
+
     synthesis = await synthesize_discovery(session, documents)
-    
+
     # Add synthesis as final connection
     session.connections_found.append({
         "type": "synthesis",
@@ -477,13 +469,13 @@ async def complete_discovery(
         "description": synthesis.description,
         "confidence": synthesis.confidence,
     })
-    
+
     session = complete_session(session)
     _session_store[session_id] = session
-    
+
     # Invalidate user's sessions cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/discovery/sessions:{current_user.id}:*")
-    
+
     return _session_to_response(session)
 
 
@@ -497,12 +489,12 @@ async def find_references(
     """Find cross-document references between two documents."""
     doc1 = await db.get(Memory, UUID(doc1_id))
     doc2 = await db.get(Memory, UUID(doc2_id))
-    
+
     if not doc1 or doc1.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "First document not found.")
     if not doc2 or doc2.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Second document not found.")
-    
+
     doc1_dict = {
         "id": str(doc1.id),
         "title": doc1.title,
@@ -513,9 +505,9 @@ async def find_references(
         "title": doc2.title,
         "content": f"{doc2.title}\n{doc2.summary}\n{doc2.content}" if doc2.summary else doc2.content,
     }
-    
+
     references = await find_cross_references(doc1_dict, doc2_dict)
-    
+
     return [
         CrossReferenceResponse(
             source_doc_id=r.source_doc_id,
@@ -539,7 +531,7 @@ async def get_graph_metrics(
         select(Memory).where(Memory.user_id == current_user.id)
     )
     memories = result.scalars().all()
-    
+
     documents = [
         {
             "id": str(m.id),
@@ -548,10 +540,10 @@ async def get_graph_metrics(
         }
         for m in memories
     ]
-    
+
     graph = await analyze_document_graph(documents)
     metrics = compute_graph_metrics(graph)
-    
+
     return GraphMetricsResponse(**metrics)
 
 
@@ -563,22 +555,22 @@ async def get_synthesis(
 ) -> DiscoveryInsightResponse:
     """Get synthesized insight from a discovery session."""
     session = _session_store.get(session_id)
-    
+
     if not session or session.user_id != str(current_user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found.")
-    
+
     result = await db.execute(
         select(Memory).where(Memory.user_id == current_user.id)
     )
     memories = result.scalars().all()
-    
+
     documents = [
         {"id": str(m.id), "title": m.title, "content": m.content}
         for m in memories
     ]
-    
+
     synthesis = await synthesize_discovery(session, documents)
-    
+
     return DiscoveryInsightResponse(
         title=synthesis.title,
         description=synthesis.description,

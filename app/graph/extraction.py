@@ -13,7 +13,11 @@ from typing import Any
 
 from openai import AsyncOpenAI
 
-from app.agents.llm_parsing import coerce_float, coerce_string_list, parse_llm_json_object
+from app.agents.llm_parsing import (
+    coerce_float,
+    coerce_string_list,
+    parse_llm_json_object,
+)
 from app.config import settings
 from app.models.entity import ENTITY_TYPES, RELATION_TYPES
 from app.models.memory import Memory
@@ -359,7 +363,7 @@ async def extract_entities(memory: Memory, *, model: str | None = None) -> Entit
             fallback_used=False,
             raw_preview=parsed.raw_preview,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("Entity extraction fallback", extra={"error": str(exc)})
         return EntityExtractionResult(
             entities=_fallback_entities(memory),
@@ -426,7 +430,7 @@ async def extract_relations(
             fallback_used=False,
             raw_preview=parsed.raw_preview,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("Relation extraction fallback", extra={"error": str(exc)})
         return RelationExtractionResult(
             relations=_fallback_relations(entities),

@@ -22,8 +22,8 @@ from typing import Any
 
 import httpx
 
-from app.ingestion.base import BaseConnector
 from app.ingestion.backoff import with_retry
+from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import (
     NOTION_API_BASE,
@@ -58,7 +58,7 @@ async def _get_all_block_children(
             params["start_cursor"] = cursor
 
         resp = await with_retry(
-            lambda: client.get(
+            lambda params=params: client.get(
                 f"{NOTION_API_BASE}/blocks/{block_id}/children",
                 headers=headers, params=params, timeout=30.0,
             )
@@ -190,7 +190,7 @@ async def _query_database(
             body["start_cursor"] = cursor
 
         resp = await with_retry(
-            lambda: client.post(url, headers=headers, json=body, timeout=30.0)
+            lambda body=body: client.post(url, headers=headers, json=body, timeout=30.0)
         )
         data = resp.json()
         pages.extend(data.get("results", []))
@@ -227,7 +227,7 @@ async def _search_workspace(
             body["start_cursor"] = cursor
 
         resp = await with_retry(
-            lambda: client.post(url, headers=headers, json=body, timeout=30.0)
+            lambda body=body: client.post(url, headers=headers, json=body, timeout=30.0)
         )
         data = resp.json()
         pages.extend(data.get("results", []))

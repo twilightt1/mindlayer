@@ -14,36 +14,35 @@ ingestion service and is wired up in Phase 2.
 """
 from __future__ import annotations
 
-from uuid import UUID
+import logging
 from datetime import datetime
 from typing import Annotated, Literal
-
-import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, or_
+from pydantic import BaseModel
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
 from app.models.memory import Memory
+from app.models.user import User
 from app.retrieval.memory.retriever import MemoryRetriever
 from app.retrieval.memory.write_back import (
     index_new_memory,
     safe_delete_from_chroma,
     safe_upsert_to_chroma,
 )
-from app.utils.dependencies import get_current_verified_user
 from app.schemas.Orivory import (
     DigestResponse,
     MemoryCreate,
-    MemoryUpdate,
-    MemoryResponse,
     MemoryListResponse,
+    MemoryResponse,
+    MemoryUpdate,
     RecallRequest,
     RecallResponse,
 )
-from pydantic import BaseModel
+from app.utils.dependencies import get_current_verified_user
 
 log = logging.getLogger(__name__)
 
@@ -280,13 +279,13 @@ async def get_shared_memory(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SharedMemoryResponse:
     """Get a shared memory publicly (no auth required).
-    
+
     Only memories with is_shared=True are accessible.
     """
     memory = await db.get(Memory, memory_id)
     if not memory or not getattr(memory, 'is_shared', False):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Memory not found or not shared")
-    
+
     return SharedMemoryResponse(
         id=str(memory.id),
         title=memory.title,

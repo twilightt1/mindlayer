@@ -1,13 +1,16 @@
 """Document service — scoped to conversation."""
 from __future__ import annotations
+
 import logging
 import uuid
 from uuid import UUID
+
 from fastapi import HTTPException, UploadFile
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.document import Document
+
 from app.models.conversation import Conversation
+from app.models.document import Document
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +19,7 @@ ALLOWED_MIME = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
 }
-MAX_SIZE = 50 * 1024 * 1024          
+MAX_SIZE = 50 * 1024 * 1024
 MAX_DOCS = 20
 
 
@@ -84,7 +87,9 @@ async def delete_document(db: AsyncSession, document: Document, conversation: Co
     from app import storage
     from app.ingestion.document_memory import delete_document_memories_async
     from app.retrieval.bm25_retriever import bm25_retriever
-    from app.retrieval.memory.vector_store import delete_memories as delete_memory_vectors
+    from app.retrieval.memory.vector_store import (
+        delete_memories as delete_memory_vectors,
+    )
     from app.retrieval.retrieval_cache import invalidate_query_cache
     from app.retrieval.vector_retriever import delete_document_chunks
 

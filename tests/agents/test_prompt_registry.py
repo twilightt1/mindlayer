@@ -12,8 +12,11 @@ from app.agents.prompts.integration import (
     build_prompt,
     log_prompt_outcome,
 )
-from app.agents.prompts.registry import PromptNotFoundError, PromptVariant, get_active_variant
-
+from app.agents.prompts.registry import (
+    PromptNotFoundError,
+    PromptVariant,
+    get_active_variant,
+)
 
 # ---------------------------------------------------------------------------
 # Variant basics

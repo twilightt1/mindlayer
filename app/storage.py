@@ -1,9 +1,11 @@
 """MinIO async wrapper."""
-import io
 import asyncio
+import io
 from functools import partial
+
 from minio import Minio
 from minio.error import S3Error
+
 from app.config import settings
 
 _client: Minio | None = None
@@ -98,7 +100,7 @@ async def list_objects(prefix: str) -> list[str]:
     return await loop.run_in_executor(None, _list)
 
 
-                                
+
 def get_object_sync(object_name: str) -> bytes:
     client   = _get_client()
     response = client.get_object(settings.MINIO_BUCKET, object_name)

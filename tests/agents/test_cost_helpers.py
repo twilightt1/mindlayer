@@ -1,7 +1,6 @@
 """Tests for agent cost/latency helpers."""
 from __future__ import annotations
 
-
 from app.agents.cost_helpers import (
     Stopwatch,
     cost_summary,
@@ -87,4 +86,4 @@ class TestMergeCostSummary:
         assert "answer" in merged["agent_costs"]
 
 
-import pytest  # noqa: E402
+import pytest

@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from app.agents.prompts.variant import PromptVariant  # noqa: F401 (re-export)
+from app.agents.prompts.variant import PromptVariant
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -182,7 +182,7 @@ class PromptRegistry:
         if not names:
             raise PromptNotFoundError(agent)
         # Hash-based deterministic assignment
-        h = hashlib.sha1(f"{agent}:{conversation_id}".encode("utf-8")).hexdigest()
+        h = hashlib.sha1(f"{agent}:{conversation_id}".encode()).hexdigest()
         idx = int(h, 16) % len(names)
         chosen = names[idx]
         cls._store.set(agent, conversation_id, chosen)

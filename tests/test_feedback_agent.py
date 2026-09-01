@@ -4,13 +4,13 @@ Tests for Feedback Pipeline Agent
 Reference: Pistis-RAG framework
 """
 
-import pytest
 from datetime import datetime
-from enum import Enum
-from unittest.mock import AsyncMock, MagicMock, patch
+from enum import StrEnum
+
+import pytest
 
 
-class FeedbackType(str, Enum):
+class FeedbackType(StrEnum):
     """Types of user feedback."""
     POSITIVE = "positive"
     NEGATIVE = "negative"
@@ -46,14 +46,14 @@ class TestHashQuery:
     def test_hash_query_different(self):
         """Different queries produce different hashes."""
         import hashlib
-        h1 = hashlib.sha256("Query 1".encode()).hexdigest()[:16]
-        h2 = hashlib.sha256("Query 2".encode()).hexdigest()[:16]
+        h1 = hashlib.sha256(b"Query 1").hexdigest()[:16]
+        h2 = hashlib.sha256(b"Query 2").hexdigest()[:16]
         assert h1 != h2
 
     def test_hash_query_length(self):
         """Hash is 16 characters."""
         import hashlib
-        h = hashlib.sha256("test".encode()).hexdigest()[:16]
+        h = hashlib.sha256(b"test").hexdigest()[:16]
         assert len(h) == 16
 
 
@@ -69,7 +69,7 @@ class TestDocumentWeight:
             "feedback_count": 5,
             "positive_ratio": 0.8,
         }
-        
+
         assert weight["doc_id"] == "doc1"
         assert weight["new_weight"] == 1.2
         assert weight["positive_ratio"] == 0.8
@@ -88,7 +88,7 @@ class TestFeedbackStats:
             "positive_ratio": 0.7,
             "top_docs": [{"doc_id": "doc1", "weight": 1.2, "count": 10}],
         }
-        
+
         assert stats["total_feedback"] == 100
         assert stats["positive_ratio"] == 0.7
 
@@ -103,10 +103,10 @@ class TestFeedbackAgent:
         state = {}
         state.setdefault("agent_trace", {})
         state.setdefault("feedback_trace", {})
-        
+
         state["feedback_trace"]["ready"] = True
         state["feedback_trace"]["timestamp"] = datetime.utcnow().isoformat()
-        
+
         assert state["feedback_trace"]["ready"] is True
         assert "timestamp" in state["feedback_trace"]
 
@@ -125,10 +125,10 @@ class TestAdjustRetrievalScores:
             {"id": "doc1", "score": 0.8},
             {"id": "doc2", "score": 0.6},
         ]
-        
+
         # Sort by score
         chunks.sort(key=lambda x: x.get("score", 0), reverse=True)
-        
+
         assert chunks[0]["id"] == "doc1"
         assert chunks[0].get("feedback_weight") is None
 
@@ -188,7 +188,7 @@ class TestFeedbackRecord:
             "content": None,
             "created_at": datetime.utcnow(),
         }
-        
+
         assert record["feedback_type"] == FeedbackType.POSITIVE
         assert len(record["doc_ids"]) == 2
 
@@ -200,7 +200,7 @@ class TestRetrainingDecision:
         """Doesn't trigger with too few samples."""
         min_samples = 1000
         total_feedback = 100
-        
+
         should_trigger = total_feedback >= min_samples
         assert should_trigger is False
 

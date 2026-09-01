@@ -1,9 +1,7 @@
-from langgraph.graph import StateGraph, END, START
-from langgraph.graph.state import CompiledStateGraph
-
 import logging
 
-log = logging.getLogger(__name__)
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.answer_agent import answer_agent
 from app.agents.context_merge_agent import context_merge_agent
@@ -16,22 +14,30 @@ from app.agents.memory_agent import (
     memory_save_agent,
     memory_save_note_agent,
 )
+from app.agents.multihop_agent import multihop_agent, multihop_synthesis
 from app.agents.personal_context_agent import personal_context_agent
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.router_agent import router_agent
 from app.agents.routing import (
     MAX_RETRIES,
-    route_after_grade_docs as _route_after_grade_docs,
     route_after_grade_docs,
-    route_after_grade_gen as _route_after_grade_gen,
     route_after_grade_gen,
-    route_from_router as _route,
     route_from_router,
+)
+from app.agents.routing import (
+    route_after_grade_docs as _route_after_grade_docs,
+)
+from app.agents.routing import (
+    route_after_grade_gen as _route_after_grade_gen,
+)
+from app.agents.routing import (
+    route_from_router as _route,
 )
 from app.agents.state import AgentState
 from app.memory.temporal_encoder import temporal_agent
 from app.retrieval.hyde_agent import hyde_agent
-from app.agents.multihop_agent import multihop_agent, multihop_synthesis
+
+log = logging.getLogger(__name__)
 
 # Re-exports for backward compatibility. Pure routing helpers live in
 # ``app.agents.routing`` so they can be unit-tested without importing the
@@ -143,22 +149,22 @@ def build_graph() -> CompiledStateGraph:
     def route_after_multihop(state: AgentState) -> str:
         """
         Route after multi-hop detection: loop for more hops or proceed to synthesis.
-        
+
         Safeguards against infinite loops by checking hop count against MAX_MULTIHOP_HOPS.
         """
         from app.config import settings
-        
+
         # Get current hop count from trace
         multihop_trace = state.get("multihop_trace", {})
         current_hops = multihop_trace.get("hop_count", 0)
-        
+
         # Check if we're exceeding max hops
         if state.get("multihop_pending") and current_hops >= settings.MULTIHOP_MAX_HOPS:
             log.warning(f"Multi-hop: Reached max hops ({settings.MULTIHOP_MAX_HOPS}), forcing completion")
             state["multihop_pending"] = False
             state["multihop_trace"]["force_completed"] = True
             return "multihop_synthesis"
-        
+
         if state.get("multihop_pending"):
             return "retrieval"  # Loop back for next hop
         return "multihop_synthesis"  # All hops done, synthesize
@@ -184,7 +190,7 @@ def build_graph() -> CompiledStateGraph:
     )
     g.add_edge("retry_retrieval_for_irrelevant_context", "retrieval")
     g.add_edge("record_irrelevant_context_retry_limit", "crag")
-    
+
     # CRAG node: self-critiques retrieval quality, may trigger web fallback
     g.add_edge("crag", "answer")
 

@@ -53,6 +53,7 @@ async def memory_load_agent(state: AgentState) -> AgentState:
         return state
     try:
         from sqlalchemy import select
+
         from app.database import AsyncSessionLocal
         from app.models.message import Message
         async with AsyncSessionLocal() as db:
@@ -96,7 +97,7 @@ async def _bump_used_memory_salience(state: AgentState) -> int:
             count = await bump_salience(db, UUID(state["user_id"]), memory_ids)
         state.setdefault("agent_trace", {})["salience_bump"] = {"memories_bumped": count}
         return count
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("Salience bump failed", extra={"error": str(e)})
         state.setdefault("agent_trace", {})["salience_bump"] = {"error": str(e)}
         return 0
@@ -113,7 +114,7 @@ def _record_grounding_confidence(state: AgentState) -> None:
         from app.agents.grounding import compute_grounding_confidence
 
         state.setdefault("agent_trace", {})["grounding"] = compute_grounding_confidence(state)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("Grounding confidence failed", extra={"error": str(e)})
 
 

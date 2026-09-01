@@ -1,14 +1,16 @@
 from __future__ import annotations
+
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any
 
 from app.database import get_db
-from app.utils.dependencies import require_admin
 from app.models.user import User
-from app.services.settings_service import SettingsService
 from app.services.audit_service import AuditService
+from app.services.settings_service import SettingsService
+from app.utils.dependencies import require_admin
 
 router = APIRouter(prefix="/admin/settings", tags=["admin_settings"])
 
@@ -51,8 +53,8 @@ async def get_setting(
     if val is None:
         raise HTTPException(404, detail="Setting not found.")
 
-                                                                                
-                                                                       
+
+
     description = None
     if key in SettingsService.DEFAULTS:
         description = SettingsService.DEFAULTS[key].get("description")
@@ -121,7 +123,7 @@ async def delete_setting(
         admin_id=admin_user.id,
         action="delete_setting",
         target_entity_type="system_setting",
-        target_entity_id=admin_user.id,                                                                 
+        target_entity_id=admin_user.id,
         changes={"key": key}
     )
 

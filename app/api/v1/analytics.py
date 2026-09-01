@@ -10,8 +10,7 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
-from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -20,10 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.services.analytics_service import (
-    record_events,
+    get_daily_active_users,
     get_feature_usage,
     get_page_views,
-    get_daily_active_users,
+    record_events,
 )
 from app.utils.dependencies import get_current_verified_user
 

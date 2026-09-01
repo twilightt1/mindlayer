@@ -1,10 +1,11 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
-from app.redis_client import get_redis
 from app.models.user import User
+from app.redis_client import get_redis
 from app.utils.security import decode_access_token
 
 bearer = HTTPBearer()

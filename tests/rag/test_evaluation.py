@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from app.agents.hallucination_agent import hallucination_agent
 from app.agents.state import AgentState

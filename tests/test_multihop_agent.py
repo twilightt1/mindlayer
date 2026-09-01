@@ -4,17 +4,18 @@ Tests for Multi-hop Reasoning Agent
 Reference: EfficientRAG - EMNLP 2024
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.agents.multihop_agent import (
     HopResult,
     MultiHopResult,
+    branch_solve_merge,
     detect_multihop,
     generate_subqueries,
-    synthesize_answer,
     multihop_agent,
-    branch_solve_merge,
+    synthesize_answer,
 )
 
 
@@ -30,7 +31,7 @@ class TestHopResult:
             answer_fragment="X is a type of AI model",
             confidence=0.85,
         )
-        
+
         assert result.hop_number == 1
         assert result.subquery == "What is X?"
         assert result.confidence == 0.85
@@ -48,7 +49,7 @@ class TestMultiHopResult:
             answer_fragment="answer",
             confidence=0.8,
         )
-        
+
         result = MultiHopResult(
             is_multihop=True,
             hop_count=2,
@@ -57,7 +58,7 @@ class TestMultiHopResult:
             confidence=0.8,
             reasoning_chain="Hop 1...",
         )
-        
+
         assert result.is_multihop is True
         assert result.hop_count == 2
 
@@ -80,7 +81,7 @@ class TestDetectMultihop:
         mock_get_client.return_value = mock_client
 
         result = await detect_multihop("How does X compare to Y?")
-        
+
         assert result["is_multihop"] is True
         assert result["hop_count"] == 2
         assert "X" in result["key_entities"]
@@ -100,7 +101,7 @@ class TestDetectMultihop:
         mock_get_client.return_value = mock_client
 
         result = await detect_multihop("What is machine learning?")
-        
+
         assert result["is_multihop"] is False
         assert result["hop_count"] == 1
 
@@ -113,7 +114,7 @@ class TestDetectMultihop:
         mock_get_client.return_value = mock_client
 
         result = await detect_multihop("test query")
-        
+
         assert result["is_multihop"] is False
         assert result["hop_count"] == 1
         assert "failed" in result["reasoning"].lower()
@@ -137,7 +138,7 @@ class TestGenerateSubqueries:
         mock_get_client.return_value = mock_client
 
         result = await generate_subqueries("How does X affect Y?", 2)
-        
+
         assert len(result) == 2
         assert result[0]["hop"] == 1
         assert result[1]["hop"] == 2
@@ -151,7 +152,7 @@ class TestGenerateSubqueries:
         mock_get_client.return_value = mock_client
 
         result = await generate_subqueries("original query", 3)
-        
+
         assert len(result) == 3
         assert all(sq["query"] == "original query" for sq in result)
 
@@ -171,7 +172,7 @@ class TestGenerateSubqueries:
         mock_get_client.return_value = mock_client
 
         result = await generate_subqueries("test", 3)
-        
+
         assert len(result) == 3
 
 
@@ -192,7 +193,7 @@ class TestSynthesizeAnswer:
 
         hop = HopResult(1, "test", "context", "fragment", 0.8)
         answer, confidence = await synthesize_answer("How does X affect Y?", [hop])
-        
+
         assert "X" in answer or "Y" in answer
         assert confidence == 0.8
 
@@ -212,8 +213,8 @@ class TestSynthesizeAnswer:
             HopResult(1, "test1", "context1", "fragment1", 0.7),
             HopResult(2, "test2", "context2", "fragment2", 0.9),
         ]
-        answer, confidence = await synthesize_answer("test query", hops)
-        
+        _answer, confidence = await synthesize_answer("test query", hops)
+
         assert confidence == 0.8  # Average
 
 
@@ -227,9 +228,9 @@ class TestMultihopAgent:
         mock_settings.MULTIHOP_ENABLED = False
 
         state = {"query": "test query", "query_type": "rag"}
-        
+
         result = await multihop_agent(state)
-        
+
         assert result["multihop_trace"].get("enabled") is False
         assert result["multihop_result"] is None
 
@@ -240,9 +241,9 @@ class TestMultihopAgent:
         mock_settings.MULTIHOP_ENABLED = True
 
         state = {"query": "hello", "query_type": "chitchat"}
-        
+
         result = await multihop_agent(state)
-        
+
         assert result["multihop_trace"].get("skipped") is True
 
     @pytest.mark.asyncio
@@ -265,9 +266,9 @@ class TestMultihopAgent:
             "rewritten_query": "What is machine learning?",
             "query_type": "rag",
         }
-        
+
         result = await multihop_agent(state)
-        
+
         assert result["multihop_trace"].get("mode") == "single_hop"
         assert result["multihop_result"] is None
 
@@ -296,9 +297,9 @@ class TestMultihopAgent:
             "rewritten_query": "How does X compare to Y?",
             "query_type": "rag",
         }
-        
+
         result = await multihop_agent(state)
-        
+
         assert result["multihop_trace"].get("mode") == "multi_hop"
         assert result["multihop_trace"].get("hop_count") == 2
         assert result["multihop_subqueries"] is not None
@@ -325,7 +326,7 @@ class TestBranchSolveMerge:
             branches=["X", "Y"],
             retrieved_contexts=["Context about X", "Context about Y"],
         )
-        
+
         assert "Merged" in result or "branches" in result.lower()
 
     @pytest.mark.asyncio
@@ -341,5 +342,5 @@ class TestBranchSolveMerge:
             branches=["A", "B"],
             retrieved_contexts=["ctx1", "ctx2"],
         )
-        
+
         assert "failed" in result.lower()
