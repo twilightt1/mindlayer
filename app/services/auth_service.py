@@ -1,6 +1,7 @@
 """Authentication business logic."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import secrets
@@ -51,6 +52,15 @@ def _verify(pw: str, h: str) -> bool:
         return bcrypt.checkpw(pw_bytes, h.encode('utf-8'))
     except Exception:
         return False
+
+
+async def _hash_async(pw: str) -> str:
+    """bcrypt costs ~100-300ms of CPU — must not block the event loop."""
+    return await asyncio.to_thread(_hash, pw)
+
+
+async def _verify_async(pw: str, h: str) -> bool:
+    return await asyncio.to_thread(_verify, pw, h)
 def _otp() -> str:
     return "".join(secrets.choice(string.digits) for _ in range(6))
 
@@ -65,7 +75,7 @@ async def register_email(db: AsyncSession, email: str, password: str) -> User:
                   else "Email already in use.")
         raise HTTPException(409, detail=detail)
 
-    user = User(email=email, hashed_password=_hash(password), auth_provider="email",
+    user = User(email=email, hashed_password=await _hash_async(password), auth_provider="email",
                 is_verified=False, onboarding_done=False)
     db.add(user)
     await db.flush()
@@ -194,7 +204,7 @@ async def login_email(db: AsyncSession, email: str, password: str) -> tuple[User
     user = await db.scalar(select(User).where(User.email == email))
     if (not user or user.auth_provider != "email"
             or not user.hashed_password
-            or not _verify(password, user.hashed_password)):
+            or not await _verify_async(password, user.hashed_password)):
         raise HTTPException(401, detail="Invalid email or password.")
     if not user.is_verified:
         raise HTTPException(403, detail="Please verify your email first.")
@@ -346,7 +356,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
     user = await db.get(User, session.user_id)
     if not user:
         raise HTTPException(400, detail="Account not found.")
-    user.hashed_password = _hash(new_password)
+    user.hashed_password = await _hash_async(new_password)
     session.used_at = _now()
     await db.commit()
     await _invalidate_all_refresh(user.id)
@@ -365,9 +375,9 @@ async def change_password(db: AsyncSession, user: User, current: str, new_pw: st
     from fastapi import HTTPException
     if user.auth_provider != "email":
         raise HTTPException(400, detail="Google accounts do not use passwords.")
-    if not user.hashed_password or not _verify(current, user.hashed_password):
+    if not user.hashed_password or not await _verify_async(current, user.hashed_password):
         raise HTTPException(400, detail="Current password is incorrect.")
-    user.hashed_password = _hash(new_pw)
+    user.hashed_password = await _hash_async(new_pw)
     await db.commit()
     await _invalidate_all_refresh(user.id)
     log.info("Password changed", extra={"user_id": str(user.id)})
