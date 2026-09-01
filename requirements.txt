@@ -46,8 +46,6 @@ redis[hiredis]>=5.0.8
 celery[redis]>=5.4.0
 flower>=2.0.1
 
-pytest
-
 # Utils
 structlog>=24.4.0
 python-dotenv>=1.0.1
