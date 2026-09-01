@@ -365,51 +365,6 @@ async def multihop_agent(state: AgentState) -> AgentState:
     return state
 
 
-async def multihop_synthesis(state: AgentState) -> AgentState:
-    """
-    Synthesize answer after multi-hop retrieval.
-
-    Called after retrieval completes to synthesize the final answer.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with synthesized answer
-    """
-    if not state.get("multihop_pending"):
-        return state
-
-    query = state.get("rewritten_query", state.get("query", ""))
-    hop_results = state.get("multihop_hop_results", [])
-
-    if not hop_results:
-        log.warning("Multi-hop: No hop results to synthesize")
-        state["multihop_result"] = None
-        return state
-
-    # Synthesize answer
-    answer, confidence = await synthesize_answer(query, hop_results)
-
-    state["multihop_result"] = {
-        "answer": answer,
-        "confidence": confidence,
-        "hop_count": len(hop_results),
-        "reasoning_chain": "\n".join([
-            f"Hop {r.hop_number}: {r.answer_fragment}"
-            for r in hop_results
-        ]),
-    }
-
-    state["multihop_pending"] = False
-
-    log.info(f"Multi-hop: Synthesized answer with confidence {confidence:.2f}")
-
-    return state
-
-
-# ─── Branch-Solve-Merge Helper ─────────────────────────────────────────────────
-
 async def branch_solve_merge(
     query: str,
     branches: list[str],

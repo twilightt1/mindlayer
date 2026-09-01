@@ -101,29 +101,12 @@ class Settings(BaseSettings):
     HYDE_PASSAGE_COUNT: int = 3  # Number of hypothetical passages to generate
     HYDE_USE_IN_RETRIEVAL: bool = True  # Use HyDE embeddings in retrieval
 
-    # ── Temporal Memory ──────────────────────────────────────────────────────
-    # Time-aware retrieval using temporal encoding.
-    TEMPORAL_ENABLED: bool = True
-    TEMPORAL_DIM: int = 64  # Temporal vector dimension
-    TEMPORAL_HALF_LIFE_DAYS: int = 90  # Recency decay half-life
-    TEMPORAL_WEIGHT: float = 0.3  # Weight of temporal score in final ranking
-
     # ── Multi-hop Reasoning (EfficientRAG) ─────────────────────────────────────
     # Multi-hop query decomposition and reasoning.
     # Reference: EfficientRAG - EMNLP 2024
     MULTIHOP_ENABLED: bool = True
     MULTIHOP_MODEL: str = "openai/gpt-4o-mini"  # Model for multi-hop reasoning
     MULTIHOP_MAX_HOPS: int = 3  # Maximum number of reasoning hops
-
-    # ── Feedback Pipeline (Continual Learning) ──────────────────────────────────
-    # Closed-loop learning from user feedback.
-    # Reference: Pistis-RAG framework
-    FEEDBACK_ENABLED: bool = True
-    FEEDBACK_MIN_SAMPLES: int = 1000  # Min feedback before retraining
-    FEEDBACK_MIN_CORRECTIONS: int = 50  # Min corrections before retraining
-    FEEDBACK_RETENTION_DAYS: int = 90  # How long to keep feedback
-    FEEDBACK_POSITIVE_BOOST: float = 0.1  # Weight boost per positive
-    FEEDBACK_NEGATIVE_PENALTY: float = 0.1  # Weight penalty per negative
     FEEDBACK_MAX_WEIGHT: float = 2.0  # Max document weight
     FEEDBACK_MIN_WEIGHT: float = 0.5  # Min document weight
 

@@ -14,7 +14,7 @@ from app.agents.memory_agent import (
     memory_save_agent,
     memory_save_note_agent,
 )
-from app.agents.multihop_agent import multihop_agent, multihop_synthesis
+from app.agents.multihop_agent import multihop_agent
 from app.agents.personal_context_agent import personal_context_agent
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.router_agent import router_agent
@@ -34,7 +34,6 @@ from app.agents.routing import (
     route_from_router as _route,
 )
 from app.agents.state import AgentState
-from app.memory.temporal_encoder import temporal_agent
 from app.retrieval.hyde_agent import hyde_agent
 
 log = logging.getLogger(__name__)
@@ -103,11 +102,9 @@ def build_graph() -> CompiledStateGraph:
     g.add_node("memory", memory_load_agent)
     g.add_node("personal_context", personal_context_agent)
     g.add_node("graph_context", graph_context_agent)
-    g.add_node("temporal", temporal_agent)  # Temporal: parse time-aware queries
     g.add_node("hyde", hyde_agent)  # HyDE: generate hypothetical document
     g.add_node("retrieval", retrieval_agent)
     g.add_node("multihop", multihop_agent)  # Multi-hop: detect & decompose multi-hop queries
-    g.add_node("multihop_synthesis", multihop_synthesis)  # Multi-hop: synthesize results
     g.add_node("merge_context", context_merge_agent)
     g.add_node("grade_docs", evaluator_agent)
     g.add_node("crag", crag_agent)  # Corrective-RAG: self-critique + web fallback
@@ -140,8 +137,7 @@ def build_graph() -> CompiledStateGraph:
 
     g.add_edge("memory", "personal_context")
     g.add_edge("personal_context", "graph_context")
-    g.add_edge("graph_context", "temporal")  # Temporal: parse time-aware queries
-    g.add_edge("temporal", "hyde")  # HyDE generates hypothetical doc before retrieval
+    g.add_edge("graph_context", "hyde")
     g.add_edge("hyde", "retrieval")
     # Multi-hop reasoning: after retrieval, detect if multi-hop and loop if needed
     g.add_edge("retrieval", "multihop")
@@ -161,19 +157,19 @@ def build_graph() -> CompiledStateGraph:
         executed_hops = multihop_trace.get("executed_hops", 0)
 
         if not state.get("multihop_pending"):
-            return "multihop_synthesis"
+            return "merge_context"
 
         if executed_hops >= settings.MULTIHOP_MAX_HOPS:
             log.warning(f"Multi-hop: Reached max hops ({settings.MULTIHOP_MAX_HOPS}), forcing completion")
             state["multihop_pending"] = False
             state["multihop_trace"]["force_completed"] = True
-            return "multihop_synthesis"
+            return "merge_context"
 
         subqueries = state.get("multihop_subqueries") or []
         if executed_hops >= len(subqueries):
             # All planned subqueries executed
             state["multihop_pending"] = False
-            return "multihop_synthesis"
+            return "merge_context"
 
         return "retrieval"  # Loop back for next hop
 
@@ -182,10 +178,9 @@ def build_graph() -> CompiledStateGraph:
         route_after_multihop,
         {
             "retrieval": "retrieval",  # Loop back for next hop
-            "multihop_synthesis": "multihop_synthesis",  # Synthesize results
+            "merge_context": "merge_context",  # All hops done -> merge
         },
     )
-    g.add_edge("multihop_synthesis", "merge_context")
     g.add_edge("merge_context", "grade_docs")
     g.add_conditional_edges(
         "grade_docs",
