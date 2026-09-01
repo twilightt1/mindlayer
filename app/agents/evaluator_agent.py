@@ -1,25 +1,14 @@
 import asyncio
 import logging
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.agents.llm_parsing import parse_llm_json_object
 from app.agents.state import AgentState
 from app.config import settings
 
 log = logging.getLogger(__name__)
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 SYSTEM_PROMPT = """You are a grader assessing relevance of a retrieved document to a user question.

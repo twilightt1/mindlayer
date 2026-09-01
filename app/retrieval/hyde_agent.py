@@ -15,8 +15,9 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.config import settings
 
 if TYPE_CHECKING:
@@ -25,18 +26,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 # ─── Prompt Templates ─────────────────────────────────────────────────────────

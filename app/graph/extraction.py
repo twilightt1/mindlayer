@@ -11,8 +11,9 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.agents.llm_parsing import (
     coerce_float,
     coerce_string_list,
@@ -24,7 +25,6 @@ from app.models.memory import Memory
 
 log = logging.getLogger(__name__)
 
-_client: AsyncOpenAI | None = None
 
 MAX_ENTITIES = 12
 MAX_RELATIONS = 24
@@ -74,16 +74,6 @@ class RelationExtractionResult:
     fallback_used: bool = False
     error: str | None = None
     raw_preview: str | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 ENTITY_EXTRACTION_PROMPT = """You extract a personal knowledge graph from a second-brain memory.

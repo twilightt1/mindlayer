@@ -2,24 +2,13 @@ import logging
 import re
 import time
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.agents.state import AgentState
 from app.config import settings
 
 log = logging.getLogger(__name__)
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 SYSTEM_PROMPT = """You are a precise RAG assistant. Your ONLY job is to answer questions using the provided context.
@@ -106,6 +95,7 @@ async def answer_agent(state: AgentState) -> AgentState:
     full_response = ""
     token_count = 0
     error: str | None = None
+    last_usage = None
 
     try:
         stream = await _get_client().chat.completions.create(
@@ -132,6 +122,7 @@ async def answer_agent(state: AgentState) -> AgentState:
 
             if chunk.usage:
                 token_count = chunk.usage.total_tokens
+                last_usage = chunk.usage
 
     except Exception as e:
         log.error("LLM error", extra={"error": str(e)})
@@ -140,6 +131,13 @@ async def answer_agent(state: AgentState) -> AgentState:
 
     state["response"] = full_response
     state["token_count"] = token_count
+
+    # Feed the (previously dead) cost ledger: the stream above only carries
+    # usage when stream_options include it, so record whatever we observed.
+    if last_usage is not None:
+        from app.agents.llm_client import record_usage
+
+        record_usage(state, "answer", settings.LLM_MODEL, last_usage)
     state["agent_trace"]["answer"] = {
         "model": settings.LLM_MODEL,
         "tokens": token_count,
