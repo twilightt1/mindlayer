@@ -4,7 +4,7 @@ import os
 from unittest.mock import patch
 
 # Mock required environment variables BEFORE importing app modules
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:123456@localhost:5432/ragdb_test")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:123456@localhost:55432/ragdb_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
 
@@ -19,7 +19,7 @@ from app.database import Base, get_db
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:123456@localhost:5432/ragdb_test",
+    "postgresql+asyncpg://postgres:123456@localhost:55432/ragdb_test",
 )
 
 test_engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)

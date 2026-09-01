@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     _HAS_RAGAS = False
 
 
-DEFAULT_DATASET = ROOT / "eval" / "Orivory_eval_dataset.json"
+DEFAULT_DATASET = ROOT / "eval" / "orivory_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "results"
 FALLBACK_ANSWER = (

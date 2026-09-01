@@ -14,7 +14,7 @@ from time import perf_counter
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_DOCS = ROOT / "sample_docs"
-DATASET = Path(__file__).resolve().parent / "Orivory_eval_dataset.json"
+DATASET = Path(__file__).resolve().parent / "orivory_eval_dataset.json"
 
 
 def load_dataset() -> list[dict]:
