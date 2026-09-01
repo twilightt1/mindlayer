@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -25,6 +26,6 @@ class UserQuota(Base):
     monthly_limit:      Mapped[int]       = mapped_column(Integer(), server_default="2000")
     last_daily_reset:   Mapped[date]      = mapped_column(Date(), server_default=text("CURRENT_DATE"))
     last_monthly_reset: Mapped[date]      = mapped_column(Date(), server_default=text("DATE_TRUNC('month', CURRENT_DATE)"))
-    updated_at:         Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:         Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)
 
     user: Mapped["User"] = relationship(back_populates="quota")

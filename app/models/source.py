@@ -37,6 +37,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 from app.models.types import EncryptedJSONB
 
 if TYPE_CHECKING:
@@ -89,7 +90,7 @@ class Source(Base):
 
     extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
     created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
+    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
 
     user:        Mapped[User]                       = relationship(back_populates="sources")
     memory_links: Mapped[list[MemorySource]]        = relationship(back_populates="source", cascade="all, delete-orphan")

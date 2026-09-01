@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
@@ -34,7 +35,7 @@ class User(Base):
     is_active:       Mapped[bool]      = mapped_column(Boolean(), server_default="true")
     is_deleted:      Mapped[bool]      = mapped_column(Boolean(), server_default="false")
     created_at:      Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
-    updated_at:      Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:      Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)
 
     email_verifications:     Mapped[list["EmailVerification"]]     = relationship(back_populates="user", cascade="all, delete-orphan")
     password_reset_sessions: Mapped[list["PasswordResetSession"]]  = relationship(back_populates="user", cascade="all, delete-orphan")

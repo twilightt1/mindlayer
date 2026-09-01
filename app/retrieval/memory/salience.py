@@ -15,7 +15,7 @@ single lucky match can't dominate.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -62,7 +62,7 @@ async def bump_salience(
     if not ids:
         return 0
 
-    stamp = now or datetime.utcnow()
+    stamp = now or datetime.now(UTC)
 
     rows = (
         await db.execute(

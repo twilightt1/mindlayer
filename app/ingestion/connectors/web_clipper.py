@@ -28,7 +28,7 @@ a one-off "save this URL" path.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import httpx
@@ -205,7 +205,7 @@ async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> Conn
         text = text[:max_chars] + f"\n\n[truncated at {max_chars} chars]"
 
     # Try to capture a publication date from common meta tags
-    captured_at = datetime.utcnow()
+    captured_at = datetime.now(UTC)
     for meta_name in ("article:published_time", "og:published_time", "date", "DC.date.issued"):
         meta = soup.find("meta", attrs={"property": meta_name}) or soup.find("meta", attrs={"name": meta_name})
         if meta and meta.get("content"):

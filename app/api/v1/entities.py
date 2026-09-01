@@ -6,7 +6,7 @@ write endpoints so users/agents can correct extracted entities and relations.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -313,7 +313,7 @@ async def create_relation(
     if existing:
         existing.weight = body.weight
         existing.extra_metadata = {**(existing.extra_metadata or {}), **body.metadata}
-        existing.last_evidence_at = datetime.utcnow()
+        existing.last_evidence_at = datetime.now(UTC)
         await db.commit()
         await db.refresh(existing)
         return _relation_response(existing)
@@ -325,7 +325,7 @@ async def create_relation(
         relation=relation_type,
         weight=body.weight,
         evidence_count=1,
-        last_evidence_at=datetime.utcnow(),
+        last_evidence_at=datetime.now(UTC),
         extra_metadata=body.metadata,
     )
     db.add(relation)
@@ -398,7 +398,7 @@ async def graph_snapshot(
         return GraphSnapshot(
             nodes=[],
             edges=[],
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(UTC),
         )
 
     relation_rows = (await db.execute(
@@ -430,7 +430,7 @@ async def graph_snapshot(
             )
             for r in relation_rows
         ],
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(UTC),
     )
 
 

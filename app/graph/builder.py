@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -415,7 +415,7 @@ def _merge_relation_metadata(existing: dict | None, extracted: ExtractedRelation
 
 def _mark_processed(memory: Memory, entity_result, relation_result) -> None:
     metadata = dict(memory.extra_metadata or {})
-    metadata[GRAPH_EXTRACTED_AT_KEY] = datetime.utcnow().isoformat()
+    metadata[GRAPH_EXTRACTED_AT_KEY] = datetime.now(UTC).isoformat()
     metadata["graph_entity_count"] = len(entity_result.entities)
     metadata["graph_relation_count"] = len(relation_result.relations)
     metadata["graph_extraction_fallback_used"] = bool(

@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.agents.state import AgentState
@@ -188,7 +188,7 @@ async def memory_save_note_agent(state: AgentState) -> AgentState:
                 title=_note_title(content),
                 content=content,
                 tags=["chat_note"],
-                captured_at=datetime.utcnow(),
+                captured_at=datetime.now(UTC),
                 extra_metadata={
                     "kind": "chat_note",
                     "conversation_id": state["conversation_id"],

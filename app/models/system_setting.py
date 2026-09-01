@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 
 class SystemSetting(Base):
@@ -16,4 +17,4 @@ class SystemSetting(Base):
     value:        Mapped[dict]      = mapped_column(JSON, nullable=False)
     description:  Mapped[str|None]  = mapped_column(String(500), nullable=True)
     created_at:   Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
-    updated_at:   Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:   Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)

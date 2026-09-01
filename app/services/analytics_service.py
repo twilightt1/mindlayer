@@ -36,7 +36,7 @@ class AnalyticsEvent(Base):
     event_name: str = Column(String(128), nullable=False, index=True)
     properties: dict = Column(JSON, server_default="{}", nullable=False)
     path: str = Column(String(256), nullable=True)
-    timestamp: datetime = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    timestamp: datetime = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
     __table_args__ = (
         Index("ix_events_user_timestamp", "user_id", "timestamp"),
@@ -53,7 +53,7 @@ class FeatureUsage(Base):
     feature: str = Column(String(64), nullable=False)
     action: str = Column(String(64), nullable=False)
     count: int = Column(Integer, server_default="1", nullable=False)
-    last_used: datetime = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    last_used: datetime = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
     __table_args__ = (
         Index("ix_feature_usage_user_feature", "user_id", "feature"),

@@ -1,5 +1,7 @@
 import uuid
 from datetime import datetime
+
+from app.models._datetime_helpers import utc_now
 from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, text
@@ -22,7 +24,7 @@ class Conversation(Base):
     title:          Mapped[str]       = mapped_column(String(500), server_default="New Conversation")
     document_count: Mapped[int]       = mapped_column(Integer(), server_default="0")
     created_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
-    updated_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)
 
     user:      Mapped["User"]           = relationship(back_populates="conversations")
     messages:  Mapped[list["Message"]]  = relationship(back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")

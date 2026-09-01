@@ -15,7 +15,7 @@ ingestion service and is wired up in Phase 2.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -89,7 +89,7 @@ async def create_memory(
         source_ref=body.source_ref,
         source_url=body.source_url,
         tags=body.tags,
-        captured_at=body.captured_at or datetime.utcnow(),
+        captured_at=body.captured_at or datetime.now(UTC),
         parent_id=body.parent_id,
         pinned=body.pinned,
         extra_metadata=body.metadata,

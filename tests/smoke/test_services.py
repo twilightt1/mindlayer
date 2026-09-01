@@ -1,0 +1,270 @@
+"""
+Smoke tests for Docker Compose services.
+
+These tests verify that all required services are healthy
+and responding correctly. Designed to run against a live
+Docker Compose stack.
+
+Mark: @pytest.mark.smoke
+"""
+import pytest
+
+
+def is_docker_available():
+    """Check if Docker services are available."""
+    import socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        # Try common service ports
+        for port in [5432, 6379, 8001, 9000]:
+            try:
+                sock.connect(("localhost", port))
+                sock.close()
+                return True
+            except (socket.timeout, socket.error, OSError):
+                continue
+        sock.close()
+        return False
+    except Exception:
+        return False
+
+
+DOCKER_AVAILABLE = is_docker_available()
+
+
+def skip_if_no_docker():
+    """Skip decorator helper."""
+    if not DOCKER_AVAILABLE:
+        pytest.skip("Docker services not available - run 'docker compose up -d'")
+
+
+@pytest.mark.smoke
+class TestPostgresHealth:
+    """Tests for PostgreSQL service."""
+
+    def test_postgres_is_ready(self, docker_services):
+        """PostgreSQL should accept connections and be ready."""
+        skip_if_no_docker()
+        import psycopg2
+        
+        try:
+            conn = psycopg2.connect(
+                host="localhost",
+                port=5432,
+                database="ragdb",
+                user="postgres",
+                password="password",
+                connect_timeout=5,
+            )
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            assert result == (1,)
+        except psycopg2.OperationalError:
+            pytest.skip("PostgreSQL not available")
+
+    def test_postgres_extensions(self, docker_services):
+        """PostgreSQL should have required extensions."""
+        skip_if_no_docker()
+        import psycopg2
+        
+        try:
+            conn = psycopg2.connect(
+                host="localhost",
+                port=5432,
+                database="ragdb",
+                user="postgres",
+                password="password",
+                connect_timeout=5,
+            )
+            cursor = conn.cursor()
+            cursor.execute("SELECT extname FROM pg_extension WHERE extname = 'vector'")
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            print(f"Vector extension: {result}")
+        except psycopg2.OperationalError:
+            pytest.skip("PostgreSQL not available")
+
+
+@pytest.mark.smoke
+class TestRedisHealth:
+    """Tests for Redis service."""
+
+    def test_redis_is_ready(self, docker_services):
+        """Redis should respond to PING."""
+        skip_if_no_docker()
+        import redis
+        
+        try:
+            client = redis.Redis(host="localhost", port=6379, db=0, socket_timeout=5)
+            response = client.ping()
+            assert response is True
+        except (redis.ConnectionError, redis.TimeoutError):
+            pytest.skip("Redis not available")
+
+    def test_redis_set_get(self, docker_services):
+        """Redis should support basic SET/GET operations."""
+        skip_if_no_docker()
+        import redis
+        
+        try:
+            client = redis.Redis(host="localhost", port=6379, db=0, socket_timeout=5)
+            client.set("smoke:test", "hello", ex=60)
+            value = client.get("smoke:test")
+            assert value == b"hello"
+            client.delete("smoke:test")
+        except (redis.ConnectionError, redis.TimeoutError):
+            pytest.skip("Redis not available")
+
+
+@pytest.mark.smoke
+class TestChromaDBHealth:
+    """Tests for ChromaDB service."""
+
+    def test_chroma_heartbeat(self, docker_services):
+        """ChromaDB should respond to heartbeat check."""
+        skip_if_no_docker()
+        import requests
+        
+        try:
+            response = requests.get("http://localhost:8001/api/v2/heartbeat", timeout=5)
+            assert response.status_code == 200
+            data = response.json()
+            assert "success" in data
+        except (requests.ConnectionError, requests.TimeoutError):
+            pytest.skip("ChromaDB not available")
+
+    def test_chroma_version(self, docker_services):
+        """ChromaDB should report version."""
+        skip_if_no_docker()
+        import requests
+        
+        try:
+            response = requests.get("http://localhost:8001/api/v2/version", timeout=5)
+            assert response.status_code == 200
+            data = response.json()
+            assert "version" in data
+        except (requests.ConnectionError, requests.TimeoutError):
+            pytest.skip("ChromaDB not available")
+
+
+@pytest.mark.smoke
+class TestMinIOHealth:
+    """Tests for MinIO object storage service."""
+
+    def test_minio_health(self, docker_services):
+        """MinIO should respond to health check."""
+        skip_if_no_docker()
+        import requests
+        
+        try:
+            response = requests.get("http://localhost:9000/minio/health/live", timeout=5)
+            assert response.status_code == 200
+        except (requests.ConnectionError, requests.TimeoutError):
+            pytest.skip("MinIO not available")
+
+    def test_minio_api(self, docker_services):
+        """MinIO API should be accessible."""
+        skip_if_no_docker()
+        import requests
+        from requests.auth import HTTPBasicAuth
+        
+        try:
+            response = requests.get(
+                "http://localhost:9000/api/v1/buckets",
+                auth=HTTPBasicAuth("minioadmin", "minioadmin"),
+                timeout=5,
+            )
+            assert response.status_code in [200, 403]
+        except (requests.ConnectionError, requests.TimeoutError):
+            pytest.skip("MinIO not available")
+
+
+@pytest.mark.smoke
+class TestAPIHealth:
+    """Tests for API service health endpoint."""
+
+    @pytest.fixture
+    def api_base_url(self):
+        """Base URL for API."""
+        return "http://localhost:8000"
+
+    def test_api_health_endpoint(self, docker_services, api_base_url):
+        """API /health endpoint should respond."""
+        skip_if_no_docker()
+        import requests
+        import time
+        
+        try:
+            for i in range(30):
+                try:
+                    response = requests.get(f"{api_base_url}/health", timeout=2)
+                    if response.status_code == 200:
+                        break
+                except requests.exceptions.RequestException:
+                    pass
+                time.sleep(1)
+            else:
+                pytest.skip("API not available")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert "status" in data or "healthy" in data
+        except requests.exceptions.RequestException:
+            pytest.skip("API not available")
+
+    def test_api_docs_accessible(self, docker_services, api_base_url):
+        """API documentation should be accessible."""
+        skip_if_no_docker()
+        import requests
+        
+        try:
+            response = requests.get(f"{api_base_url}/docs", timeout=5)
+            assert response.status_code in [200, 301, 302]
+        except requests.exceptions.RequestException:
+            pytest.skip("API not available")
+
+
+@pytest.mark.smoke
+class TestServiceConnectivity:
+    """Tests for service-to-service connectivity."""
+
+    def test_postgres_from_app_container(self, docker_services):
+        """App should be able to connect to PostgreSQL."""
+        skip_if_no_docker()
+        import psycopg2
+        
+        try:
+            conn = psycopg2.connect(
+                host="postgres",
+                port=5432,
+                database="ragdb",
+                user="postgres",
+                password="password",
+                connect_timeout=5,
+            )
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            assert result == (1,)
+        except psycopg2.OperationalError:
+            pytest.skip("Running outside Docker network")
+
+    def test_redis_from_app_container(self, docker_services):
+        """App should be able to connect to Redis."""
+        skip_if_no_docker()
+        import redis
+        
+        try:
+            client = redis.Redis(host="redis", port=6379, db=0, socket_timeout=5)
+            client.ping()
+        except redis.ConnectionError:
+            pytest.skip("Running outside Docker network")

@@ -16,7 +16,7 @@ source's ``source_type`` and persists results as Memory rows.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -227,7 +227,7 @@ async def sync_source(
             memories_added=0,
             memories_updated=0,
             errors=1,
-            finished_at=datetime.utcnow(),
+            finished_at=datetime.now(UTC),
         )
 
     return SourceSyncResponse(
