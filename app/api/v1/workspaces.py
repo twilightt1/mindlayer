@@ -29,7 +29,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -230,20 +230,28 @@ async def list_workspaces(
         owned_query = owned_query.where(Workspace.workspace_type == workspace_type)
         member_query = member_query.where(Workspace.workspace_type == workspace_type)
 
-    # Combine queries
-    combined_query = owned_query.union(member_query)
-    count_query = select(func.count()).select_from(combined_query.subquery())
+    # Execute separately and merge: .union() rows are not mapped back to
+    # Workspace entities (scalars() would yield raw UUID id columns), which
+    # made WorkspaceResponse.model_validate raise for every workspace.
+    owned_result = await db.execute(owned_query)
+    owned_workspaces = owned_result.scalars().all()
 
-    total = (await db.execute(count_query)).scalar_one()
+    member_result = await db.execute(member_query)
+    member_workspaces = member_result.scalars().all()
 
-    result = await db.execute(
-        combined_query.order_by(Workspace.updated_at.desc()).limit(100)
-    )
-    workspaces = result.scalars().all()
+    unique_workspaces: dict[UUID, Workspace] = {}
+    for workspace in [*owned_workspaces, *member_workspaces]:
+        unique_workspaces.setdefault(workspace.id, workspace)
+
+    workspaces = sorted(
+        unique_workspaces.values(),
+        key=lambda w: w.updated_at or w.created_at,
+        reverse=True,
+    )[:100]
 
     return WorkspaceListResponse(
         items=[WorkspaceResponse.model_validate(w) for w in workspaces],
-        total=total,
+        total=len(workspaces),
     )
 
 

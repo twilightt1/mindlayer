@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { 
   Home,
   MessageSquare,
@@ -19,7 +20,8 @@ import {
   ChevronRight,
   Plus,
   Search,
-  Bell
+  Bell,
+  Keyboard
 } from "lucide-react";
 
 // ============================================================================
@@ -166,6 +168,12 @@ function NavItem({
 function UserAvatar({ isCollapsed }: { isCollapsed: boolean }) {
   const { user, logout } = useAuth();
 
+  const handleLogout = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      await logout();
+    }
+  };
+
   return (
     <div className="relative group">
       <div className={cn(
@@ -181,7 +189,7 @@ function UserAvatar({ isCollapsed }: { isCollapsed: boolean }) {
           isCollapsed ? "w-9 h-9" : "w-10 h-10"
         )}>
           <span className="text-sm font-semibold text-white">
-            {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+            {(user?.display_name || user?.name)?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
           </span>
           
           {/* Online indicator */}
@@ -192,7 +200,7 @@ function UserAvatar({ isCollapsed }: { isCollapsed: boolean }) {
         {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">
-              {user?.name || "User"}
+              {user?.display_name || user?.name || "User"}
             </p>
             <p className="text-xs text-white/40 truncate">
               {user?.email}
@@ -202,9 +210,40 @@ function UserAvatar({ isCollapsed }: { isCollapsed: boolean }) {
 
         {/* Logout icon */}
         {!isCollapsed && (
-          <LogOut className="w-4 h-4 text-white/30 group-hover:text-red-400 transition-colors" />
+          <button
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4 text-white/30 hover:text-red-400 transition-colors" />
+          </button>
         )}
       </div>
+
+      {/* Dropdown menu */}
+      {!isCollapsed && (
+        <div className={cn(
+          "absolute left-0 right-0 top-full mt-2",
+          "py-2 rounded-xl",
+          "bg-background/95 backdrop-blur-xl",
+          "border border-white/[0.1]",
+          "shadow-xl shadow-black/50",
+          "opacity-0 invisible group-hover:opacity-100 group-hover:visible",
+          "transition-all duration-200 z-50"
+        )}>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2",
+              "text-sm text-white/70 hover:text-red-400 hover:bg-red-500/10",
+              "transition-colors"
+            )}
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
+      )}
 
       {/* Tooltip when collapsed */}
       {isCollapsed && (
@@ -218,8 +257,13 @@ function UserAvatar({ isCollapsed }: { isCollapsed: boolean }) {
           "transition-all duration-200",
           "whitespace-nowrap z-50"
         )}>
-          <p className="text-sm text-white">{user?.name || "User"}</p>
-          <p className="text-xs text-white/50">{user?.email}</p>
+          <div className="text-sm text-white">{user?.display_name || user?.name || "User"}</div>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-red-400 hover:text-red-300"
+          >
+            Sign out
+          </button>
         </div>
       )}
     </div>
@@ -305,37 +349,35 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      {/* Search */}
+      {/* Search / Command Palette Trigger */}
       {!isCollapsed && (
         <div className="px-3 pb-4">
-          <div className={cn(
-            "relative rounded-xl border",
-            "bg-white/[0.03] border-white/[0.08]",
-            "focus-within:border-violet-500/40",
-            "transition-all"
-          )}>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className={cn(
-                "w-full pl-10 pr-4 py-2.5",
-                "bg-transparent",
-                "text-white placeholder:text-white/30 text-sm",
-                "focus:outline-none"
-              )}
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] text-white/30 bg-white/[0.05] rounded border border-white/[0.1]">
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border",
+              "bg-white/[0.03] border-white/[0.08]",
+              "hover:border-white/[0.15] hover:bg-white/[0.05]",
+              "text-white/40 hover:text-white/60",
+              "transition-all"
+            )}
+          >
+            <Search className="w-4 h-4" />
+            <span className="flex-1 text-left text-sm">Search...</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-white/[0.05] rounded border border-white/[0.1]">
               ⌘K
             </kbd>
-          </div>
+          </button>
         </div>
       )}
 
       {/* Collapsed search */}
       {isCollapsed && (
         <div className="px-3 pb-4 flex justify-center">
-          <button className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors">
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+          >
             <Search className="w-4 h-4 text-white/40" />
           </button>
         </div>

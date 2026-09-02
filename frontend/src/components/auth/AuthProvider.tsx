@@ -83,8 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.ok) {
-        const data = await handleResponse<{ user: User }>(response);
-        setUser(data.user);
+        const data = await handleResponse<User & { user?: User }>(response);
+        // /users/me returns the user object directly (no {user: ...} wrapper)
+        setUser(data.user ?? data);
       } else {
         // Token invalid, try refresh
         const refreshed = await tryRefreshToken();
@@ -174,8 +175,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Surface failures (duplicate email 409, validation 422, rate limit 429)
       // instead of pretending registration succeeded.
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Registration failed" }));
-        throw new Error(error.detail || error.message || `Registration failed (HTTP ${response.status})`);
+        const error = await response.json().catch(() => ({}));
+        // 422 responses carry `detail` as an array of validation issues.
+        let message: string = error.detail ?? error.message ?? `Registration failed (HTTP ${response.status})`;
+        if (Array.isArray(message)) {
+          message = message
+            .map((d: any) => d?.msg ?? String(d))
+            .join("; ");
+        }
+        throw new Error(message);
       }
 
       // Registration successful, needs email verification.

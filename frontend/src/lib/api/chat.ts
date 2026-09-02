@@ -39,31 +39,59 @@ export interface SendMessageParams {
 }
 
 /**
- * Send a chat message and receive a streaming response
+ * Send a chat message and receive a streaming response.
+ *
+ * Returns `{ promise, abort }`: `promise` resolves when the stream finishes
+ * (so callers can keep a loading state alive), `abort` cancels it. The
+ * backend emits ONE `token` event carrying the FULL final content (plus
+ * status/error events), so every chunk callback receives accumulated text.
  */
 export async function sendChatMessage(
   params: SendMessageParams,
-  onChunk: (chunk: string) => void,
+  onChunk: (fullSoFar: string) => void,
   onComplete?: (fullMessage: string) => void,
   onError?: (error: Error) => void
-): Promise<string> {
+): Promise<{ promise: Promise<void>; abort: () => void }> {
   let fullMessage = "";
-  
+  let settled = false;
+  let resolvePromise: (value: { promise: Promise<void>; abort: () => void }) => void = () => {};
+  const outer = new Promise<{ promise: Promise<void>; abort: () => void }>((resolve) => {
+    resolvePromise = resolve;
+  });
+
   const stream = createSSEStream(
     "/api/v1/chat",
     {
       onChunk: (data: any) => {
-        if (data.type === "content" || data.content) {
-          const content = data.content || data.chunk || "";
-          fullMessage += content;
-          onChunk(content);
+        // Backend event protocol: {type:"token", content:<full text>},
+        // {type:"error", message}, {type:"status"|...} (ignored).
+        if (data?.type === "error") {
+          settled = true;
+          onError?.(new Error(data.message || "The server reported an error."));
+          return;
+        }
+        if (data?.type === "token" || data?.type === "content" || data?.content) {
+          const content = String(data.content ?? "");
+          fullMessage = content; // full snapshot, not a delta
+          onChunk(fullMessage);
+        }
+        if (data?.chunk) {
+          // Forward-compat: true delta chunks accumulate.
+          fullMessage += data.chunk;
+          onChunk(fullMessage);
         }
       },
       onComplete: () => {
-        onComplete?.(fullMessage);
+        if (!settled) {
+          settled = true;
+          onComplete?.(fullMessage);
+        }
       },
       onError: (error: any) => {
-        onError?.(error);
+        if (!settled) {
+          settled = true;
+          onError?.(error instanceof Error ? error : new Error(String(error)));
+        }
       },
     },
     {
@@ -74,7 +102,8 @@ export async function sendChatMessage(
     }
   );
 
-  return stream as any;
+  resolvePromise({ promise: stream.promise, abort: stream.abort });
+  return outer;
 }
 
 /**

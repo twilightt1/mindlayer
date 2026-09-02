@@ -11,13 +11,16 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoading } = useAuth();
+  const { login, verifyEmail, isLoading } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [showVerify, setShowVerify] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   // Post-registration notice: the account was created and an OTP code was
   // emailed — the user must verify before logging in.
@@ -37,7 +40,42 @@ function LoginForm() {
       await login(email, password);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const message = err instanceof Error ? err.message : "Login failed";
+      // Unverified account → surface the OTP entry form instead of a dead end.
+      if (message.toLowerCase().includes("verify your email")) {
+        setShowVerify(true);
+        setNotice("Enter the 6-digit verification code we emailed you.");
+      } else {
+        setError(message);
+      }
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setVerifying(true);
+    try {
+      await verifyEmail(email, otp.trim());
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/auth/verify-email/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setNotice("A new verification code has been sent (if the account is unverified).");
+    } catch {
+      setError("Could not resend the code. Please try again.");
     }
   };
 
@@ -64,7 +102,71 @@ function LoginForm() {
             <p className="text-white/50">Sign in to your account to continue</p>
           </div>
 
+          {/* OTP verification — shown when the account is unverified */}
+          {showVerify && (
+            <form onSubmit={handleVerify} className="space-y-5 p-5 rounded-xl bg-violet-500/[0.06] border border-violet-500/20">
+              <div>
+                <h3 className="text-sm font-semibold text-white mb-1">Verify your email</h3>
+                <p className="text-xs text-white/50">
+                  We sent a 6-digit code to <span className="text-white/80">{email}</span>
+                </p>
+              </div>
+              <div>
+                <label htmlFor="otp-code" className="block text-sm text-white/70 mb-2">Verification code</label>
+                <input
+                  id="otp-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  required
+                  className={cn(
+                    "w-full px-4 py-3 rounded-xl text-center text-2xl font-mono tracking-[0.5em]",
+                    "bg-white/[0.03] border border-white/[0.08]",
+                    "text-white placeholder:text-white/20",
+                    "focus:outline-none focus:border-violet-500/50",
+                    "transition-all"
+                  )}
+                />
+              </div>
+              <motion.button
+                type="submit"
+                disabled={verifying || otp.length !== 6}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className={cn(
+                  "w-full py-3 px-4 rounded-xl",
+                  "bg-gradient-to-r from-violet-600 to-purple-600",
+                  "text-white font-semibold",
+                  "shadow-lg shadow-violet-500/20",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "transition-all duration-300"
+                )}
+              >
+                {verifying ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Verifying...
+                  </span>
+                ) : (
+                  "Verify & sign in"
+                )}
+              </motion.button>
+              <button
+                type="button"
+                onClick={handleResend}
+                className="w-full text-xs text-white/40 hover:text-violet-400 transition-colors"
+              >
+                Didn't receive the code? Resend
+              </button>
+            </form>
+          )}
+
           {/* Form */}
+          {!showVerify && (
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
@@ -166,6 +268,7 @@ function LoginForm() {
               )}
             </motion.button>
           </form>
+          )}
 
           {/* Divider */}
           <div className="relative my-8">
