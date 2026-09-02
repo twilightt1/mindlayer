@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { FirstTimeOnboarding } from "@/components/onboarding/FirstTimeOnboarding";
+import { ProactiveInsightToast } from "@/components/insights/ProactiveInsightToast";
 import { usePageTracking } from "@/lib/analytics";
 
 /** Tracks page views on every route change. Lives inside AuthProvider so
@@ -24,6 +25,7 @@ export function ClientProviders({ children }: { children: ReactNode }) {
           {children}
           <CommandPalette />
           <FirstTimeOnboarding />
+          <ProactiveInsightToast />
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

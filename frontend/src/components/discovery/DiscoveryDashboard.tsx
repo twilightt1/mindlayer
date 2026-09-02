@@ -14,11 +14,12 @@ import {
   Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { 
-  DiscoverySession, 
-  DiscoveryStep, 
+import type {
+  DiscoverySession,
+  DiscoveryStep,
   GraphMetrics,
-  DiscoveryFlowType 
+  DiscoveryFlowType,
+  GraphResponse
 } from "@/types/discovery";
 import { FLOW_TYPE_CONFIG } from "@/types/discovery";
 import {
@@ -34,6 +35,8 @@ import { Timeline } from "@/components/ui/timeline";
 import { SpotlightCard } from "@/components/ui/spotlight";
 import { StatCard } from "@/components/ui/stats";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { KnowledgeGraphVisualization } from "@/components/discovery/KnowledgeGraphVisualization";
+import { getDocumentGraph } from "@/lib/api/discovery";
 
 interface DiscoveryDashboardProps {
   className?: string;
@@ -47,6 +50,8 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
   const [currentStep, setCurrentStep] = useState<DiscoveryStep | null>(null);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const [graphData, setGraphData] = useState<GraphResponse | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -63,6 +68,22 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
       setLoading(false);
     }
   }, []);
+
+  const fetchGraphData = useCallback(async () => {
+    setGraphLoading(true);
+    try {
+      const data = await getDocumentGraph();
+      setGraphData(data);
+    } catch (err) {
+      console.error("Failed to fetch graph data:", err);
+    } finally {
+      setGraphLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGraphData();
+  }, [fetchGraphData]);
 
   useEffect(() => {
     fetchData();
@@ -313,6 +334,22 @@ export function DiscoveryDashboard({ className }: DiscoveryDashboardProps) {
           />
         </div>
       )}
+
+      {/* Knowledge Graph Visualization */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <GitBranch className="w-5 h-5" />
+          Knowledge Graph
+        </h3>
+        <KnowledgeGraphVisualization
+          graphData={graphData}
+          loading={graphLoading}
+          onNodeClick={(node) => {
+            console.log("Node clicked:", node);
+          }}
+          className="h-[400px] border border-border rounded-xl"
+        />
+      </div>
 
       {/* Flow Types */}
       <div>

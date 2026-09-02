@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import { 
-  Brain, 
-  FileText, 
-  MessageSquare, 
+import {
+  Brain,
+  FileText,
+  MessageSquare,
   Sparkles,
   Upload,
   ArrowRight,
@@ -19,6 +19,7 @@ import {
   Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DemoSelector } from "./DemoSelector";
 
 // ============================================================================
 // TYPES
@@ -81,14 +82,17 @@ export function FirstTimeOnboarding() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [completing, setCompleting] = useState(false);
+  const [showDemoSelector, setShowDemoSelector] = useState(false);
 
   // Check if user has completed onboarding
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem("orivory_onboarding_completed");
     const needsOnboarding = user && !user.onboarding_done && !hasSeenOnboarding;
-    
+
     if (needsOnboarding) {
       setIsOpen(true);
+      // Show demo selector first instead of steps
+      setShowDemoSelector(true);
     }
   }, [user]);
 
@@ -129,14 +133,30 @@ export function FirstTimeOnboarding() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0" onClick={handleSkip} />
+        <>
+          {/* Demo Selector Modal */}
+          {showDemoSelector && (
+            <DemoSelector
+              onComplete={() => {
+                setShowDemoSelector(false);
+                // Don't complete onboarding yet - let them explore steps
+              }}
+              onSkip={() => {
+                setShowDemoSelector(false);
+              }}
+            />
+          )}
+
+          {/* Steps Modal */}
+          {!showDemoSelector && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0" onClick={handleSkip} />
           
           {/* Modal */}
           <motion.div
@@ -258,6 +278,8 @@ export function FirstTimeOnboarding() {
             </div>
           </motion.div>
         </motion.div>
+          )}
+        </>
       )}
     </AnimatePresence>
   );
