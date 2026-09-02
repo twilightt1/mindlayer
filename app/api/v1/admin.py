@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,11 +25,12 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 class UserUpdate(BaseModel):
-    role:          str | None = None
+    # Literal: a typo like "admn" would silently strip the target's role.
+    role:          Literal["user", "admin"] | None = None
     is_active:     bool | None = None
     is_deleted:    bool | None = None
-    daily_limit:   int | None = None
-    monthly_limit: int | None = None
+    daily_limit:   int | None = Field(default=None, ge=0)
+    monthly_limit: int | None = Field(default=None, ge=0)
 
 
 class StatsResponse(BaseModel):
@@ -50,8 +51,8 @@ class UserActivitySummary(BaseModel):
 
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
     include_deleted: bool = False,
     _=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -129,6 +130,14 @@ async def update_user(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(404, detail="User not found.")
+
+    # An admin demoting/deleting their own account can lock every admin out.
+    if user_id == admin_user.id and (
+        (body.role is not None and body.role != "admin")
+        or body.is_active is False
+        or body.is_deleted is True
+    ):
+        raise HTTPException(400, detail="Admins cannot demote, deactivate, or delete their own account.")
 
     changes = {}
 
@@ -219,8 +228,8 @@ class DocumentSummary(BaseModel):
 
 @router.get("/documents", response_model=list[DocumentSummary])
 async def list_documents(
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
     status: str | None = None,
     user_id: UUID | None = None,
     _=Depends(require_admin),

@@ -85,7 +85,8 @@ class InsightListResponse(BaseModel):
 
 class InsightGenerateRequest(BaseModel):
     """Request to generate new insights."""
-    document_ids: list[str] = Field(default_factory=list, description="Specific documents to analyze")
+    # UUID items: invalid strings become 422 from pydantic, not a 500 later.
+    document_ids: list[UUID] = Field(default_factory=list, description="Specific documents to analyze")
     focus_topics: list[str] = Field(default_factory=list, description="Topics user is interested in")
     max_insights: int = Field(default=5, ge=1, le=20, description="Maximum insights to generate")
 
@@ -222,7 +223,7 @@ async def generate_insights(
     query = select(Memory).where(Memory.user_id == current_user.id)
     if body.document_ids:
         # Filter by specific document IDs if provided
-        query = query.where(Memory.id.in_([UUID(d) for d in body.document_ids]))
+        query = query.where(Memory.id.in_(body.document_ids))
 
     result = await db.execute(query)
     memories = result.scalars().all()

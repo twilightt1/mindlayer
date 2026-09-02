@@ -29,7 +29,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -401,18 +401,36 @@ async def add_member(
     if existing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "User is already a member.")
 
-    # Create membership
-    new_membership = TeamMembership(
-        workspace_id=workspace_id,
-        user_id=user_id,
-        role=role,
-        status=MemberStatus.ACTIVE.value,
+    # Create membership — or reactivate a LEFT/REMOVED row: the unique
+    # index on (workspace_id, user_id) makes a second INSERT for a user who
+    # previously left raise IntegrityError (500). Also count atomically so
+    # concurrent add/accept can't lose an increment.
+    result = await db.execute(
+        select(TeamMembership).where(
+            TeamMembership.workspace_id == workspace_id,
+            TeamMembership.user_id == user_id,
+        )
     )
-    db.add(new_membership)
+    new_membership = result.scalar_one_or_none()
+    if new_membership:
+        new_membership.role = role
+        new_membership.status = MemberStatus.ACTIVE.value
+    else:
+        new_membership = TeamMembership(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            role=role,
+            status=MemberStatus.ACTIVE.value,
+        )
+        db.add(new_membership)
 
-    # Update member count
+    # Update member count atomically
     workspace = await db.get(Workspace, workspace_id)
-    workspace.member_count += 1
+    await db.execute(
+        update(Workspace)
+        .where(Workspace.id == workspace_id)
+        .values(member_count=Workspace.member_count + 1)
+    )
     workspace.updated_at = datetime.now(UTC)
 
     await db.commit()
@@ -616,23 +634,39 @@ async def accept_invite(
     if invite.email != current_user.email.lower():
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This invite is for a different email.")
 
-    # Create membership
-    membership = TeamMembership(
-        workspace_id=invite.workspace_id,
-        user_id=current_user.id,
-        role=invite.role,
-        status=MemberStatus.ACTIVE.value,
+    # Create/reactivate membership (unique index on (workspace_id, user_id) —
+    # re-inviting a member who left must UPDATE, not INSERT, or it 500s)
+    result = await db.execute(
+        select(TeamMembership).where(
+            TeamMembership.workspace_id == invite.workspace_id,
+            TeamMembership.user_id == current_user.id,
+        )
     )
-    db.add(membership)
+    membership = result.scalar_one_or_none()
+    if membership:
+        membership.role = invite.role
+        membership.status = MemberStatus.ACTIVE.value
+    else:
+        membership = TeamMembership(
+            workspace_id=invite.workspace_id,
+            user_id=current_user.id,
+            role=invite.role,
+            status=MemberStatus.ACTIVE.value,
+        )
+        db.add(membership)
 
     # Update invite status
     invite.status = InviteStatus.ACCEPTED.value
     invite.user_id = current_user.id
     invite.accepted_at = datetime.now(UTC)
 
-    # Update member count
+    # Update member count atomically
     workspace = await db.get(Workspace, invite.workspace_id)
-    workspace.member_count += 1
+    await db.execute(
+        update(Workspace)
+        .where(Workspace.id == invite.workspace_id)
+        .values(member_count=Workspace.member_count + 1)
+    )
     workspace.updated_at = datetime.now(UTC)
 
     await db.commit()

@@ -86,17 +86,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await handleResponse<User & { user?: User }>(response);
         // /users/me returns the user object directly (no {user: ...} wrapper)
         setUser(data.user ?? data);
-      } else {
+      } else if (response.status === 401 || response.status === 403) {
         // Token invalid, try refresh
         const refreshed = await tryRefreshToken();
         if (!refreshed) {
           clearTokens();
           setUser(null);
         }
+      } else {
+        // 5xx / network-level failures: keep the session — a transient
+        // backend outage must not log the user out and discard their
+        // still-valid tokens.
+        console.error(`Session check failed (HTTP ${response.status}); keeping session.`);
       }
     } catch (error) {
+      // Network failure (offline, timeout, DNS): keep tokens, surface state
+      // via a null-safe retry on the next fetchUser instead of logging out.
       console.error("Failed to fetch user:", error);
-      setUser(null);
+      setUser((prev) => prev ?? null);
     } finally {
       setIsLoading(false);
     }

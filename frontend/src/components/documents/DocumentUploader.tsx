@@ -171,6 +171,7 @@ export function DocumentUploader({
   const [files, setFiles] = useState<File[]>([]);
   const [progressMap, setProgressMap] = useState<Map<string, UploadProgress>>(new Map());
   const [isDragging, setIsDragging] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Validate files
@@ -201,6 +202,11 @@ export function DocumentUploader({
 
     if (errors.length > 0) {
       console.warn("File validation errors:", errors);
+      // Surface to the user — previously these only hit the console and the
+      // rejected files just vanished silently.
+      setValidationErrors(errors);
+    } else {
+      setValidationErrors([]);
     }
 
     return validFiles;
@@ -376,6 +382,22 @@ export function DocumentUploader({
       </AnimatePresence>
 
       {/* Upload button */}
+      {validationErrors.length > 0 && (
+        <div
+          role="alert"
+          className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20"
+        >
+          <p className="text-xs font-medium text-red-400 mb-1">
+            {validationErrors.length} file{validationErrors.length > 1 ? "s" : ""} rejected:
+          </p>
+          <ul className="text-xs text-red-400/80 list-disc list-inside">
+            {validationErrors.map((err) => (
+              <li key={err}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {files.length > 0 && !allUploaded && (
         <motion.div
           initial={{ opacity: 0 }}

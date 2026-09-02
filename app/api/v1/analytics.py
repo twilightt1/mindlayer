@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -31,14 +31,17 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 class EventRecord(BaseModel):
     """Single analytics event."""
-    name: str
+    name: str = Field(min_length=1, max_length=128)
     properties: dict | None = None
-    timestamp: int | None = None
+    # Client-supplied timestamps: bound them so extreme values can't crash
+    # datetime.fromtimestamp with OverflowError/ValueError (500) or flood
+    # storage with out-of-range dates.
+    timestamp: int | None = Field(default=None, ge=0, le=4102444800000)  # <= 2100-01-01 ms
 
 
 class EventBatchRequest(BaseModel):
     """Batch of events to record."""
-    events: list[EventRecord]
+    events: list[EventRecord] = Field(max_length=100)
 
 
 class EventBatchResponse(BaseModel):

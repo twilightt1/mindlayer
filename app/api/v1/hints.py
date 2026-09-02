@@ -19,7 +19,7 @@ from app.schemas.hint import (
     HintResponse,
     UserHintState,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import get_current_verified_user, require_admin
 
 router = APIRouter(prefix="/hints", tags=["hints"])
 
@@ -220,11 +220,12 @@ async def track_feature_use(
     )
 
 
-# Admin endpoints (would require admin role in production)
+# Admin endpoints — hint content is injected into other users' UI, so any
+# authenticated user must not be able to write it.
 
 @router.get("/admin/hints", response_model=list[HintResponse])
 async def list_all_hints(
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[HintResponse]:
     """List all hints (admin only)."""
@@ -242,7 +243,7 @@ async def list_all_hints(
 @router.post("/admin/hints", response_model=HintResponse)
 async def create_hint(
     hint: HintResponse,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> HintResponse:
     """Create a new hint (admin only)."""
@@ -262,7 +263,7 @@ async def create_hint(
 @router.delete("/admin/hints/{hint_id}", response_model=HintInteractionResponse)
 async def delete_hint(
     hint_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> HintInteractionResponse:
     """Delete a hint (admin only)."""

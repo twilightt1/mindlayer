@@ -49,7 +49,35 @@ SENSITIVE_CONFIG_KEYS = {
     "password",
     "secret",
     "token",
+    "authorization",
+    "auth",
+    "private_key",
+    "api_secret",
+    "secret_key",
+    "client_id_secret",
 }
+# Suffix match catches provider-prefixed variants: notion_api_key,
+# gmail_client_secret, ...
+SENSITIVE_KEY_SUFFIXES = (
+    "_token",
+    "_secret",
+    "_key",
+    "_password",
+    "_credential",
+    "_credentials",
+)
+SENSITIVE_KEY_PREFIXES = ("bearer_", "basic_", "api_", "secret_", "auth_")
+
+
+def _is_sensitive_key(key_lc: str) -> bool:
+    # "apikey" has no separator — catch it explicitly along with the
+    # prefix/suffix families.
+    return (
+        key_lc in SENSITIVE_CONFIG_KEYS
+        or key_lc.replace("_", "").replace("-", "") in {"apikey", "apisecret", "authtoken"}
+        or key_lc.endswith(SENSITIVE_KEY_SUFFIXES)
+        or key_lc.startswith(SENSITIVE_KEY_PREFIXES)
+    )
 
 
 def _safe_source_config(config: dict | None) -> dict:
@@ -57,7 +85,7 @@ def _safe_source_config(config: dict | None) -> dict:
     safe: dict = {}
     for key, value in (config or {}).items():
         key_lc = str(key).lower()
-        if key_lc in SENSITIVE_CONFIG_KEYS or key_lc.endswith("_token") or key_lc.endswith("_secret"):
+        if _is_sensitive_key(key_lc):
             safe[key] = "••••••••" if value else None
         elif isinstance(value, dict):
             safe[key] = _safe_source_config(value)
@@ -169,8 +197,15 @@ async def update_source(
 
     data = body.model_dump(exclude_unset=True)
     if "config" in data:
-        data["config"] = data["config"] or {}
-        _validate_source_config_or_422(source.source_type, data["config"])
+        # Merge, don't replace: a PATCH that only renames the source but
+        # sends a partial config must not wipe stored credentials (the
+        # column is encrypted at rest, so the caller can't send back what
+        # it can't read).
+        incoming = data.pop("config") or {}
+        merged = dict(source.config or {})
+        merged.update(incoming)
+        data["config"] = merged
+        _validate_source_config_or_422(source.source_type, merged)
     for field, value in data.items():
         setattr(source, field, value)
 
