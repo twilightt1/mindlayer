@@ -264,10 +264,18 @@ function DocumentBreakdown({ data }: { data: DocTypeData[] }) {
 }
 
 function UsageCalendar() {
-  const days = Array.from({ length: 28 }, (_, i) => {
-    const intensity = Math.random();
-    return { day: i + 1, intensity };
-  });
+  // Math.random() during render causes a server/client hydration mismatch —
+  // derive the (mock) intensities after mount instead.
+  const [days, setDays] = useState<{ day: number; intensity: number }[]>([]);
+
+  useEffect(() => {
+    setDays(
+      Array.from({ length: 28 }, (_, i) => ({
+        day: i + 1,
+        intensity: Math.random(),
+      }))
+    );
+  }, []);
   
   return (
     <motion.div
@@ -388,9 +396,10 @@ export default function AnalyticsPage() {
     },
   ];
 
-  // Build weekly data from DAU
+  // Build weekly data from DAU. Parse the date as UTC and format with an
+  // explicit UTC timezone so server and client renders agree.
   const weeklyData = dauData.length > 0 ? dauData.map(item => ({
-    day: new Date(item.date).toLocaleDateString("en-US", { weekday: "short" }),
+    day: new Date(`${item.date}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
     queries: item.active_users * 10, // Estimate queries from active users
     insights: Math.floor(item.active_users * 2.5), // Estimate insights
   })) : [

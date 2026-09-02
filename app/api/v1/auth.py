@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
@@ -245,10 +246,13 @@ async def logout(
             payload = decode_access_token(token)
             jti = payload.get("jti")
             if jti:
-
-
-                exp_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 if hasattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES') else 3600
-                await redis.setex(f"blacklist:{jti}", exp_seconds, "1")
+                # Blacklist for exactly the token's remaining lifetime. The
+                # token scope ("onboarding" = 30 min) can outlive the default
+                # ACCESS_TOKEN_EXPIRE_MINUTES, so deriving TTL from the
+                # default would let a logged-out token come back to life.
+                exp = int(payload.get("exp", 0))
+                remaining = max(exp - int(datetime.now(UTC).timestamp()), 1)
+                await redis.setex(f"blacklist:{jti}", remaining, "1")
         except Exception as e:
             log.warning(f"Failed to blacklist access token during logout: {e}")
 

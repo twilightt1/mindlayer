@@ -193,21 +193,30 @@ class BM25Retriever:
             return []
 
         index, chunks = loaded
-        query_tokens = _tokenize(query)
-        scores = index.get_scores(query_tokens)
-        top_n = np.argsort(scores)[::-1][:top_k]
+        # BM25 scoring + argsort are CPU-bound over the whole corpus; on a
+        # large index they block the event loop for hundreds of ms per
+        # request. Run them in a worker thread instead.
+        def _score() -> tuple[list[int], list[float]]:
+            query_tokens = _tokenize(query)
+            scores = index.get_scores(query_tokens)
+            top_n = list(np.argsort(scores)[::-1][:top_k])
+            return top_n, [float(scores[i]) for i in top_n]
+
+        import asyncio
+
+        top_n, top_scores = await asyncio.to_thread(_score)
 
         return [
             {
                 "content":   chunks[i]["content"],
-                "score":     float(scores[i]),
+                "score":     score,
                 "source":    "bm25",
                 "rank":      rank,
                 "metadata":  chunks[i]["metadata"],
                 "parent_id": chunks[i]["id"],
             }
-            for rank, i in enumerate(top_n)
-            if scores[i] > 0
+            for rank, (i, score) in enumerate(zip(top_n, top_scores, strict=True))
+            if score > 0
         ]
 
     def invalidate(self, conversation_id: str) -> None:

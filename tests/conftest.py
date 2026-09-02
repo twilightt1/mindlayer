@@ -67,6 +67,16 @@ class MockRedis:
         """Mock get - always returns None."""
         return None
     
+    async def set(self, key: str, value, ex: int | None = None, nx: bool = False) -> bool:
+        """Mock SET with NX semantics mirroring the atomic-window pattern."""
+        if nx:
+            if key in self._counters:
+                return False
+            self._counters[key] = value
+            return True
+        self._counters[key] = value
+        return True
+    
     async def setex(self, key: str, seconds: int, value: str) -> bool:
         """Mock setex - always succeeds."""
         return True
