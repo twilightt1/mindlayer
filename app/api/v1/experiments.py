@@ -47,13 +47,13 @@ async def get_user_variant(
     result = experiments_service.get_user_variant_by_name(
         current_user.id, experiment_name
     )
-    
+
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment '{experiment_name}' not found or not running"
         )
-    
+
     variant, _ = result
     return UserVariantResponse(
         experiment_name=experiment_name,
@@ -76,10 +76,10 @@ async def record_experiment_metric(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment '{experiment_name}' not found"
         )
-    
+
     body.user_id = str(current_user.id)
     event = experiments_service.record_metric(body, experiment.id)
-    
+
     return {"success": True, "event_id": str(event.id)}
 
 
@@ -171,9 +171,9 @@ async def add_variant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment {experiment_id} not found"
         )
-    
+
     # Add variant
-    from app.schemas.experiment import ExperimentVariant, VariantType
+    from app.schemas.experiment import ExperimentVariant
     new_variant = ExperimentVariant(
         name=body.name,
         description=body.description,
@@ -182,7 +182,7 @@ async def add_variant(
         config=body.config,
     )
     experiment.variants.append(new_variant)
-    
+
     return experiment
 
 
@@ -194,7 +194,7 @@ async def start_experiment(
 ) -> Experiment:
     """Start an experiment (change status to RUNNING)."""
     from datetime import UTC, datetime
-    
+
     experiment = experiments_service.update_experiment(
         experiment_id,
         UpdateExperimentRequest(
@@ -237,7 +237,7 @@ async def complete_experiment(
 ) -> Experiment:
     """Complete an experiment (change status to COMPLETED)."""
     from datetime import UTC, datetime
-    
+
     experiment = experiments_service.update_experiment(
         experiment_id,
         UpdateExperimentRequest(

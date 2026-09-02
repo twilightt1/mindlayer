@@ -8,9 +8,7 @@ This service provides:
 - Experiment results and analytics
 """
 import hashlib
-import random
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from app.schemas.experiment import (
@@ -48,7 +46,7 @@ class ExperimentsService:
         if self._initialized:
             return
         self._initialized = True
-        
+
         # Example: Onboarding flow experiment
         onboarding_exp = Experiment(
             name="onboarding_flow_v2",
@@ -113,18 +111,18 @@ class ExperimentsService:
             for v in experiment.variants:
                 if v.id == assigned.variant_id:
                     return v
-        
+
         # New assignment - use weighted random based on hash
         total_weight = sum(v.weight for v in experiment.variants)
         hash_val = self._hash_user(user_id, experiment.id)
         normalized = (hash_val % total_weight) / total_weight
-        
+
         cumulative = 0
         for variant in experiment.variants:
             cumulative += variant.weight / total_weight
             if normalized <= cumulative:
                 return variant
-        
+
         # Fallback to first variant
         return experiment.variants[0]
 
@@ -227,7 +225,7 @@ class ExperimentsService:
         if not experiment or experiment.status != ExperimentStatus.RUNNING:
             return None
         variant = self._assign_variant(user_id, experiment)
-        
+
         # Store assignment
         key = (user_id, experiment.id)
         self._assignments[key] = UserAssignment(
@@ -237,7 +235,7 @@ class ExperimentsService:
             experiment_name=experiment.name,
             variant_name=variant.name,
         )
-        
+
         return variant, experiment
 
     def get_user_assignments(self, user_id: UUID) -> list[UserAssignment]:
@@ -252,13 +250,13 @@ class ExperimentsService:
     def record_metric(self, request: RecordMetricRequest, experiment_id: UUID) -> MetricEvent:
         """Record a metric event for an experiment."""
         self._init_defaults()
-        
+
         # Get user's variant assignment
         user_uuid = UUID(request.user_id) if request.user_id else None
         variant = None
         if user_uuid:
             variant = self.get_user_variant(user_uuid, experiment_id)
-        
+
         if not variant:
             # Try to get from request (if provided)
             return MetricEvent(
@@ -269,7 +267,7 @@ class ExperimentsService:
                 value=request.value,
                 properties=request.properties,
             )
-        
+
         event = MetricEvent(
             experiment_id=experiment_id,
             user_id=user_uuid,
@@ -303,7 +301,7 @@ class ExperimentsService:
             variant_metrics = [
                 m for m in self._metrics if m.variant_id == variant.id
             ]
-            
+
             metric_results = {}
             for metric_name in set(m.metric_name for m in variant_metrics):
                 values = [m.value for m in variant_metrics if m.metric_name == metric_name]
@@ -314,7 +312,7 @@ class ExperimentsService:
                         count=len(values),
                         p95=None,
                     )
-            
+
             variant_results.append(VariantResult(
                 variant_id=variant.id,
                 variant_name=variant.name,

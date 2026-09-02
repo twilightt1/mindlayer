@@ -4,10 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DocumentUploader } from "@/components/documents/DocumentUploader";
-import { listSources, deleteSource, type Source } from "@/lib/api/sources";
-
-// Re-export as Document for backwards compatibility
-type Document = Source;
+import { listDocuments, uploadDocument, type Document } from "@/lib/api/documents";
 import { 
   FileText, 
   Search, 
@@ -55,10 +52,8 @@ export default function DocumentsPage() {
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await listSources({ 
-        source_type: "file_upload",
-      });
-      setDocuments(data.items);
+      const docs = await listDocuments();
+      setDocuments(docs);
     } catch (error) {
       console.error("Failed to fetch documents:", error);
     } finally {
@@ -75,10 +70,12 @@ export default function DocumentsPage() {
     if (!confirm("Are you sure you want to delete this document?")) return;
     
     try {
-      await deleteSource(id);
+      const { deleteDocument } = await import("@/lib/api/documents");
+      await deleteDocument(id);
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (error) {
       console.error("Failed to delete document:", error);
+      alert("Failed to delete document. Please try again.");
     }
   };
 
@@ -199,22 +196,22 @@ export default function DocumentsPage() {
                   >
                     {/* Icon */}
                     <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center">
-                      <FileIcon type={doc.source_type} className="w-5 h-5 text-white/50" />
+                      <FileIcon type={doc.file_type || doc.filename || ""} className="w-5 h-5 text-white/50" />
                     </div>
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">
-                        {doc.display_name}
+                        {doc.title || doc.filename}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-white/40">
-                        <span className="capitalize">{doc.source_type.replace("_", " ")}</span>
+                        <span>{doc.file_type?.split("/").pop() || "file"}</span>
                         <span>•</span>
                         <span>{new Date(doc.created_at).toLocaleDateString()}</span>
-                        {doc.status === "syncing" && (
+                        {doc.status === "processing" && (
                           <>
                             <span>•</span>
-                            <span className="text-violet-400">Syncing...</span>
+                            <span className="text-violet-400">Processing...</span>
                           </>
                         )}
                       </div>
@@ -223,12 +220,14 @@ export default function DocumentsPage() {
                     {/* Status */}
                     <div className={cn(
                       "px-2 py-1 rounded-full text-[10px] font-medium capitalize",
-                      doc.status === "connected"
+                      doc.status === "ready"
                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                         : doc.status === "error"
                         ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                        : doc.status === "syncing"
+                        : doc.status === "processing"
                         ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
+                        : doc.status === "partial"
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                         : "bg-white/5 text-white/40 border border-white/10"
                     )}>
                       {doc.status}

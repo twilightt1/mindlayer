@@ -79,8 +79,12 @@ class Settings(BaseSettings):
 
 
     JINA_API_KEY: str = ""
+    JINA_EMBED_MODEL: str = "jina-embeddings-v3"
+    JINA_EMBED_DIMENSIONS: int = 1024
     JINA_RERANKER_MODEL: str = "jina-reranker-v2-base-multilingual"
     JINA_RERANKER_TOP_N: int = 5
+    # Use jina for embeddings instead of OpenAI
+    USE_JINA_EMBEDDINGS: bool = True
 
     # ── Corrective-RAG (CRAG) ────────────────────────────────────────────────────
     # CRAG self-critiques retrieval quality and falls back to web search when needed.
