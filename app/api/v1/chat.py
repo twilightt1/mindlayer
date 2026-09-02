@@ -51,9 +51,13 @@ class RootChatRequest(BaseModel):
     query: str | None = None  # Backend prefers "query"
     content: str | None = None  # Frontend sends "content"
     session_id: str | None = None
-    include_personal_context: bool = False
-    include_graph_context: bool = False
-    personal_memory_top_k: int = Field(default=3, ge=0, le=10)
+    # Defaults must mirror ChatRequest (True): the frontend never sends these
+    # fields, so False silently disabled personal-memory retrieval and graph
+    # context for every chat request — documents were embedded but never used
+    # to ground answers, forcing the LLM to hallucinate.
+    include_personal_context: bool = True
+    include_graph_context: bool = True
+    personal_memory_top_k: int = Field(default=5, ge=0, le=10)
 
     def get_query(self) -> str:
         """Get query from either field."""

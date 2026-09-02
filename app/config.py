@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "openai/gpt-4o-mini"
     LLM_TEMPERATURE: float = 0.7
+    # OpenRouter free-tier models share a congested pool and 429 constantly
+    # under burst. Cap how many agent LLM calls hit the provider at once;
+    # the SDK retries with backoff (see llm_client.DEFAULT_LLM_MAX_RETRIES).
+    LLM_MAX_CONCURRENCY: int = 3
     # Factual RAG answers should be near-deterministic; the global 0.7 is for
     # other/creative uses. The answer agent uses this lower value to reduce
     # hallucination and verbosity.
