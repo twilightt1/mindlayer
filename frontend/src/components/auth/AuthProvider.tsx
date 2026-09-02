@@ -109,21 +109,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Try to refresh token
+  // Try to refresh token. The refresh token lives in an httpOnly cookie —
+  // include credentials so the browser sends it; the response body only
+  // carries the new access token.
   const tryRefreshToken = async (): Promise<boolean> => {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
 
     try {
       const response = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        // Legacy body fallback for sessions created before the cookie flow
+        ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
+        credentials: "include",
       });
 
       if (response.ok) {
-        const data = await handleResponse<{ access_token: string; refresh_token: string }>(response);
-        setTokens(data.access_token, data.refresh_token);
+        const data = await handleResponse<{ access_token: string; refresh_token?: string | null }>(response);
+        setTokens(data.access_token, data.refresh_token ?? null);
         await fetchUser();
         return true;
       }

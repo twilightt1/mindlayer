@@ -58,7 +58,8 @@ class OnboardingRequest(BaseModel):
 
 class OnboardingResponse(BaseModel):
     access_token:  str
-    refresh_token: str
+    # httpOnly cookie carries the refresh token for browser clients.
+    refresh_token: str | None = None
     user:          UserResponse
 
 
@@ -69,7 +70,9 @@ class LoginRequest(_EmailNormalizingModel):
 
 class LoginResponse(BaseModel):
     access_token:  str
-    refresh_token: str
+    # Kept for backward compatibility with non-cookie clients; browser
+    # clients receive the refresh token in an httpOnly cookie instead.
+    refresh_token: str | None = None
     token_type:    str = "bearer"
     user:          UserResponse
 

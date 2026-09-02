@@ -78,8 +78,13 @@ export function getRefreshToken(): string | null {
 export function setTokens(accessToken: string, refreshToken?: string | null) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, accessToken);
+  // The refresh token lives in an httpOnly cookie (orivory_refresh) set by
+  // the backend. Drop any legacy localStorage copy so XSS can't read it;
+  // only a non-cookie client (native app) would re-store it explicitly.
   if (refreshToken) {
     localStorage.setItem(REFRESH_KEY, refreshToken);
+  } else {
+    localStorage.removeItem(REFRESH_KEY);
   }
   setAuthStateCookie();
 }
