@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { uploadDocument, type Document, type UploadProgress, SUPPORTED_FILE_TYPES, MAX_FILE_SIZE } from "@/lib/api/documents";
+import { uploadDocument, type Document, type UploadProgress, SUPPORTED_FILE_TYPES, SUPPORTED_BADGES, SUPPORTED_EXTENSIONS, MAX_FILE_SIZE } from "@/lib/api/documents";
 import { Upload, X, File, CheckCircle, AlertCircle, Loader2, Trash2, Eye, Download } from "lucide-react";
 
 // ============================================================================
@@ -104,9 +104,15 @@ function FileItem({
         <p className={cn("text-sm font-medium truncate", DESIGN.colors.text.primary)}>
           {file.name}
         </p>
-        <p className={cn("text-xs", DESIGN.colors.text.muted)}>
-          {(file.size / 1024 / 1024).toFixed(2)} MB
-        </p>
+        {isError && progress?.message ? (
+          <p className={cn("text-xs text-red-400/90 truncate")} title={progress.message}>
+            {progress.message.replace(/^Upload failed: \d+ - /, "").slice(0, 120)}
+          </p>
+        ) : (
+          <p className={cn("text-xs", DESIGN.colors.text.muted)}>
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        )}
       </div>
 
       {/* Status indicator */}
@@ -312,7 +318,7 @@ export function DocumentUploader({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={acceptedTypes.length > 0 ? acceptedTypes.join(",") : undefined}
+          accept={acceptedTypes.length > 0 ? acceptedTypes.join(",") : SUPPORTED_EXTENSIONS}
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -344,15 +350,12 @@ export function DocumentUploader({
             "flex flex-wrap justify-center gap-2 mt-4",
             "text-[10px] text-white/30"
           )}>
-            <span>PDF</span>
-            <span>•</span>
-            <span>Word</span>
-            <span>•</span>
-            <span>Text</span>
-            <span>•</span>
-            <span>Spreadsheet</span>
-            <span>•</span>
-            <span>Images</span>
+            {SUPPORTED_BADGES.map((label, i) => (
+              <span key={label} className="flex items-center gap-2">
+                {i > 0 && <span aria-hidden="true">•</span>}
+                <span>{label}</span>
+              </span>
+            ))}
           </div>
           <p className={cn("text-[10px] mt-2", DESIGN.colors.text.muted)}>
             Max {MAX_FILE_SIZE / 1024 / 1024}MB per file
@@ -398,7 +401,7 @@ export function DocumentUploader({
         </div>
       )}
 
-      {files.length > 0 && !allUploaded && (
+      {files.length > 0 && !allUploaded && !files.some((f) => progressMap.get(f.name)?.status === "error") && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

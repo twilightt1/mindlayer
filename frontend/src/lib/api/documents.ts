@@ -292,14 +292,23 @@ export async function getDocumentStatus(id: string): Promise<{
 /**
  * Get supported file types
  */
+/**
+ * File types the backend actually ingests (app/services/document_service.py
+ * ALLOWED_MIME + connector parsing). Keep in sync — the uploader validates
+ * against this before hitting the API, and the dropzone badge list is
+ * derived from these labels.
+ */
 export const SUPPORTED_FILE_TYPES = {
   pdf: { extensions: [".pdf"], icon: "📄", label: "PDF" },
   doc: { extensions: [".doc", ".docx"], icon: "📝", label: "Word Document" },
-  text: { extensions: [".txt", ".md", ".rtf"], icon: "📃", label: "Text File" },
-  spreadsheet: { extensions: [".xls", ".xlsx", ".csv"], icon: "📊", label: "Spreadsheet" },
-  image: { extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp"], icon: "🖼️", label: "Image" },
-  url: { extensions: [], icon: "🔗", label: "Web URL" },
+  text: { extensions: [".txt", ".md", ".rtf"], icon: "📃", label: "Text / Markdown" },
 };
+
+export const SUPPORTED_EXTENSIONS = Object.values(SUPPORTED_FILE_TYPES)
+  .flatMap((t) => t.extensions)
+  .join(",");
+
+export const SUPPORTED_BADGES = Object.values(SUPPORTED_FILE_TYPES).map((t) => t.label);
 
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const MAX_FILES_PER_BATCH = 10;

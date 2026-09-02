@@ -71,6 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
+      // The localStorage token is gone (storage eviction, partial site-data
+      // clear, private-mode quirks) but the middleware-facing `auth_state`
+      // cookie may still exist. Without clearing it, /login bounces back to
+      // /dashboard and the user is trapped in an infinite redirect loop.
+      clearTokens();
       setIsLoading(false);
       return;
     }

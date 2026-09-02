@@ -57,7 +57,7 @@ const NAV_ITEMS = [
     label: "Insights",
     href: "/insights",
     icon: Sparkles,
-    badge: "3",
+    badge: null,
   },
   {
     label: "Analytics",

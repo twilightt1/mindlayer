@@ -66,6 +66,20 @@ export default function DocumentsPage() {
     fetchDocuments();
   }, [fetchDocuments]);
 
+  // Poll while any document is still processing so status chips settle
+  // without a manual reload (ingestion runs async in Celery).
+  useEffect(() => {
+    const hasPending = documents.some((d) => d.status === "processing");
+    if (!hasPending) return;
+    const t = setInterval(() => {
+      // Silent refresh: don't flash skeletons on each poll.
+      listDocuments()
+        .then(setDocuments)
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(t);
+  }, [documents]);
+
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
     
@@ -76,6 +90,22 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error("Failed to delete document:", error);
       alert("Failed to delete document. Please try again.");
+    }
+  };
+
+  const handleDownload = async (doc: Document) => {
+    try {
+      const { downloadDocument } = await import("@/lib/api/documents");
+      const blob = await downloadDocument(doc.id);
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement("a");
+      a.href = url;
+      a.download = doc.filename || doc.title || "document";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download document:", error);
+      alert("Failed to download document. Please try again.");
     }
   };
 
@@ -237,6 +267,8 @@ export default function DocumentsPage() {
                     <div className="flex items-center gap-1">
                       <motion.button
                         whileHover={{ scale: 1.1 }}
+                        onClick={() => handleDownload(doc)}
+                        aria-label={`Download ${doc.title || doc.filename}`}
                         className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-colors"
                       >
                         <Download className="w-4 h-4" />
