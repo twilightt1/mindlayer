@@ -40,6 +40,7 @@ migration note says to pin ``mcp<2`` for v1 code):
 from __future__ import annotations
 
 import logging
+from collections.abc import MutableMapping
 from functools import lru_cache
 from typing import Any
 
@@ -130,14 +131,29 @@ def build_mcp_server() -> FastMCP:
     return mcp
 
 
+def normalize_mcp_scope(scope: MutableMapping) -> None:
+    """Rewrite an HTTP scope so the SDK's inner ``Route("/")`` matches.
+
+    The host app reaches the MCP endpoint two ways: the ``/mcp`` mount
+    (scope path ``/mcp/...`` with ``root_path=/mcp``) and the exact
+    ``Route("/mcp", ...)`` (scope path ``/mcp``). In both cases the path
+    relative to ``root_path`` must collapse to ``/`` for the inner route;
+    Starlette 1.6's exact-root 307 redirect to ``/mcp/`` would otherwise
+    strip the ``Authorization`` header. Mutates the scope in place.
+    """
+    root = scope.get("root_path", "")
+    path = scope.get("path", "")
+    sub_path = path[len(root):] if path.startswith(root) else path
+    if sub_path != "/":
+        scope["path"] = root + "/"
+
+
 class McpAsgiApp:
     """ASGI adapter presenting the SDK streamable HTTP app at /mcp and /mcp/.
 
-    The host app invokes it both through the ``/mcp`` mount (scope path
-    ``/mcp/...`` with ``root_path=/mcp``) and through the exact
-    ``Route("/mcp", ...)`` (scope path ``/mcp``), while the SDK's inner route
-    only matches ``"/"``. A callable *instance* (not a function) so Starlette
-    treats it as a raw ASGI endpoint for every HTTP method.
+    A callable *instance* (not a function) so Starlette treats it as a raw
+    ASGI endpoint for every HTTP method; the path rewrite itself lives in
+    :func:`normalize_mcp_scope`.
     """
 
     def __init__(self, sdk_app: Any) -> None:
@@ -145,11 +161,7 @@ class McpAsgiApp:
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope.get("type") == "http":
-            root = scope.get("root_path", "")
-            path = scope.get("path", "")
-            sub_path = path[len(root):] if path.startswith(root) else path
-            if sub_path != "/":
-                scope = dict(scope, path=root + "/")
+            normalize_mcp_scope(scope)
         await self._sdk_app(scope, receive, send)
 
 
