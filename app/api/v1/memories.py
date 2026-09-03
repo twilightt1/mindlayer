@@ -15,7 +15,7 @@ ingestion service and is wired up in Phase 2.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -171,6 +171,53 @@ async def memory_digest(
     from app.services.digest_service import build_digest
 
     return await build_digest(db, current_user.id, window_days=window_days)
+
+
+# Declared BEFORE /{memory_id} so "stats"/"digest" aren't parsed as UUIDs.
+@router.get("/stats")
+async def memory_stats(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Aggregate counts for the memory dashboard."""
+    rows = (await db.execute(
+        select(Memory.source_type, func.count(Memory.id))
+        .where(Memory.user_id == current_user.id)
+        .group_by(Memory.source_type)
+    )).all()
+
+    counts: dict[str, int] = {source: count for source, count in rows}
+    total = sum(counts.values())
+
+    week_ago = datetime.now(UTC) - timedelta(days=7)
+    recent = (await db.execute(
+        select(func.count(Memory.id)).where(
+            Memory.user_id == current_user.id,
+            Memory.captured_at >= week_ago,
+        )
+    )).scalar_one()
+
+    tags_rows = (await db.execute(
+        select(Memory.tags).where(Memory.user_id == current_user.id)
+    )).scalars().all()
+    tag_counts: dict[str, int] = {}
+    for tags in tags_rows:
+        for tag in tags or []:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    top_tags = sorted(
+        ({"tag": t, "count": c} for t, c in tag_counts.items()),
+        key=lambda x: x["count"], reverse=True,
+    )[:10]
+
+    return {
+        "total_memories": total,
+        "entities": counts.get("file_upload", 0),
+        "relationships": counts.get("conversation_excerpt", 0),
+        "observations": total,
+        "concepts": counts.get("manual_note", 0),
+        "recent_activity": [{"date": str(week_ago.date()), "count": recent}],
+        "top_tags": top_tags,
+    }
 
 
 @router.get("/{memory_id}", response_model=MemoryResponse)

@@ -13,6 +13,7 @@ Guards here:
 """
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import socket
@@ -23,6 +24,24 @@ import httpx
 log = logging.getLogger(__name__)
 
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024  # 5 MB per fetch
+
+# DNS (upstream) timeouts can hang far longer than any HTTP budget. socket
+# resolution happens in a worker thread so a slow resolver never blocks the
+# event loop (the sync path is also reused by Celery tasks).
+_DNS_TIMEOUT_SECONDS = 10.0
+
+
+def _resolve_hostname(hostname: str) -> list[tuple]:
+    return socket.getaddrinfo(hostname, None)
+
+
+async def _resolve_hostname_async(hostname: str) -> list[tuple]:
+    """Resolve DNS off the event loop with a hard timeout."""
+    loop = asyncio.get_running_loop()
+    return await asyncio.wait_for(
+        loop.run_in_executor(None, _resolve_hostname, hostname),
+        timeout=_DNS_TIMEOUT_SECONDS,
+    )
 
 
 class SSRFBlockedError(ValueError):
@@ -42,10 +61,12 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     )
 
 
-def resolve_and_validate_url(url: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+def resolve_and_validate_url(url: str, resolved_ips: list | None = None) -> list:
     """Validate scheme and resolve the hostname, blocking private targets.
 
     Returns the resolved IP list. Raises SSRFBlockedError otherwise.
+    ``resolved_ips`` may be supplied by async callers that already ran DNS
+    off-loop (see :func:`resolve_and_validate_url_async`).
     """
     try:
         parsed = urlparse(url)
@@ -69,10 +90,61 @@ def resolve_and_validate_url(url: str) -> list[ipaddress.IPv4Address | ipaddress
         pass  # hostname, not a literal IP
 
     try:
-        infos = socket.getaddrinfo(hostname, None)
+        infos = resolved_ips if resolved_ips is not None else _resolve_hostname(hostname)
     except socket.gaierror as exc:
         raise SSRFBlockedError(f"DNS resolution failed for {hostname}") from exc
 
+    if not infos:
+        raise SSRFBlockedError(f"No DNS records for {hostname}")
+
+    resolved: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if _is_blocked_ip(ip):
+            raise SSRFBlockedError(f"Blocked resolved address: {addr}")
+        resolved.append(ip)
+    return resolved
+
+
+async def resolve_and_validate_url_async(url: str) -> list:
+    """Async variant: DNS resolution runs in a worker thread with a timeout
+    so a slow/unresponsive resolver cannot stall the event loop."""
+    try:
+        parsed = urlparse(url)
+    except (ValueError, TypeError) as exc:
+        raise SSRFBlockedError(f"Unparseable URL: {url!r}") from exc
+
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise SSRFBlockedError("Only http(s) URLs are allowed")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise SSRFBlockedError("URL has no hostname")
+
+    # Literal IPs are validated directly (no DNS involved).
+    try:
+        literal = ipaddress.ip_address(hostname)
+        if _is_blocked_ip(literal):
+            raise SSRFBlockedError(f"Blocked IP literal: {hostname}")
+        return [literal]
+    except ValueError:
+        pass  # hostname, not a literal IP
+
+    try:
+        infos = await _resolve_hostname_async(hostname)
+    except (TimeoutError, socket.gaierror) as exc:
+        raise SSRFBlockedError(f"DNS resolution failed for {hostname}") from exc
+
+    return _validate_resolved(hostname, infos)
+
+
+def _validate_resolved(
+    hostname: str, infos: list
+) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
     if not infos:
         raise SSRFBlockedError(f"No DNS records for {hostname}")
 
@@ -116,7 +188,7 @@ async def fetch_guarded(
 
     current_url = url
     for _ in range(max_redirects + 1):
-        validate_url(current_url)
+        await resolve_and_validate_url_async(current_url)
         request = client.build_request(method, current_url, **kwargs)
         response = await client.send(request, stream=True)
         if response.is_redirect:

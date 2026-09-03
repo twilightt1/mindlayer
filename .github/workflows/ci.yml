@@ -53,6 +53,13 @@ jobs:
       - name: Run config tests
         run: python -m pytest --confcutdir=tests/config tests/config/test_settings_validation.py -q
 
+      - name: Run Hub unit tests (DB-free)
+        run: |
+          python -m pytest --confcutdir=tests/mcp_hub tests/mcp_hub -q
+          python -m pytest --confcutdir=tests/models tests/models -q
+          python -m pytest --confcutdir=tests/services tests/services/test_agent_token_service.py tests/services/test_access_ledger_service.py -q
+          python -m pytest --confcutdir=tests/api tests/api/test_agents_router.py tests/api/test_router_wiring.py -q
+
       - name: Run evaluation smoke
         run: python eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 

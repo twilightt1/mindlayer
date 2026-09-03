@@ -78,9 +78,11 @@ class GraphResponse(BaseModel):
 
 class DiscoverySessionCreate(BaseModel):
     """Request to create discovery session."""
-    starting_doc_id: str = Field(description="Starting document ID")
+    # UUID type: invalid strings become a 422 from pydantic instead of an
+    # unhandled ValueError (500) inside the handler.
+    starting_doc_id: UUID = Field(description="Starting document ID")
     flow_type: str = Field(default="explore_related", description="explore_related, trace_origin, find_contradictions, synthesize, temporal_journey")
-    target_doc_id: str | None = Field(default=None, description="Optional target document ID")
+    target_doc_id: UUID | None = Field(default=None, description="Optional target document ID")
 
 
 class DiscoverySessionResponse(BaseModel):
@@ -203,7 +205,14 @@ async def get_document_graph(
     query = select(Memory).where(Memory.user_id == current_user.id)
     if doc_ids:
         doc_id_list = [d.strip() for d in doc_ids.split(",")]
-        query = query.where(Memory.id.in_([UUID(d) for d in doc_id_list]))
+        try:
+            parsed_ids = [UUID(d) for d in doc_id_list]
+        except ValueError as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"doc_ids contains an invalid UUID: {exc}",
+            ) from None
+        query = query.where(Memory.id.in_(parsed_ids))
 
     result = await db.execute(query)
     memories = result.scalars().all()
@@ -263,12 +272,12 @@ async def create_session(
     Starts a guided discovery journey from a document.
     """
     # Verify document exists
-    doc = await db.get(Memory, UUID(body.starting_doc_id))
+    doc = await db.get(Memory, body.starting_doc_id)
     if not doc or doc.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.")
 
     if body.target_doc_id:
-        target = await db.get(Memory, UUID(body.target_doc_id))
+        target = await db.get(Memory, body.target_doc_id)
         if not target or target.user_id != current_user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Target document not found.")
 
@@ -276,9 +285,9 @@ async def create_session(
     flow_type = _parse_flow_type(body.flow_type)
     session = create_discovery_session(
         user_id=str(current_user.id),
-        starting_doc_id=body.starting_doc_id,
+        starting_doc_id=str(body.starting_doc_id),
         flow_type=flow_type,
-        target_doc_id=body.target_doc_id,
+        target_doc_id=str(body.target_doc_id) if body.target_doc_id else None,
     )
 
     # Store session
@@ -487,12 +496,12 @@ async def complete_discovery(
 async def find_references(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    doc1_id: str = Query(description="First document ID"),
-    doc2_id: str = Query(description="Second document ID"),
+    doc1_id: UUID = Query(description="First document ID"),
+    doc2_id: UUID = Query(description="Second document ID"),
 ) -> list[CrossReferenceResponse]:
     """Find cross-document references between two documents."""
-    doc1 = await db.get(Memory, UUID(doc1_id))
-    doc2 = await db.get(Memory, UUID(doc2_id))
+    doc1 = await db.get(Memory, doc1_id)
+    doc2 = await db.get(Memory, doc2_id)
 
     if not doc1 or doc1.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "First document not found.")

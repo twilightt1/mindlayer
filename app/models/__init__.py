@@ -1,4 +1,5 @@
 from app.models.admin_audit import AdminActionLog
+from app.models.agent_client import AgentClient
 from app.models.conversation import Conversation
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
@@ -18,6 +19,7 @@ from app.models.insight import (
     InsightTypeEnum,
 )
 from app.models.memory import Memory
+from app.models.memory_access_log import MemoryAccessLog
 from app.models.message import Message
 from app.models.password_reset_session import PasswordResetSession
 from app.models.source import SOURCE_STATUS, SOURCE_TYPES, MemorySource, Source
@@ -76,4 +78,7 @@ __all__ = [
     "MemberRole",
     "MemberStatus",
     "InviteStatus",
+    # Open Memory Hub
+    "AgentClient",
+    "MemoryAccessLog",
 ]

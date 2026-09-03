@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth";
+import { API_BASE, getAccessToken } from "@/lib/api-client";
 
 export type AnalyticsEvent = {
   name: string;
@@ -38,11 +40,19 @@ export function useAnalytics() {
     eventQueue = [];
 
     try {
-      await fetch("/api/v1/analytics/events", {
+      // Must hit the API origin with the bearer token: a relative fetch
+      // landed on the Next.js server (no such route → 404) and events were
+      // silently lost; the backend endpoint also requires auth.
+      const token = getAccessToken();
+      const res = await fetch(`${API_BASE}/api/v1/analytics/events`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events, userId }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ events }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch (error) {
       // Re-queue failed events
       eventQueue = [...events, ...eventQueue];
@@ -142,32 +152,20 @@ export function useAnalytics() {
  */
 export function usePageTracking() {
   const { trackPageView } = useAnalytics();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handleRouteChange = () => {
-      trackPageView({
-        path: window.location.pathname,
-        title: document.title,
-        referrer: document.referrer,
-      });
-    };
-
-    // Track initial page
-    handleRouteChange();
-
-    // Listen for navigation
-    const observer = new MutationObserver(() => {
-      // Re-check on any DOM changes (Next.js router updates)
+    trackPageView({
+      path: pathname,
+      title: document.title,
+      referrer: document.referrer,
     });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [trackPageView]);
+    // Re-track whenever the route changes — the MutationObserver this
+    // replaced fired on every DOM mutation (streaming text, animations)
+    // while never actually tracking navigations.
+  }, [pathname, trackPageView]);
 }
 
 /**

@@ -25,7 +25,7 @@ from app.schemas.experiment import (
     UserVariantResponse,
 )
 from app.services.experiments_service import experiments_service
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import get_current_verified_user, require_admin
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
 
@@ -47,13 +47,13 @@ async def get_user_variant(
     result = experiments_service.get_user_variant_by_name(
         current_user.id, experiment_name
     )
-    
+
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment '{experiment_name}' not found or not running"
         )
-    
+
     variant, _ = result
     return UserVariantResponse(
         experiment_name=experiment_name,
@@ -76,10 +76,10 @@ async def record_experiment_metric(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment '{experiment_name}' not found"
         )
-    
+
     body.user_id = str(current_user.id)
     event = experiments_service.record_metric(body, experiment.id)
-    
+
     return {"success": True, "event_id": str(event.id)}
 
 
@@ -89,7 +89,7 @@ async def record_experiment_metric(
 @router.get("", response_model=ExperimentListResponse)
 async def list_experiments(
     status: ExperimentStatus | None = None,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ExperimentListResponse:
     """List all experiments (admin only)."""
@@ -100,7 +100,7 @@ async def list_experiments(
 @router.post("", response_model=Experiment)
 async def create_experiment(
     body: CreateExperimentRequest,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Create a new experiment (admin only)."""
@@ -111,7 +111,7 @@ async def create_experiment(
 @router.get("/{experiment_id}", response_model=Experiment)
 async def get_experiment(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Get an experiment by ID (admin only)."""
@@ -128,7 +128,7 @@ async def get_experiment(
 async def update_experiment(
     experiment_id: UUID,
     body: UpdateExperimentRequest,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Update an experiment (admin only)."""
@@ -144,7 +144,7 @@ async def update_experiment(
 @router.delete("/{experiment_id}")
 async def delete_experiment(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an experiment (admin only)."""
@@ -161,7 +161,7 @@ async def delete_experiment(
 async def add_variant(
     experiment_id: UUID,
     body: AddVariantRequest,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Add a variant to an experiment (admin only)."""
@@ -171,9 +171,9 @@ async def add_variant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Experiment {experiment_id} not found"
         )
-    
+
     # Add variant
-    from app.schemas.experiment import ExperimentVariant, VariantType
+    from app.schemas.experiment import ExperimentVariant
     new_variant = ExperimentVariant(
         name=body.name,
         description=body.description,
@@ -182,19 +182,19 @@ async def add_variant(
         config=body.config,
     )
     experiment.variants.append(new_variant)
-    
+
     return experiment
 
 
 @router.post("/{experiment_id}/start", response_model=Experiment)
 async def start_experiment(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Start an experiment (change status to RUNNING)."""
     from datetime import UTC, datetime
-    
+
     experiment = experiments_service.update_experiment(
         experiment_id,
         UpdateExperimentRequest(
@@ -213,7 +213,7 @@ async def start_experiment(
 @router.post("/{experiment_id}/pause", response_model=Experiment)
 async def pause_experiment(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Pause an experiment (change status to PAUSED)."""
@@ -232,12 +232,12 @@ async def pause_experiment(
 @router.post("/{experiment_id}/complete", response_model=Experiment)
 async def complete_experiment(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Experiment:
     """Complete an experiment (change status to COMPLETED)."""
     from datetime import UTC, datetime
-    
+
     experiment = experiments_service.update_experiment(
         experiment_id,
         UpdateExperimentRequest(
@@ -256,7 +256,7 @@ async def complete_experiment(
 @router.get("/{experiment_id}/results", response_model=ExperimentResults)
 async def get_experiment_results(
     experiment_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ExperimentResults:
     """Get aggregated results for an experiment."""

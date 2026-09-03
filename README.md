@@ -40,6 +40,24 @@ Orivory is an open-source, self-hosted AI second brain that transforms scattered
 | **👥 Team Workspaces** | Shared knowledge bases with workspace-level access control |
 | **📊 Analytics** | Usage tracking, DAU metrics, and cost monitoring |
 | **🎁 Referral System** | Built-in viral referral system for organic growth |
+| **🧩 Open Memory Hub (MVP)** | MCP server so any AI agent can read/write your memory with scoped per-agent tokens and a full access ledger |
+
+### Open Memory Hub (MVP)
+
+Any MCP-capable agent can connect to your second brain. You register an agent client, get a scoped token (`memory:read` / `memory:write`), and point the agent at the MCP endpoint — every call is recorded in the access ledger ("which AI read what, when"). See [docs/API.md — Agent Clients & MCP Hub](docs/API.md#13-agent-clients--mcp-hub).
+
+```bash
+# 1. Register an agent client (as your logged-in user)
+curl -X POST http://localhost:8000/api/v1/agents \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Claude Desktop", "scopes": ["memory:read", "memory:write"]}'
+
+# 2. Copy the returned token (oa_...  — shown exactly once)
+
+# 3. Connect your MCP client to http://localhost:8000/mcp with header
+#    X-Orivory-Agent-Token: oa_...
+```
 
 ---
 

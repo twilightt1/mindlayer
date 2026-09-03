@@ -111,6 +111,14 @@ async def answer_agent(state: AgentState) -> AgentState:
         )
 
         async for chunk in stream:
+            # Usage-only chunks (OpenRouter and friends) carry an empty
+            # choices list — indexing into choices[0] raised IndexError and
+            # wiped out an already-streamed answer.
+            if not chunk.choices:
+                if chunk.usage:
+                    token_count = chunk.usage.total_tokens
+                    last_usage = chunk.usage
+                continue
             delta = chunk.choices[0].delta.content or ""
             if delta and first_token_ms is None:
                 first_token_ms = _elapsed_ms(total_start)

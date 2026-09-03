@@ -13,17 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.schemas.hint import (
-    HintAnalytics,
-    HintDismissal,
-    HintInteraction,
     HintInteractionCreate,
     HintInteractionResponse,
     HintListResponse,
     HintResponse,
-    HintStatus,
     UserHintState,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.utils.dependencies import get_current_verified_user, require_admin
 
 router = APIRouter(prefix="/hints", tags=["hints"])
 
@@ -42,15 +38,15 @@ def _get_hint_state(user_id: UUID) -> UserHintState:
 
 def _is_hint_available(hint: dict, user_state: UserHintState) -> bool:
     """Check if a hint should be shown to user."""
-    from datetime import UTC, datetime, timedelta
-    
+    from datetime import UTC, datetime
+
     # Check if snoozed
     hint_id_str = str(hint["id"])
     if hint_id_str in user_state.snoozed_hints:
         snooze_until = user_state.snoozed_hints[hint_id_str]
         if datetime.now(UTC) < snooze_until:
             return False
-    
+
     # Check shown count limit
     trigger_type = hint.get("trigger", {}).get("type")
     if trigger_type == "recurring":
@@ -58,7 +54,7 @@ def _is_hint_available(hint: dict, user_state: UserHintState) -> bool:
         shown_count = user_state.shown_counts.get(hint_id_str, 0)
         if shown_count >= max_times:
             return False
-    
+
     return True
 
 
@@ -77,25 +73,25 @@ async def get_hints(
     - Under the show limit (for recurring hints)
     """
     user_state = _get_hint_state(current_user.id)
-    
+
     available_hints = []
     for hint_id, hint in _HINTS_STORE.items():
         if not hint.get("active", True):
             continue
         if not _is_hint_available(hint, user_state):
             continue
-        
+
         available_hints.append(HintResponse(
             id=hint["id"],
             feature=hint["feature"],
             content=hint["content"],
             priority=hint["priority"],
         ))
-    
+
     # Sort by priority (high first)
     priority_order = {"high": 0, "medium": 1, "low": 2}
     available_hints.sort(key=lambda h: priority_order.get(h.priority.value, 1))
-    
+
     return HintListResponse(hints=available_hints, total=len(available_hints))
 
 
@@ -116,7 +112,7 @@ async def record_interaction(
     """
     user_state = _get_hint_state(current_user.id)
     hint_id_str = str(body.hint_id)
-    
+
     # Get the hint
     hint = _HINTS_STORE.get(body.hint_id)
     if not hint:
@@ -130,18 +126,18 @@ async def record_interaction(
             "priority": "medium",
         }
         _HINTS_STORE[body.hint_id] = hint
-    
+
     # Update shown count
     if body.action == "shown":
         current_count = user_state.shown_counts.get(hint_id_str, 0)
         user_state.shown_counts[hint_id_str] = current_count + 1
-    
+
     # Handle snooze
     if body.action == "snoozed":
         from datetime import UTC, datetime, timedelta
         snooze_days = hint.get("snooze_days", 7)
         user_state.snoozed_hints[hint_id_str] = datetime.now(UTC) + timedelta(days=snooze_days)
-    
+
     return HintInteractionResponse(
         success=True,
         message=f"Interaction '{body.action}' recorded for hint {body.hint_id}"
@@ -162,11 +158,11 @@ async def dismiss_hint(
     """
     user_state = _get_hint_state(current_user.id)
     hint_id_str = str(hint_id)
-    
+
     # Mark as snoozed indefinitely (until app update)
     from datetime import UTC, datetime, timedelta
     user_state.snoozed_hints[hint_id_str] = datetime.now(UTC) + timedelta(days=365)
-    
+
     return HintInteractionResponse(
         success=True,
         message=f"Hint {hint_id} dismissed"
@@ -188,13 +184,13 @@ async def snooze_hint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Snooze days must be between 1 and 30"
         )
-    
+
     user_state = _get_hint_state(current_user.id)
     hint_id_str = str(hint_id)
-    
+
     from datetime import UTC, datetime, timedelta
     user_state.snoozed_hints[hint_id_str] = datetime.now(UTC) + timedelta(days=days)
-    
+
     return HintInteractionResponse(
         success=True,
         message=f"Hint {hint_id} snoozed for {days} days"
@@ -214,21 +210,22 @@ async def track_feature_use(
     from being shown.
     """
     from datetime import UTC, datetime
-    
+
     user_state = _get_hint_state(current_user.id)
     user_state.last_feature_use[feature] = datetime.now(UTC)
-    
+
     return HintInteractionResponse(
         success=True,
         message=f"Feature '{feature}' usage tracked"
     )
 
 
-# Admin endpoints (would require admin role in production)
+# Admin endpoints — hint content is injected into other users' UI, so any
+# authenticated user must not be able to write it.
 
 @router.get("/admin/hints", response_model=list[HintResponse])
 async def list_all_hints(
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[HintResponse]:
     """List all hints (admin only)."""
@@ -246,7 +243,7 @@ async def list_all_hints(
 @router.post("/admin/hints", response_model=HintResponse)
 async def create_hint(
     hint: HintResponse,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> HintResponse:
     """Create a new hint (admin only)."""
@@ -266,21 +263,19 @@ async def create_hint(
 @router.delete("/admin/hints/{hint_id}", response_model=HintInteractionResponse)
 async def delete_hint(
     hint_id: UUID,
-    current_user=Depends(get_current_verified_user),
+    current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> HintInteractionResponse:
     """Delete a hint (admin only)."""
-    if hint_id in _HINTS_STORE:
-        del _HINTS_STORE[hint_id]
+    _HINTS_STORE.pop(hint_id, None)
     return HintInteractionResponse(success=True, message=f"Hint {hint_id} deleted")
 
 
 # Initialize with default hints
 def _init_default_hints():
     """Initialize store with default hints."""
-    from datetime import UTC, datetime
     from uuid import uuid4
-    
+
     default_hints = [
         {
             "id": uuid4(),
@@ -328,7 +323,7 @@ def _init_default_hints():
             "snooze_days": 7,
         },
     ]
-    
+
     for hint in default_hints:
         _HINTS_STORE[hint["id"]] = hint
 

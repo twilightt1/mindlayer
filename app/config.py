@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "openai/gpt-4o-mini"
     LLM_TEMPERATURE: float = 0.7
+    # OpenRouter free-tier models share a congested pool and 429 constantly
+    # under burst. Cap how many agent LLM calls hit the provider at once;
+    # the SDK retries with backoff (see llm_client.DEFAULT_LLM_MAX_RETRIES).
+    LLM_MAX_CONCURRENCY: int = 3
     # Factual RAG answers should be near-deterministic; the global 0.7 is for
     # other/creative uses. The answer agent uses this lower value to reduce
     # hallucination and verbosity.
@@ -79,8 +83,12 @@ class Settings(BaseSettings):
 
 
     JINA_API_KEY: str = ""
+    JINA_EMBED_MODEL: str = "jina-embeddings-v3"
+    JINA_EMBED_DIMENSIONS: int = 1024
     JINA_RERANKER_MODEL: str = "jina-reranker-v2-base-multilingual"
     JINA_RERANKER_TOP_N: int = 5
+    # Use jina for embeddings instead of OpenAI
+    USE_JINA_EMBEDDINGS: bool = True
 
     # ── Corrective-RAG (CRAG) ────────────────────────────────────────────────────
     # CRAG self-critiques retrieval quality and falls back to web search when needed.
@@ -120,6 +128,18 @@ class Settings(BaseSettings):
 
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_DAY: int = 1000
+
+    # ── MCP memory hub ───────────────────────────────────────────────────────────
+    # When true, the Open Memory Hub MCP server (stateless streamable HTTP) is
+    # mounted at /mcp for registered agent clients.
+    MCP_HUB_ENABLED: bool = True
+    # Comma-separated list of Host header values / hostnames allowed to reach
+    # /mcp (e.g. "api.orivory.io, mcp.orivory.io"). Empty keeps FastMCP's
+    # default behaviour: because the app binds host 127.0.0.1, the SDK
+    # auto-enables localhost-only DNS-rebind protection, which 421s any
+    # non-localhost Host (i.e. the endpoint is localhost-only until this is
+    # set — required behind a reverse proxy that forwards a public Host).
+    MCP_HUB_ALLOWED_HOSTS: str = ""
 
 
     FRONTEND_URL: str = "http://localhost:3000"

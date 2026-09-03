@@ -1,7 +1,5 @@
 import uuid
 from datetime import datetime
-
-from app.models._datetime_helpers import utc_now
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -18,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation

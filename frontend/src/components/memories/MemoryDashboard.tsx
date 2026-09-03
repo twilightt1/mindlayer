@@ -199,7 +199,6 @@ function MemoryCard({
         </div>
         
         <motion.button
-          initial={{ opacity: 0 }}
           whileHover={{ scale: 1.1 }}
           onClick={(e) => {
             e.stopPropagation();

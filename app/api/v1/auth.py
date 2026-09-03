@@ -4,8 +4,9 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -103,13 +104,15 @@ async def resend_verification(body: ResendVerificationRequest, db: AsyncSession 
 @router.post("/onboarding", response_model=OnboardingResponse)
 async def onboarding(
     body: OnboardingRequest,
+    response: Response,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     user, access, refresh = await auth_service.complete_onboarding(db, current_user, body.display_name)
+    _set_refresh_cookie(response, refresh)
     return OnboardingResponse(
         access_token=access,
-        refresh_token=refresh,
+        refresh_token=None,
         user=UserResponse.model_validate(user),
     )
 
@@ -118,15 +121,19 @@ async def onboarding(
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: Request,
+    response: Response,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
 
     await check_rate_limit(f"ip:{request.client.host}", window_seconds=60, limit=10)
     user, access, refresh = await auth_service.login_email(db, body.email, body.password)
+    _set_refresh_cookie(response, refresh)
+    # Body no longer carries the refresh token (XSS cannot read httpOnly
+    # cookies); the schema keeps the field optional for non-browser clients.
     return LoginResponse(
         access_token=access,
-        refresh_token=refresh,
+        refresh_token=None,
         user=UserResponse.model_validate(user),
     )
 
@@ -195,15 +202,59 @@ async def exchange_auth_code(body: AuthRedirectExchangeRequest):
 
 
 
+# Refresh token lives in an httpOnly cookie so XSS cannot exfiltrate a
+# long-lived credential. Path is scoped to the auth surface; SameSite=strict
+# keeps it off cross-site requests (frontend and API are same-site: ports do
+# not affect site origin).
+REFRESH_COOKIE = "orivory_refresh"
+
+
+def _refresh_cookie_max_age() -> int:
+    return settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=token,
+        max_age=_refresh_cookie_max_age(),
+        httponly=True,
+        secure=settings.ENVIRONMENT.lower() in ("production", "prod", "staging"),
+        samesite="strict",
+        path="/api/v1/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key=REFRESH_COOKIE, path="/api/v1/auth")
+
+
+def _extract_refresh_token(body: "RefreshTokenRequest | None", request: Request) -> str | None:
+    """Prefer the httpOnly cookie; fall back to body for non-cookie clients."""
+    cookie = request.cookies.get(REFRESH_COOKIE)
+    if cookie:
+        return cookie
+    if body is not None and body.refresh_token:
+        return body.refresh_token
+    return None
+
+
 @router.post("/refresh")
-async def refresh_token(body: RefreshTokenRequest):
+async def refresh_token(
+    request: Request,
+    response: Response,
+    body: RefreshTokenRequest | None = None,
+):
+    token = _extract_refresh_token(body, request)
+    if not token or len(token) < 32:
+        raise HTTPException(401, detail="Refresh token invalid or expired.")
     redis = await get_redis()
-    token_hash = auth_service._hash_refresh_token(body.refresh_token)
+    token_hash = auth_service._hash_refresh_token(token)
     user_id_b = await redis.get(f"refresh:{token_hash}")
     if not user_id_b:
         raise HTTPException(401, detail="Refresh token invalid or expired.")
 
-    user_id = user_id_b
+    user_id = user_id_b.decode("utf-8") if isinstance(user_id_b, bytes) else user_id_b
     # Remove the old (now-hashed) token before issuing a new one. The
     # rotation also drops the entry from the per-user index on the
     # ``_create_refresh`` side via SADD overwrite semantics — the old
@@ -223,19 +274,26 @@ async def refresh_token(body: RefreshTokenRequest):
 
     new_access  = create_access_token({"sub": str(user.id), "role": user.role})
     new_refresh = await auth_service._create_refresh(user.id)
-    return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
+    # Rotate the cookie: the response body intentionally omits the refresh
+    # token so a script-injected XSS cannot read a long-lived credential.
+    _set_refresh_cookie(response, new_refresh)
+    return {"access_token": new_access, "token_type": "bearer"}
 
 
 
 @router.post("/logout", status_code=200)
 async def logout(
     request: Request,
+    response: Response,
     body: LogoutRequest | None = None,
     current_user=Depends(get_current_user),
 ):
     redis = await get_redis()
-    if body and body.refresh_token:
-        await auth_service._invalidate_one_refresh(body.refresh_token)
+    # Revoke the refresh token from the httpOnly cookie or the legacy body.
+    refresh_to_revoke = _extract_refresh_token(body, request)
+    if refresh_to_revoke:
+        await auth_service._invalidate_one_refresh(refresh_to_revoke)
+    _clear_refresh_cookie(response)
 
 
     auth_header = request.headers.get("Authorization")
@@ -245,10 +303,13 @@ async def logout(
             payload = decode_access_token(token)
             jti = payload.get("jti")
             if jti:
-
-
-                exp_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 if hasattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES') else 3600
-                await redis.setex(f"blacklist:{jti}", exp_seconds, "1")
+                # Blacklist for exactly the token's remaining lifetime. The
+                # token scope ("onboarding" = 30 min) can outlive the default
+                # ACCESS_TOKEN_EXPIRE_MINUTES, so deriving TTL from the
+                # default would let a logged-out token come back to life.
+                exp = int(payload.get("exp", 0))
+                remaining = max(exp - int(datetime.now(UTC).timestamp()), 1)
+                await redis.setex(f"blacklist:{jti}", remaining, "1")
         except Exception as e:
             log.warning(f"Failed to blacklist access token during logout: {e}")
 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { sendChatMessage, type ChatMessage, type ChatSession } from "@/lib/api/chat";
+import { useToast } from "@/components/ui/Toast";
 import { Sparkles, Send, Trash2, ChevronDown, Settings, X, Copy, CheckCheck } from "lucide-react";
 
 // ============================================================================
@@ -324,6 +325,7 @@ export function ChatInterface({
   initialSessionId,
   onSessionChange,
 }: ChatInterfaceProps) {
+  const { error: showError } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -332,6 +334,12 @@ export function ChatInterface({
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<(() => void) | null>(null);
+
+  // Abort any in-flight chat stream when the component unmounts
+  useEffect(() => {
+    return () => streamAbortRef.current?.();
+  }, []);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -357,15 +365,15 @@ export function ChatInterface({
     setStreamingContent("");
 
     try {
-      await sendChatMessage(
+      const { promise, abort } = await sendChatMessage(
         {
           content,
           workspace_id: workspaceId,
           session_id: currentSession?.id || initialSessionId,
         },
-        // On chunk
-        (chunk) => {
-          setStreamingContent((prev) => prev + chunk);
+        // On chunk — the callback receives the FULL accumulated text
+        (fullSoFar) => {
+          setStreamingContent(fullSoFar);
         },
         // On complete
         (fullMessage) => {
@@ -380,6 +388,10 @@ export function ChatInterface({
         },
         // On error
         (error) => {
+          // Show toast for critical errors
+          if (error.message.includes("Failed to fetch") || error.message.includes("Network")) {
+            showError("Network error. Please check your connection.");
+          }
           const errorMessage: ChatMessage = {
             id: `error-${Date.now()}`,
             role: "assistant",
@@ -390,10 +402,14 @@ export function ChatInterface({
           setStreamingContent("");
         }
       );
+      streamAbortRef.current = abort;
+      // Keep the loading state until the stream actually completes/errors
+      await promise;
     } catch (error) {
-      // Error handled in callback
+      showError("Failed to send message. Please try again.");
     } finally {
       setIsLoading(false);
+      streamAbortRef.current = null;
     }
   };
 

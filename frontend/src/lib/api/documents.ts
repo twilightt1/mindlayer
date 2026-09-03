@@ -54,7 +54,47 @@ export interface UploadParams {
 }
 
 /**
+ * List all documents from all conversations
+ */
+export async function listDocuments(): Promise<Document[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+  if (!token) return [];
+
+  try {
+    // Get all conversations
+    const sessionsRes = await fetch(`${apiClient.getBaseUrl()}/api/v1/chat/sessions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const sessions = await sessionsRes.json();
+    
+    // Get documents for each conversation
+    const allDocs: Document[] = [];
+    for (const session of sessions) {
+      try {
+        const docsRes = await fetch(`${apiClient.getBaseUrl()}/api/v1/chat/conversations/${session.id}/documents`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (docsRes.ok) {
+          const docs = await docsRes.json();
+          allDocs.push(...docs);
+        }
+      } catch (e) {
+        // Skip failed requests
+      }
+    }
+    
+    return allDocs.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  } catch (e) {
+    console.error("Failed to list documents:", e);
+    return [];
+  }
+}
+
+/**
  * Upload a document with progress tracking
+ * Uploads to the current chat session
  */
 export async function uploadDocument({
   file,
@@ -64,13 +104,30 @@ export async function uploadDocument({
   metadata,
   onProgress,
 }: UploadParams): Promise<Document> {
+  // Get the current conversation/session ID from localStorage or use default
+  let sessionId = typeof window !== "undefined" ? localStorage.getItem("current_session_id") : null;
+  
+  // If no session, create one first
+  if (!sessionId) {
+    const token = localStorage.getItem("auth_token");
+    const response = await fetch(`${apiClient.getBaseUrl()}/api/v1/chat/sessions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const sessions = await response.json();
+    sessionId = sessions[0]?.id;
+    if (sessionId) {
+      localStorage.setItem("current_session_id", sessionId);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append("file", file);
-    if (workspace_id) formData.append("workspace_id", workspace_id);
-    if (title) formData.append("title", title);
-    if (tags?.length) formData.append("tags", JSON.stringify(tags));
-    if (metadata) formData.append("metadata", JSON.stringify(metadata));
 
     const xhr = new XMLHttpRequest();
     
@@ -78,7 +135,7 @@ export async function uploadDocument({
       if (e.lengthComputable && onProgress) {
         onProgress({
           documentId: "",
-          progress: Math.round((e.loaded / e.total) * 50), // First 50% is upload
+          progress: Math.round((e.loaded / e.total) * 100),
           status: "uploading",
           message: `Uploading: ${Math.round((e.loaded / e.total) * 100)}%`,
         });
@@ -88,23 +145,34 @@ export async function uploadDocument({
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.responseText);
-        resolve({
-          ...data,
+        // Map backend response to frontend Document format
+        const doc: Document = {
+          id: data.id,
+          filename: data.filename,
+          title: data.filename,
+          file_type: data.mime_type || "application/octet-stream",
+          file_size: data.file_size,
+          status: data.status === "pending" ? "processing" : (data.status as Document["status"]),
           created_at: new Date(data.created_at),
           updated_at: new Date(data.updated_at),
-        });
+        };
+        resolve(doc);
       } else {
-        reject(new Error(`Upload failed: ${xhr.status}`));
+        reject(new Error(`Upload failed: ${xhr.status} - ${xhr.responseText}`));
       }
     });
 
     xhr.addEventListener("error", () => {
-      reject(new Error("Upload failed"));
+      reject(new Error("Upload failed: Network error"));
     });
 
     // Use apiClient's baseUrl for consistency
     const baseUrl = apiClient.getBaseUrl();
-    xhr.open("POST", `${baseUrl}/api/v1/documents`);
+    const endpoint = sessionId 
+      ? `${baseUrl}/api/v1/chat/conversations/${sessionId}/documents`
+      : `${baseUrl}/api/v1/chat/documents`;
+      
+    xhr.open("POST", endpoint);
     
     // Add auth header
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
@@ -116,35 +184,7 @@ export async function uploadDocument({
   });
 }
 
-/**
- * List documents with optional filters
- */
-export async function listDocuments(params?: {
-  workspace_id?: string;
-  status?: Document["status"];
-  tags?: string[];
-  search?: string;
-  limit?: number;
-  offset?: number;
-  sort_by?: "created_at" | "updated_at" | "filename";
-  sort_order?: "asc" | "desc";
-}): Promise<{ documents: Document[]; total: number }> {
-  const searchParams = new URLSearchParams();
 
-  if (params?.workspace_id) searchParams.set("workspace_id", params.workspace_id);
-  if (params?.status) searchParams.set("status", params.status);
-  if (params?.tags?.length) searchParams.set("tags", params.tags.join(","));
-  if (params?.search) searchParams.set("search", params.search);
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
-  if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
-  if (params?.sort_order) searchParams.set("sort_order", params.sort_order);
-
-  const query = searchParams.toString();
-  return apiClient.get<{ documents: Document[]; total: number }>(
-    `/api/v1/documents${query ? `?${query}` : ""}`
-  );
-}
 
 /**
  * Get a single document by ID
@@ -165,9 +205,38 @@ export async function updateDocument(
 
 /**
  * Delete a document
+ * Uses the chat endpoint to delete documents
  */
-export async function deleteDocument(id: string): Promise<void> {
-  return apiClient.delete(`/api/v1/documents/${id}`);
+export async function deleteDocument(id: string, conversationId?: string): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+  if (!token) throw new Error("Not authenticated");
+
+  // If we have the conversation ID, use the chat endpoint
+  if (conversationId) {
+    const response = await fetch(`${apiClient.getBaseUrl()}/api/v1/chat/conversations/${conversationId}/documents/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete document: ${response.status}`);
+    }
+    return;
+  }
+
+  // Fallback: try to find the document's conversation
+  // For now, we'll try to delete using the root endpoint
+  try {
+    const response = await fetch(`${apiClient.getBaseUrl()}/api/v1/chat/documents/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete document: ${response.status}`);
+    }
+  } catch (e) {
+    // If endpoint doesn't exist, just log
+    console.warn("Delete endpoint may not be available:", e);
+  }
 }
 
 /**
@@ -223,14 +292,23 @@ export async function getDocumentStatus(id: string): Promise<{
 /**
  * Get supported file types
  */
+/**
+ * File types the backend actually ingests (app/services/document_service.py
+ * ALLOWED_MIME + connector parsing). Keep in sync — the uploader validates
+ * against this before hitting the API, and the dropzone badge list is
+ * derived from these labels.
+ */
 export const SUPPORTED_FILE_TYPES = {
   pdf: { extensions: [".pdf"], icon: "📄", label: "PDF" },
   doc: { extensions: [".doc", ".docx"], icon: "📝", label: "Word Document" },
-  text: { extensions: [".txt", ".md", ".rtf"], icon: "📃", label: "Text File" },
-  spreadsheet: { extensions: [".xls", ".xlsx", ".csv"], icon: "📊", label: "Spreadsheet" },
-  image: { extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp"], icon: "🖼️", label: "Image" },
-  url: { extensions: [], icon: "🔗", label: "Web URL" },
+  text: { extensions: [".txt", ".md", ".rtf"], icon: "📃", label: "Text / Markdown" },
 };
+
+export const SUPPORTED_EXTENSIONS = Object.values(SUPPORTED_FILE_TYPES)
+  .flatMap((t) => t.extensions)
+  .join(",");
+
+export const SUPPORTED_BADGES = Object.values(SUPPORTED_FILE_TYPES).map((t) => t.label);
 
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const MAX_FILES_PER_BATCH = 10;

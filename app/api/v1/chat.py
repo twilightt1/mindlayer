@@ -10,7 +10,7 @@ from contextlib import suppress
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +37,198 @@ from app.utils.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 log    = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Root chat endpoint (POST /chat) - creates conversation if needed
+# ─────────────────────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel, Field
+
+
+class RootChatRequest(BaseModel):
+    """Request for root /chat endpoint."""
+    query: str | None = None  # Backend prefers "query"
+    content: str | None = None  # Frontend sends "content"
+    session_id: str | None = None
+    # Defaults must mirror ChatRequest (True): the frontend never sends these
+    # fields, so False silently disabled personal-memory retrieval and graph
+    # context for every chat request — documents were embedded but never used
+    # to ground answers, forcing the LLM to hallucinate.
+    include_personal_context: bool = True
+    include_graph_context: bool = True
+    personal_memory_top_k: int = Field(default=5, ge=0, le=10)
+
+    def get_query(self) -> str:
+        """Get query from either field."""
+        return (self.query or self.content or "").strip()
+
+
+@router.post("", response_class=StreamingResponse)
+async def root_chat(
+    body: RootChatRequest,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Root chat endpoint - creates session if needed and streams response.
+    
+    Frontend calls /api/v1/chat with {query, session_id}.
+    This creates a conversation if session_id not provided.
+    """
+    import uuid
+
+    # Get or create conversation
+    query = body.get_query()
+
+    # Validate before touching the DB so bad requests don't leave an
+    # orphaned empty conversation behind (they also 500'd on ChatRequest).
+    if not query:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Message content is required.")
+
+    if body.session_id:
+        try:
+            conv_id = uuid.UUID(body.session_id)
+            conv = await db.scalar(
+                select(Conversation).where(
+                    Conversation.id == conv_id,
+                    Conversation.user_id == current_user.id,
+                )
+            )
+        except ValueError:
+            conv = None
+    else:
+        conv = None
+
+    if not conv:
+        # Create new conversation
+        title = query[:50] + "..." if len(query) > 50 else query
+        conv = Conversation(
+            user_id=current_user.id,
+            title=title,
+            document_count=0,
+        )
+        db.add(conv)
+        await db.commit()
+        await db.refresh(conv)
+
+    # Redirect to the conversation message endpoint
+    # Reuse the send_message logic
+    chat_body = ChatRequest(
+        query=query,
+        include_personal_context=body.include_personal_context,
+        include_graph_context=body.include_graph_context,
+        personal_memory_top_k=body.personal_memory_top_k,
+    )
+
+    return await send_message(chat_body, conv, current_user, db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Session aliases (frontend uses /sessions, backend uses /conversations)
+# ─────────────────────────────────────────────────────────────────────────────
+
+SessionResponse = ConversationResponse
+
+
+@router.get("/sessions", response_model=list[SessionResponse])
+async def list_sessions(
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Alias for /conversations - frontend compatibility."""
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.user_id == current_user.id)
+        .order_by(Conversation.updated_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.post("/sessions", response_model=SessionResponse, status_code=201)
+async def create_session(
+    body: ConversationCreate | None = None,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Alias for /conversations - frontend compatibility."""
+    title = body.title if body else "New Chat"
+    conv = Conversation(user_id=current_user.id, title=title, document_count=0)
+    db.add(conv)
+    await db.commit()
+    await db.refresh(conv)
+    return conv
+
+
+@router.get("/sessions/{session_id}", response_model=ConversationDetail)
+async def get_session(
+    session_id: UUID,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get session details with messages and documents."""
+    conv = await db.scalar(
+        select(Conversation).where(
+            Conversation.id == session_id,
+            Conversation.user_id == current_user.id,
+        )
+    )
+    if not conv:
+        raise HTTPException(404, detail="Session not found.")
+    docs = await document_service.list_documents(db, conv.id)
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conv.id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = result.scalars().all()
+    return ConversationDetail(
+        **ConversationResponse.model_validate(conv).model_dump(),
+        documents=[DocumentResponse.model_validate(d) for d in docs],
+        messages=[MessageResponse.model_validate(m) for m in messages],
+    )
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: UUID,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get messages for a session."""
+    conv = await db.scalar(
+        select(Conversation).where(
+            Conversation.id == session_id,
+            Conversation.user_id == current_user.id,
+        )
+    )
+    if not conv:
+        raise HTTPException(404, detail="Session not found.")
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conv.id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = result.scalars().all()
+    return {"messages": [MessageResponse.model_validate(m) for m in messages]}
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+async def delete_session(
+    session_id: UUID,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a session."""
+    conv = await db.scalar(
+        select(Conversation).where(
+            Conversation.id == session_id,
+            Conversation.user_id == current_user.id,
+        )
+    )
+    if not conv:
+        raise HTTPException(404, detail="Session not found.")
+    await db.delete(conv)
+    await db.commit()
 
 
 def _load_rag_graph():
@@ -389,3 +581,83 @@ async def delete_document(
 ):
     doc = await document_service.get_document(db, document_id, conversation.id)
     await document_service.delete_document(db, doc, conversation)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Root document delete (DELETE /chat/documents/{id})
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.delete(
+    "/documents/{document_id}",
+    status_code=204,
+)
+async def delete_document_root(
+    document_id: UUID,
+    current_user = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a document without requiring conversation ID."""
+    from sqlalchemy import select
+
+    from app.models.document import Document
+
+    # Find the document
+    result = await db.execute(
+        select(Document).where(
+            Document.id == document_id,
+            Document.conversation.has(user_id=current_user.id)
+        )
+    )
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(404, detail="Document not found")
+
+    # Get conversation for deletion
+    conv_result = await db.execute(
+        select(Conversation).where(Conversation.id == doc.conversation_id)
+    )
+    conversation = conv_result.scalar_one()
+
+    await document_service.delete_document(db, doc, conversation)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Root document upload (POST /chat/documents) - creates default session if needed
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/documents",
+    response_model=DocumentResponse,
+    status_code=202,
+)
+async def upload_document_root(
+    file: UploadFile = File(...),
+    current_user = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a document without requiring a conversation ID.
+    Creates a default conversation for the user if needed.
+    """
+    from app.models.conversation import Conversation
+
+    # Get or create default conversation
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.user_id == current_user.id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+    conversation = result.scalar_one_or_none()
+
+    if not conversation:
+        # Create a new conversation
+        conversation = Conversation(
+            user_id=current_user.id,
+            title="Default",
+        )
+        db.add(conversation)
+        await db.commit()
+        await db.refresh(conversation)
+
+    return await document_service.upload_document(db, conversation, file)

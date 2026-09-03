@@ -286,48 +286,39 @@ export default function InsightsPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick stats */}
+            {/* Quick stats — derived from the user's real insight types */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.08]"
             >
               <h3 className="text-sm font-semibold text-white mb-4">Quick Stats</h3>
-              
+
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-violet-400" />
+                {(() => {
+                  const byType = (t: string) =>
+                    insights.filter((i) => i.insight_type === t).length;
+                  const rows = [
+                    { icon: TrendingUp, color: "violet", label: "Connections Found", value: byType("connection") },
+                    { icon: Sparkles, color: "pink", label: "Patterns Detected", value: byType("pattern") },
+                    { icon: Clock, color: "amber", label: "Anomalies Spotted", value: byType("anomaly") },
+                  ];
+                  return rows.map(({ icon: Icon, color, label, value }) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center`}>
+                          <Icon className={`w-4 h-4 text-${color}-400`} />
+                        </div>
+                        <span className="text-sm text-white/70">{label}</span>
+                      </div>
+                      <span className="text-sm font-medium text-white">{value}</span>
                     </div>
-                    <span className="text-sm text-white/70">Connections Found</span>
-                  </div>
-                  <span className="text-sm font-medium text-white">47</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-pink-400" />
-                    </div>
-                    <span className="text-sm text-white/70">Patterns Detected</span>
-                  </div>
-                  <span className="text-sm font-medium text-white">23</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-amber-400" />
-                    </div>
-                    <span className="text-sm text-white/70">Anomalies Spotted</span>
-                  </div>
-                  <span className="text-sm font-medium text-white">8</span>
-                </div>
+                  ));
+                })()}
               </div>
             </motion.div>
 
-            {/* Recent saved */}
+            {/* Recent saved — real data, empty state when none */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -335,20 +326,22 @@ export default function InsightsPage() {
               className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.08]"
             >
               <h3 className="text-sm font-semibold text-white mb-4">Recently Saved</h3>
-              
+
               <div className="space-y-3">
-                {[
-                  "Q3 planning decisions correlate with Q4 outcomes",
-                  "Customer feedback shows consistent theme around UX",
-                  "Meeting notes reveal action items not followed up",
-                ].map((text, i) => (
-                  <div 
-                    key={i}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]"
-                  >
-                    <p className="text-xs text-white/60 line-clamp-2">{text}</p>
-                  </div>
-                ))}
+                {insights
+                  .filter((i) => i.status === "saved")
+                  .slice(0, 3)
+                  .map((i) => (
+                    <div
+                      key={i.id}
+                      className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]"
+                    >
+                      <p className="text-xs text-white/60 line-clamp-2">{i.title}</p>
+                    </div>
+                  ))}
+                {insights.filter((i) => i.status === "saved").length === 0 && (
+                  <p className="text-xs text-white/40">Nothing saved yet — save an insight to see it here.</p>
+                )}
               </div>
             </motion.div>
 
