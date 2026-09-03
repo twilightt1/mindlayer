@@ -22,7 +22,7 @@ Base URL: `https://api.orivory.io/api/v1`
 12. [Error Reference](#12-error-reference)
 13. [Agent Clients & MCP Hub](#13-agent-clients--mcp-hub)
 14. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
-14. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
+15. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
 
 ---
 
@@ -2661,7 +2661,7 @@ curl -s -X POST https://api.orivory.io/api/v1/agents \
 
 ```json
 {
-  "id": "agt_a1b2c3d4",
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "name": "Claude Desktop",
   "scopes": ["memory:read", "memory:write"],
   "status": "active",
@@ -2682,7 +2682,7 @@ List the current user's agent clients, newest first. Never includes token materi
 {
   "items": [
     {
-      "id": "agt_a1b2c3d4",
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "name": "Claude Desktop",
       "scopes": ["memory:read", "memory:write"],
       "status": "active",
@@ -2719,10 +2719,10 @@ The access ledger: every authorized MCP call, newest first. Which agent did what
 {
   "items": [
     {
-      "id": "log_abc123",
-      "agent_client_id": "agt_a1b2c3d4",
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "agent_client_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "action": "mcp_search",
-      "memory_id": "mem_abc123def456",
+      "memory_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
       "detail": {"query": "CRISPR specificity"},
       "created_at": "2026-09-02T14:22:00Z"
     }
@@ -2783,9 +2783,11 @@ Scopes are enforced per call: a token with only `memory:read` cannot `add_memory
 }
 ```
 
-#### Production Note (Transport Security)
-
-The MCP SDK's default DNS-rebinding protection only accepts `localhost` `Host` headers and answers other hosts with `421`. Deployments behind a non-localhost domain must configure `TransportSecuritySettings(allowed_hosts=[...])` with their public host (or terminate MCP on the host the reverse proxy preserves), otherwise every external request is rejected with `421`.
+> **Warning — DNS-rebinding protection is off by default in the SDK.** In `mcp` 1.29.x, constructing the FastMCP/streamable-HTTP app without transport-security settings yields `TransportSecurityMiddleware` with `enable_dns_rebinding_protection=False`, so **no Host-header check runs at all** and non-localhost hosts are accepted.
+>
+> Conversely, when protection **is** enabled, `allowed_hosts` defaults to `[]`, which answers **every** host with `421` — there is no built-in localhost special-case.
+>
+> Before exposing `/mcp` beyond localhost, explicitly configure `TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=["your.host.example"])` when constructing the FastMCP/streamable-HTTP app; until then, protect the endpoint at the network/proxy layer (bind to localhost, reverse-proxy allowlists).
 
 ---
 
