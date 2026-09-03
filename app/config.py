@@ -129,6 +129,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_DAY: int = 1000
 
+    # ── MCP memory hub ───────────────────────────────────────────────────────────
+    # When true, the Open Memory Hub MCP server (stateless streamable HTTP) is
+    # mounted at /mcp for registered agent clients.
+    MCP_HUB_ENABLED: bool = True
+
 
     FRONTEND_URL: str = "http://localhost:3000"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
