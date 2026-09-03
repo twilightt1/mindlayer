@@ -162,7 +162,7 @@ mcp = _build_server()
 
 
 def build_mcp_server() -> FastMCP:
-    """Return the module's FastMCP instance with the five tools registered.
+    """Return the module's FastMCP instance with the six tools registered.
 
     A single instance is shared with :func:`get_mcp_app` so the mounted app
     and the host lifespan drive the same session manager.

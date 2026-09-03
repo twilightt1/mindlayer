@@ -292,8 +292,9 @@ async def forget_memory(memory_ids: list[str]) -> dict[str, Any]:
     for raw in memory_ids:
         try:
             valid.append(UUID(raw))
-        except ValueError:
+        except (ValueError, TypeError, AttributeError):
             invalid.append(raw)
+    valid = list(dict.fromkeys(valid))  # dedupe: service call + ledger stay consistent
     if not valid:
         return {"error": "invalid memory id"}
     async with _session() as db:

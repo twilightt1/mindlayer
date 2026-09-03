@@ -56,6 +56,7 @@ def writer(monkeypatch):
     async def _fake_erase(db_, user_id, memory_ids, *, requested_by):
         assert user_id == p.user_id
         assert requested_by == "agent:TestAgent"
+        await db_.commit()  # receipt commit happens inside the real service
         return _receipt(user_id, memory_ids[0], erased=len(memory_ids), skipped=0)
 
     monkeypatch.setattr(hub_tools, "_current_principal", lambda: p)
@@ -65,13 +66,29 @@ def writer(monkeypatch):
 
 
 async def test_forget_requires_identity(monkeypatch):
+    calls: list[object] = []
+
+    async def _no_erase(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("erase_memories must not run on denial")
+
     monkeypatch.setattr(hub_tools, "_current_principal", lambda: None)
+    monkeypatch.setattr(hub_tools, "erase_memories", _no_erase)
     assert await hub_tools.forget_memory(memory_ids=[str(uuid.uuid4())]) == {"error": "agent identity required"}
+    assert not calls  # spy never raised
 
 
 async def test_forget_requires_write_scope(monkeypatch):
+    calls: list[object] = []
+
+    async def _no_erase(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("erase_memories must not run on denial")
+
     monkeypatch.setattr(hub_tools, "_current_principal", lambda: _principal(("memory:read",)))
+    monkeypatch.setattr(hub_tools, "erase_memories", _no_erase)
     assert await hub_tools.forget_memory(memory_ids=[str(uuid.uuid4())]) == {"error": "scope memory:write required"}
+    assert not calls  # spy never raised
 
 
 async def test_forget_all_invalid_ids(monkeypatch):
@@ -92,7 +109,7 @@ async def test_forget_calls_erasure_service_returns_summary_and_logs(writer):
     assert ledger and ledger[0].action == ACTION_FORGET == "mcp_forget"
     assert ledger[0].detail["receipt_id"] == result["receipt_id"]
     assert ledger[0].detail["requested"] == [str(mid)]
-    assert db.committed >= 1
+    assert db.committed == 2  # receipt commit inside service + ledger commit
 
 
 async def test_forget_filters_invalid_ids_and_reports_them(writer, monkeypatch):
@@ -101,6 +118,7 @@ async def test_forget_filters_invalid_ids_and_reports_them(writer, monkeypatch):
 
     async def _spy(db_, user_id, memory_ids, *, requested_by):
         seen.append(list(memory_ids))
+        await db_.commit()  # receipt commit happens inside the real service
         return _receipt(user_id, memory_ids[0], erased=len(memory_ids), skipped=0)
 
     monkeypatch.setattr(hub_tools, "erase_memories", _spy)
