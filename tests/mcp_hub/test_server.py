@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette._utils import get_route_path
 
-from app.mcp_hub.server import build_mcp_server, get_mcp_app, normalize_mcp_scope
+from app.mcp_hub.server import build_mcp_server, get_mcp_app, normalize_mcp_scope, resolve_transport_security
 
 
 def test_build_mcp_server_returns_named_fastmcp():
@@ -42,3 +43,32 @@ def test_normalize_scope_proxy_root_matches_inner_route():
     scope = {"type": "http", "path": "/api/mcp", "root_path": "/api"}
     normalize_mcp_scope(scope)
     assert get_route_path(scope) == "/"
+
+
+def test_build_mcp_server_keeps_localhost_transport_default():
+    """Empty MCP_HUB_ALLOWED_HOSTS (the shipped default) → no explicit
+    transport_security is passed, so FastMCP's default applies: host stays
+    127.0.0.1 and the SDK auto-enables localhost-only DNS-rebind protection
+    (a non-localhost Host header is answered 421). Verified observable state
+    on the FastMCP object (mcp 1.29.1): settings.transport_security is NOT
+    None — it is the localhost auto-enabled TransportSecuritySettings."""
+    server = build_mcp_server()
+    assert server.settings.host == "127.0.0.1"
+    ts = server.settings.transport_security
+    assert isinstance(ts, TransportSecuritySettings)
+    assert ts.enable_dns_rebinding_protection is True
+    assert ts.allowed_hosts == ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+
+
+def test_resolve_transport_security_empty_returns_none():
+    """Empty CSV → None → FastMCP default (localhost-only auto-protection)."""
+    assert resolve_transport_security("") is None
+    assert resolve_transport_security(" , ,") is None
+
+
+def test_resolve_transport_security_csv_enables_protection_with_hosts():
+    """Non-empty CSV → explicit rebind protection with exactly the parsed hosts."""
+    ts = resolve_transport_security("a.example, b.example")
+    assert isinstance(ts, TransportSecuritySettings)
+    assert ts.enable_dns_rebinding_protection is True
+    assert ts.allowed_hosts == ["a.example", "b.example"]

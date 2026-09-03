@@ -133,6 +133,13 @@ class Settings(BaseSettings):
     # When true, the Open Memory Hub MCP server (stateless streamable HTTP) is
     # mounted at /mcp for registered agent clients.
     MCP_HUB_ENABLED: bool = True
+    # Comma-separated list of Host header values / hostnames allowed to reach
+    # /mcp (e.g. "api.orivory.io, mcp.orivory.io"). Empty keeps FastMCP's
+    # default behaviour: because the app binds host 127.0.0.1, the SDK
+    # auto-enables localhost-only DNS-rebind protection, which 421s any
+    # non-localhost Host (i.e. the endpoint is localhost-only until this is
+    # set — required behind a reverse proxy that forwards a public Host).
+    MCP_HUB_ALLOWED_HOSTS: str = ""
 
 
     FRONTEND_URL: str = "http://localhost:3000"

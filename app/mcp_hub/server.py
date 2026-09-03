@@ -27,6 +27,15 @@ migration note says to pin ``mcp<2`` for v1 code):
   "failure to do so will result in the first request failing"). The session
   manager only exists after ``streamable_http_app()`` has been called, which
   the mount at import time guarantees before startup.
+- Transport security is explicit-or-default: without ``MCP_HUB_ALLOWED_HOSTS``
+  the constructor passes ``transport_security=None`` and FastMCP (mcp 1.29.1)
+  auto-enables localhost-only DNS-rebind protection because its default
+  ``host`` is ``127.0.0.1`` (verified in the installed SDK source:
+  ``FastMCP.__init__`` substitutes ``TransportSecuritySettings`` with
+  ``allowed_hosts=["127.0.0.1:*", "localhost:*", "[::1]:*"]`` — a
+  non-localhost ``Host`` header gets 421). A non-empty CSV setting instead
+  passes ``TransportSecuritySettings(enable_dns_rebinding_protection=True,
+  allowed_hosts=[...])`` for reverse-proxy deployments.
 - Tools receive the SDK ``Context`` via a parameter annotated ``Context``
   (excluded from the tool's input schema when it defaults to ``None``). The
   MCP protocol does not carry caller identity: each wrapper extracts the
@@ -45,7 +54,9 @@ from functools import lru_cache
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
+from app.config import settings
 from app.database import AsyncSessionLocal
 from app.mcp_hub import tools as hub_tools
 from app.mcp_hub.identity import AgentPrincipal, extract_token, resolve_principal
@@ -81,12 +92,35 @@ async def _call_with_identity(coro: Any, ctx: Context | None) -> dict[str, Any]:
         hub_tools._principal_var.reset(var_token)
 
 
+def resolve_transport_security(allowed_hosts_csv: str) -> TransportSecuritySettings | None:
+    """Build the FastMCP ``transport_security`` from a CSV env value.
+
+    Empty (or blank-only entries) → ``None``: FastMCP is constructed without
+    explicit transport security and its own default applies — with the
+    default ``host="127.0.0.1"``, the SDK auto-enables localhost-only
+    DNS-rebind protection (non-localhost ``Host`` → 421), which is the
+    shipped behaviour for this app.
+
+    A non-empty CSV → explicit ``TransportSecuritySettings`` with rebind
+    protection on and exactly the given hosts allowed, e.g. behind a reverse
+    proxy that forwards a public ``Host`` header.
+    """
+    hosts = [h.strip() for h in allowed_hosts_csv.split(",") if h.strip()]
+    if not hosts:
+        return None
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=hosts,
+    )
+
+
 def _build_server() -> FastMCP:
     mcp = FastMCP(
         "orivory-memory",
         stateless_http=True,
         json_response=True,
         streamable_http_path="/",
+        transport_security=resolve_transport_security(settings.MCP_HUB_ALLOWED_HOSTS),
     )
 
     @mcp.tool()

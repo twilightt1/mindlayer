@@ -2783,11 +2783,11 @@ Scopes are enforced per call: a token with only `memory:read` cannot `add_memory
 }
 ```
 
-> **Warning — DNS-rebinding protection is off by default in the SDK.** In `mcp` 1.29.x, constructing the FastMCP/streamable-HTTP app without transport-security settings yields `TransportSecurityMiddleware` with `enable_dns_rebinding_protection=False`, so **no Host-header check runs at all** and non-localhost hosts are accepted.
+> **Note — DNS-rebinding protection is on by default (localhost-only).** `/mcp` is constructed without explicit transport security, and in `mcp` 1.29.x FastMCP defaults `host="127.0.0.1"`, which auto-enables localhost-only DNS-rebind protection — so **any non-localhost `Host` header is answered `421` as shipped** (connection attempts against a public hostname will fail until configured).
 >
-> Conversely, when protection **is** enabled, `allowed_hosts` defaults to `[]`, which answers **every** host with `421` — there is no built-in localhost special-case.
+> To accept other hostnames — e.g. behind a reverse proxy that forwards a public `Host` — set `MCP_HUB_ALLOWED_HOSTS=your.host.example` in the environment (comma-separated for several). This explicitly enables `TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=[...])` on the FastMCP instance.
 >
-> Before exposing `/mcp` beyond localhost, explicitly configure `TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=["your.host.example"])` when constructing the FastMCP/streamable-HTTP app; until then, protect the endpoint at the network/proxy layer (bind to localhost, reverse-proxy allowlists).
+> Until configured, keep the endpoint localhost-bound or proxy with `Host` preservation pointing at localhost.
 
 ---
 
