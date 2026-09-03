@@ -171,6 +171,9 @@ async def erase_memories(
             targets.append(await _erase_one(db, user_id, mid))
         except Exception as exc:  # best-effort: record + continue
             log.exception("Erasure failed for memory %s", mid, extra={"memory_id": str(mid)})
+            # A failed per-target commit poisons the session (PendingRollbackError);
+            # roll back so the remaining targets (and the receipt commit) still work.
+            await db.rollback()
             targets.append({
                 "memory_id": str(mid),
                 "status": "error",
