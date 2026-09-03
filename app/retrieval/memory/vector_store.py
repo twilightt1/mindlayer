@@ -273,6 +273,21 @@ def get_existing_memory_ids_sync(memory_ids: list[str]) -> set[str]:
     return set(found.get("ids", []) or [])
 
 
+async def get_memory_ids_present(memory_ids: list[str]) -> set[str]:
+    """Return the subset of ``memory_ids`` that still exist in the collection.
+
+    Verification seam for erasure receipts: after deletion the erasure
+    service re-queries the collection through this helper and records any
+    ids still present as residuals. Async counterpart of
+    :func:`get_existing_memory_ids_sync`.
+    """
+    if not memory_ids:
+        return set()
+    collection = await _get_collection()
+    found = await collection.get(ids=memory_ids, include=[])
+    return {str(i) for i in (found.get("ids") or [])}
+
+
 async def delete_memory(memory_id: str) -> None:
     """Remove a memory's vector from the collection (best-effort)."""
     try:
