@@ -21,12 +21,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.agent_client import AgentClient
-from app.models.memory_access_log import MemoryAccessLog
 from app.models.user import User
 from app.schemas.Orivory import (
     AccessLogItem,
@@ -36,6 +35,7 @@ from app.schemas.Orivory import (
     AgentClientListResponse,
     AgentClientResponse,
 )
+from app.services.access_ledger_service import list_entries
 from app.services.agent_token_service import (
     generate_token,
     hash_token,
@@ -120,18 +120,13 @@ async def list_access_log(
     offset: int = Query(default=0, ge=0),
 ) -> AccessLogListResponse:
     """Access ledger for the current user, newest first."""
-    base = select(MemoryAccessLog).where(MemoryAccessLog.user_id == current_user.id)
-    count_base = select(func.count(MemoryAccessLog.id)).where(
-        MemoryAccessLog.user_id == current_user.id
+    rows, total = await list_entries(
+        db,
+        current_user.id,
+        agent_client_id=agent_client_id,
+        limit=limit,
+        offset=offset,
     )
-    if agent_client_id is not None:
-        base = base.where(MemoryAccessLog.agent_client_id == agent_client_id)
-        count_base = count_base.where(MemoryAccessLog.agent_client_id == agent_client_id)
-
-    total = (await db.execute(count_base)).scalar_one()
-    rows = (await db.execute(
-        base.order_by(MemoryAccessLog.created_at.desc()).offset(offset).limit(limit)
-    )).scalars().all()
 
     return AccessLogListResponse(
         items=[AccessLogItem.model_validate(row) for row in rows],
