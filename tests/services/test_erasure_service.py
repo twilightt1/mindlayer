@@ -50,7 +50,8 @@ class _FakeDB:
     erasure_receipts → read tests (count → total, rows → rows); count( +
     memory_entities/memory_sources → link counts (residual when the statement
     carries a list param); count( + memories → residual children count;
-    otherwise the child-id rows query (param = parent id).
+    otherwise the descendant-ids query (param = BFS frontier — one id or a
+    list of them).
     """
 
     def __init__(self, *, owned=None, child_ids=None, entity_links=0, source_links=0, residual=None, rows=None, total=0):
@@ -83,6 +84,9 @@ class _FakeDB:
                 return _FakeScalar(self._residual["source_links"] if residual else self._source_links)
             return _FakeScalar(self._residual["children"] if residual else 0)
         parent_id = next(iter(params.values()))
+        if isinstance(parent_id, (list, tuple)):  # BFS frontier: children of every id in it
+            found = [cid for pid in parent_id for cid in self._child_ids.get(pid, [])]
+            return _FakeRows(found)
         return _FakeRows(self._child_ids.get(parent_id, []))
 
     def add(self, obj):
@@ -133,7 +137,7 @@ async def test_erase_deletes_owned_memory_and_writes_receipt(no_chroma):
     assert target["vector_residual"] == [] and target["vector_residual_checked"] is True
     assert target["db_residual"] == {"children": 0, "entity_links": 0, "source_links": 0}
     assert receipt.detail["requested_by"] == "rest_api"
-    assert receipt.detail["summary"] == {"requested": 1, "erased": 1, "skipped": 0, "residual_vectors": 0, "residual_rows": 0}
+    assert receipt.detail["summary"] == {"requested": 1, "erased": 1, "skipped": 0, "errors": 0, "residual_vectors": 0, "residual_rows": 0}
     assert no_chroma == [str(mid)]
     assert db.committed >= 2  # delete commit + receipt commit
 
@@ -167,7 +171,8 @@ async def test_erase_cascades_children_and_deletes_their_vectors(no_chroma):
     receipt = await erase_memories(db, user_id, [mid], requested_by="rest_api")
 
     target = receipt.detail["targets"][0]
-    assert target["child_memory_ids"] == [str(child)]
+    assert target["affected_memory_ids"] == [str(child)]
+    assert target["traversal_depth"] == 1
     assert sorted(target["vectors_deleted"]) == sorted([str(mid), str(child)])
     assert sorted(no_chroma) == sorted([str(mid), str(child)])
 
@@ -210,6 +215,56 @@ async def test_erase_survives_chroma_outage(no_chroma, monkeypatch):
 
     assert receipt.status == "completed"  # verification unknown ≠ residual
     assert receipt.detail["targets"][0]["vector_residual_checked"] is False
+
+
+async def test_mid_call_error_still_produces_receipt_with_error_target(no_chroma):
+    user_id, first, second = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    db = _FakeDB(owned={
+        first: _memory_row(first, user_id),
+        second: _memory_row(second, user_id),
+    })
+    real_delete = db.delete
+
+    async def _fail_on_second(obj):
+        if obj.id == second:
+            raise RuntimeError("boom on second target")
+        await real_delete(obj)
+
+    db.delete = _fail_on_second
+
+    receipt = await erase_memories(db, user_id, [first, second], requested_by="rest_api")
+
+    # Target 1 still erased; target 2 recorded as error; receipt still written.
+    target1, target2 = receipt.detail["targets"]
+    assert target1["status"] == "deleted" and target1["memory_id"] == str(first)
+    assert target2["status"] == "error" and target2["memory_id"] == str(second)
+    assert "boom on second target" in target2["error"]
+    assert target2["vector_residual_checked"] is False and target2["db_residual"] is None
+    assert receipt.status == "completed_with_errors"
+    assert receipt.detail["summary"]["erased"] == 1
+    assert receipt.detail["summary"]["errors"] == 1
+
+
+async def test_transitive_descendants_deleted_and_verified(no_chroma, monkeypatch):
+    user_id, mid, child, grandchild = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    db = _FakeDB(owned={mid: _memory_row(mid, user_id)}, child_ids={mid: [child], child: [grandchild]})
+
+    verified_ids: list[list[str]] = []
+
+    async def _capture(_ids):
+        verified_ids.append(list(_ids))
+        return set()
+
+    monkeypatch.setattr(erasure_service, "_chroma_present_ids", _capture)
+    receipt = await erase_memories(db, user_id, [mid], requested_by="rest_api")
+
+    target = receipt.detail["targets"][0]
+    assert target["affected_memory_ids"] == [str(child), str(grandchild)]
+    assert target["traversal_depth"] == 2
+    assert sorted(target["vectors_deleted"]) == sorted([str(mid), str(child), str(grandchild)])
+    assert sorted(no_chroma) == sorted([str(mid), str(child), str(grandchild)])
+    # Verification re-query covers the whole affected set (target + descendants).
+    assert verified_ids == [[str(mid), str(child), str(grandchild)]]
 
 
 @pytest.mark.asyncio
