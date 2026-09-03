@@ -65,6 +65,7 @@ class _FakeDB:
         self.added = []
         self.deleted = []
         self.committed = 0
+        self.rolled_back = False
         self.statements = []
 
     async def get(self, model, pk):
@@ -97,6 +98,9 @@ class _FakeDB:
 
     async def commit(self):
         self.committed += 1
+
+    async def rollback(self):
+        self.rolled_back = True
 
     async def refresh(self, _obj):
         return None
@@ -241,6 +245,7 @@ async def test_mid_call_error_still_produces_receipt_with_error_target(no_chroma
     assert "boom on second target" in target2["error"]
     assert target2["vector_residual_checked"] is False and target2["db_residual"] is None
     assert receipt.status == "completed_with_errors"
+    assert db.rolled_back is True  # session poisoning cleared before the receipt commit
     assert receipt.detail["summary"]["erased"] == 1
     assert receipt.detail["summary"]["errors"] == 1
 
