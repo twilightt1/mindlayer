@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from app.models.agent_client import AgentClient
 from app.models.memory_access_log import MemoryAccessLog
@@ -16,6 +17,11 @@ def test_agent_client_defaults():
 
 def test_agent_client_revoked_is_inactive():
     client = AgentClient(user_id=uuid.uuid4(), name="Old Agent", token_hash="b" * 64, status="revoked")
+    assert client.is_active is False
+
+
+def test_agent_client_active_with_revoked_at_is_inactive():
+    client = AgentClient(user_id=uuid.uuid4(), name="Revoked Agent", token_hash="c" * 64, revoked_at=datetime.now(UTC))
     assert client.is_active is False
 
 
