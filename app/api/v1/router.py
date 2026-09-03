@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    agents,
     analytics,
     auth,
     chat,
@@ -26,6 +27,7 @@ api_router.include_router(system_settings.router)
 
 # Orivory second-brain routes
 api_router.include_router(memories.router)
+api_router.include_router(agents.router)
 api_router.include_router(entities.router)
 api_router.include_router(entities.relations_router)  # /relations
 api_router.include_router(entities.graph_router)   # /graph/snapshot, /graph/related/...
