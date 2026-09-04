@@ -1,0 +1,72 @@
+[
+  {
+    "question_id": "fixture_sf_0001",
+    "competency": "selective_forgetting",
+    "phase": "ingest",
+    "question": "What time does my flight to Tokyo depart and from which gate?",
+    "answer": "10:45 AM from gate C3",
+    "sessions": [
+      [
+        {"role": "user", "content": "Just booked my trip! My flight to Tokyo departs at 7:30 AM from gate B12.", "has_answer": true, "forget": true},
+        {"role": "assistant", "content": "Noted — Tokyo flight at 7:30 AM from gate B12. An early start, so plan to be at the airport well before dawn."},
+        {"role": "user", "content": "The airline changed my flight to Tokyo — it now departs at 10:45 AM from gate C3. Ignore the old 7:30 AM gate B12 details.", "has_answer": true},
+        {"role": "assistant", "content": "Updated — Tokyo flight is now 10:45 AM from gate C3. The later departure should make the morning much easier."}
+      ]
+    ],
+    "answer_session_ids": ["s0"]
+  },
+  {
+    "question_id": "fixture_ar_0002",
+    "competency": "accurate_retrieval",
+    "phase": "query",
+    "question": "Where do I keep my router admin password?",
+    "answer": "in the black notebook on my desk",
+    "sessions": [
+      [
+        {"role": "user", "content": "I always write my router admin password in the black notebook on my desk — never in a password manager.", "has_answer": true},
+        {"role": "assistant", "content": "A paper copy in the black notebook works, as long as the desk stays private. Maybe note a hint to the notebook rather than the password itself."},
+        {"role": "user", "content": "It also has the wifi SSID and the guest password on the same page."},
+        {"role": "assistant", "content": "Good — one page for all the network details makes recovery painless if the router ever needs a reset."}
+      ]
+    ],
+    "answer_session_ids": ["s0"]
+  },
+  {
+    "question_id": "fixture_ttl_0003",
+    "competency": "test_time_learning",
+    "phase": "query",
+    "question": "I just finished Piranesi and I would give it a four.",
+    "answer": "Piranesi — 4/5 — a quiet, labyrinthine mystery set in an endless house of statues and tides.",
+    "sessions": [
+      [
+        {"role": "user", "content": "New rule for our chats: whenever I mention a book I finished, I will give it a rating out of five. Reply with the title, the rating, and a one-line note.", "has_answer": true},
+        {"role": "assistant", "content": "Got it — title, rating out of five, and a one-line note for every book you finish. Ready for the first one."},
+        {"role": "user", "content": "I finished The Left Hand of Darkness and I would give it a five."},
+        {"role": "assistant", "content": "The Left Hand of Darkness — 5/5 — a masterpiece of anthropology disguised as science fiction."}
+      ]
+    ],
+    "answer_session_ids": ["s0"]
+  },
+  {
+    "question_id": "fixture_lru_0004",
+    "competency": "long_range_understanding",
+    "phase": "query",
+    "question": "Summarize the full arc of my kitchen renovation from demo day to the last milestone.",
+    "answer": "demo week with parents, garage temporary sink, cabinets in at three weeks, quartz counters two more weeks, then backsplash tile and farmhouse sink to finish",
+    "sessions": [
+      [
+        {"role": "user", "content": "We finally started the kitchen renovation. Demo day is Monday and the cabinets arrive in three weeks.", "has_answer": true},
+        {"role": "assistant", "content": "Demo to cabinets in three weeks is a tight but doable schedule. Are you living at home through it?"},
+        {"role": "user", "content": "We are staying with my parents for the demo week, then back home with a temporary sink in the garage."},
+        {"role": "assistant", "content": "A garage temporary sink is a classic renovation survival move. The parents week covers the worst of the dust."}
+      ],
+      [
+        {"role": "user", "content": "The cabinets are in! The counters still need two weeks for the quartz to be cut.", "has_answer": true},
+        {"role": "assistant", "content": "Cabinets in means the room finally looks like a kitchen again. What is the last big milestone after the quartz?"},
+        {"role": "user", "content": "Just the backsplash tile and the farmhouse sink hookup, then we are done."},
+        {"role": "assistant", "content": "So close to the finish line — after the quartz it is just backsplash and sink, and you get the kitchen back."}
+      ]
+    ],
+    "answer_session_ids": ["s0", "s1"]
+  }
+]
