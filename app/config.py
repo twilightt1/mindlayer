@@ -1,14 +1,14 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-              
+
     DATABASE_URL: str
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
-           
+
     REDIS_URL: str
     REDIS_POOL_MAX: int = 20
 
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # production requires an explicit value (see _validate_production_settings).
     CONFIG_ENCRYPTION_KEY: str = ""
 
-                   
+
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     API_BASE_URL: str = "http://localhost:8000"
@@ -45,18 +45,18 @@ class Settings(BaseSettings):
     # body at DEBUG level.
     EMAIL_MOCK_VERBOSE: bool = False
 
-           
+
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str | None = None
     MINIO_SECRET_KEY: str | None = None
     MINIO_BUCKET: str = "rag-docs"
     MINIO_SECURE: bool = False
 
-              
+
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8001
 
-                      
+
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "openai/gpt-4o-mini"
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     EMBED_DIMENSIONS: int = 1536
     EMBED_BATCH_SIZE: int = 64
 
-                     
+
     JINA_API_KEY: str = ""
     JINA_RERANKER_MODEL: str = "jina-reranker-v2-base-multilingual"
     JINA_RERANKER_TOP_N: int = 5
@@ -101,44 +101,27 @@ class Settings(BaseSettings):
     HYDE_PASSAGE_COUNT: int = 3  # Number of hypothetical passages to generate
     HYDE_USE_IN_RETRIEVAL: bool = True  # Use HyDE embeddings in retrieval
 
-    # ── Temporal Memory ──────────────────────────────────────────────────────
-    # Time-aware retrieval using temporal encoding.
-    TEMPORAL_ENABLED: bool = True
-    TEMPORAL_DIM: int = 64  # Temporal vector dimension
-    TEMPORAL_HALF_LIFE_DAYS: int = 90  # Recency decay half-life
-    TEMPORAL_WEIGHT: float = 0.3  # Weight of temporal score in final ranking
-
     # ── Multi-hop Reasoning (EfficientRAG) ─────────────────────────────────────
     # Multi-hop query decomposition and reasoning.
     # Reference: EfficientRAG - EMNLP 2024
     MULTIHOP_ENABLED: bool = True
     MULTIHOP_MODEL: str = "openai/gpt-4o-mini"  # Model for multi-hop reasoning
     MULTIHOP_MAX_HOPS: int = 3  # Maximum number of reasoning hops
-
-    # ── Feedback Pipeline (Continual Learning) ──────────────────────────────────
-    # Closed-loop learning from user feedback.
-    # Reference: Pistis-RAG framework
-    FEEDBACK_ENABLED: bool = True
-    FEEDBACK_MIN_SAMPLES: int = 1000  # Min feedback before retraining
-    FEEDBACK_MIN_CORRECTIONS: int = 50  # Min corrections before retraining
-    FEEDBACK_RETENTION_DAYS: int = 90  # How long to keep feedback
-    FEEDBACK_POSITIVE_BOOST: float = 0.1  # Weight boost per positive
-    FEEDBACK_NEGATIVE_PENALTY: float = 0.1  # Weight penalty per negative
     FEEDBACK_MAX_WEIGHT: float = 2.0  # Max document weight
     FEEDBACK_MIN_WEIGHT: float = 0.5  # Min document weight
 
-                          
+
     EVALUATOR_FAILURE_MODE: str = "warn_only"
 
-            
+
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
-                   
+
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_DAY: int = 1000
 
-         
+
     FRONTEND_URL: str = "http://localhost:3000"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     ENVIRONMENT: str = "development"

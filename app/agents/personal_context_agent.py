@@ -50,7 +50,7 @@ async def personal_context_agent(state: AgentState) -> AgentState:
             "personal_context": len(recall.personal_context or []),
             "trace": state["personal_recall_trace"],
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("Personal memory context failed", extra={"error": str(exc)})
         state["personal_memory_chunks"] = []
         state["personal_recall_trace"] = {"error": str(exc)}

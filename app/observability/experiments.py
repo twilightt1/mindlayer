@@ -10,7 +10,7 @@ Example:
 
     exp = Experiment(
         name="router_topk_sweep",
-        dataset_path="eval/Orivory_eval_dataset.json",
+        dataset_path="eval/orivory_eval_dataset.json",
         sample_docs_dir="sample_docs",
         output_dir="eval/experiments",
     )
@@ -75,7 +75,9 @@ class Experiment:
 
     def run(self, enable_ragas: bool = True) -> ExperimentResult:
         """Run every variant and persist per-run results to the tracker."""
-        from eval.run_eval import run_evaluation  # local import to avoid hard dep at module load
+        from eval.run_eval import (
+            run_evaluation,  # local import to avoid hard dep at module load
+        )
 
         runs: list[dict[str, Any]] = []
         for variant in self.variants:

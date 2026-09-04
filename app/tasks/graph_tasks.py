@@ -31,7 +31,7 @@ def build_memory_graph_task(self, memory_id: str, force: bool = False) -> dict:
             result = build_memory_graph_sync(db, memory_id, force=force)
             log.info("Graph build complete", extra=result.to_dict())
             return result.to_dict()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             db.rollback()
             log.warning(
                 "Graph build failed",

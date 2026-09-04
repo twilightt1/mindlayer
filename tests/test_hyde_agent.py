@@ -4,15 +4,15 @@ Tests for HyDE (Hypothetical Document Embeddings) Agent
 Reference: Gao et al., arXiv 2309.08830
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.retrieval.hyde_agent import (
     HypotheticalDocument,
-    HyDEResult,
     generate_hypothetical_document,
-    refine_passage,
     hyde_agent,
+    refine_passage,
 )
 
 
@@ -26,7 +26,7 @@ class TestHypotheticalDocument:
             key_concepts=["concept1", "concept2"],
             combined_text="Passage 1 Passage 2",
         )
-        
+
         assert len(doc.passages) == 2
         assert len(doc.key_concepts) == 2
         assert doc.combined_text == "Passage 1 Passage 2"
@@ -50,7 +50,7 @@ class TestGenerateHypotheticalDocument:
         mock_get_client.return_value = mock_client
 
         result = await generate_hypothetical_document("What are transformers?")
-        
+
         assert result is not None
         assert len(result.passages) == 2
         assert "transformers" in result.key_concepts
@@ -71,7 +71,7 @@ class TestGenerateHypotheticalDocument:
         mock_get_client.return_value = mock_client
 
         result = await generate_hypothetical_document("test query")
-        
+
         assert result is not None
         assert len(result.passages) == 1
 
@@ -84,7 +84,7 @@ class TestGenerateHypotheticalDocument:
         mock_get_client.return_value = mock_client
 
         result = await generate_hypothetical_document("test query")
-        
+
         assert result is None
 
     @pytest.mark.asyncio
@@ -100,7 +100,7 @@ class TestGenerateHypotheticalDocument:
         mock_get_client.return_value = mock_client
 
         result = await generate_hypothetical_document("test query")
-        
+
         assert result is None
 
 
@@ -123,7 +123,7 @@ class TestRefinePassage:
             query="What are transformers?",
             passage="Transformers are models."
         )
-        
+
         assert "transformers" in result.lower()
         assert "attention" in result.lower()
 
@@ -137,7 +137,7 @@ class TestRefinePassage:
 
         original = "Original passage"
         result = await refine_passage(query="test", passage=original)
-        
+
         assert result == original
 
 
@@ -151,9 +151,9 @@ class TestHyDEAgent:
         mock_settings.HYDE_ENABLED = False
 
         state = {"query": "test query"}
-        
+
         result = await hyde_agent(state)
-        
+
         assert result["hyde_trace"].get("enabled") is False
         assert result["hyde_result"] is None
 
@@ -167,9 +167,9 @@ class TestHyDEAgent:
             "query": "hello",
             "query_type": "chitchat",
         }
-        
+
         result = await hyde_agent(state)
-        
+
         assert result["hyde_trace"].get("enabled") is False
         assert result["hyde_trace"].get("skipped_reason") == "query_type=chitchat"
 
@@ -183,9 +183,9 @@ class TestHyDEAgent:
             "query": "remember that...",
             "query_type": "save_note",
         }
-        
+
         result = await hyde_agent(state)
-        
+
         assert result["hyde_trace"].get("enabled") is False
         assert result["hyde_trace"].get("skipped_reason") == "query_type=save_note"
 
@@ -195,7 +195,7 @@ class TestHyDEAgent:
     async def test_hyde_generates_hypothetical_doc(self, mock_settings, mock_generate):
         """When HyDE is enabled, should generate hypothetical document."""
         mock_settings.HYDE_ENABLED = True
-        
+
         mock_generate.return_value = HypotheticalDocument(
             passages=["Passage 1", "Passage 2"],
             key_concepts=["concept1"],
@@ -207,9 +207,9 @@ class TestHyDEAgent:
             "rewritten_query": "test query",
             "query_type": "rag",
         }
-        
+
         result = await hyde_agent(state)
-        
+
         assert result["hyde_trace"].get("enabled") is True
         assert result["hyde_trace"].get("passage_count") == 2
         assert result["hyde_result"] is not None
@@ -222,7 +222,7 @@ class TestHyDEAgent:
     async def test_hyde_generation_failure(self, mock_settings, mock_generate):
         """When generation fails, should continue without HyDE."""
         mock_settings.HYDE_ENABLED = True
-        
+
         mock_generate.return_value = None  # Simulate failure
 
         state = {
@@ -230,9 +230,9 @@ class TestHyDEAgent:
             "rewritten_query": "test query",
             "query_type": "rag",
         }
-        
+
         result = await hyde_agent(state)
-        
+
         assert result["hyde_trace"].get("enabled") is True
         assert result["hyde_trace"].get("generation_failed") is True
         assert result["hyde_result"] is None
@@ -243,7 +243,7 @@ class TestHyDEAgent:
     async def test_hyde_uses_rewritten_query(self, mock_settings, mock_generate):
         """HyDE should use rewritten_query if available."""
         mock_settings.HYDE_ENABLED = True
-        
+
         mock_generate.return_value = HypotheticalDocument(
             passages=["Passage"],
             key_concepts=[],
@@ -255,9 +255,9 @@ class TestHyDEAgent:
             "rewritten_query": "expanded query about transformers",
             "query_type": "rag",
         }
-        
-        result = await hyde_agent(state)
-        
+
+        await hyde_agent(state)
+
         # Verify the query passed to generation
         mock_generate.assert_called_once()
         call_args = mock_generate.call_args
@@ -272,16 +272,16 @@ class TestHyDEEnhancement:
     async def test_hyde_agent_tracks_timing(self, mock_settings):
         """HyDE agent should track generation latency."""
         mock_settings.HYDE_ENABLED = True
-        
+
         with patch("app.retrieval.hyde_agent.generate_hypothetical_document") as mock_gen:
             mock_gen.return_value = HypotheticalDocument(
                 passages=["Test"],
                 key_concepts=[],
                 combined_text="Test",
             )
-            
+
             state = {"query": "test", "rewritten_query": "test", "query_type": "rag"}
             result = await hyde_agent(state)
-            
+
             assert "generation_latency_ms" in result["hyde_trace"]
             assert result["hyde_trace"]["generation_latency_ms"] >= 0

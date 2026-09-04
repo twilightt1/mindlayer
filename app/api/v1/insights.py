@@ -13,33 +13,27 @@ Endpoints:
 
 from __future__ import annotations
 
-from uuid import UUID
-from datetime import datetime, timezone
-from typing import Annotated, Literal
-
 import logging
+from datetime import UTC, datetime
+from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models.user import User
-from app.models.insight import InsightCard, InsightStatusEnum
 from app.agents.insight_agent import (
-    InsightCard as InsightCardAgent,
-    InsightType,
-    InsightSurpriseLevel,
-    InsightStatus,
     InsightGenerationRequest,
     generate_insight_batch,
     refresh_insights,
     update_user_preferences,
-    calculate_insight_relevance,
 )
-from app.utils.dependencies import get_current_verified_user
+from app.database import get_db
 from app.middleware.response_cache import CacheInvalidation
+from app.models.insight import InsightCard, InsightStatusEnum
+from app.models.user import User
+from app.utils.dependencies import enforce_llm_quota, get_current_verified_user
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +53,7 @@ class InsightSourceDoc(BaseModel):
 class InsightResponse(BaseModel):
     """Insight card API response."""
     model_config = {"from_attributes": True}
-    
+
     id: UUID
     user_id: UUID
     title: str
@@ -119,6 +113,13 @@ class InsightRefreshResponse(BaseModel):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+def _to_aware_utc(dt: datetime | None) -> datetime | None:
+    """Normalize a datetime to timezone-aware UTC (legacy rows may be naive)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+
 def _insight_response(card: InsightCard) -> InsightResponse:
     """Map ORM InsightCard to API response."""
     # Parse source_docs from JSONB
@@ -130,7 +131,7 @@ def _insight_response(card: InsightCard) -> InsightResponse:
             excerpt=src.get("excerpt", ""),
             relevance_score=src.get("relevance_score", 0.5),
         ))
-    
+
     # Get emoji for type
     emoji_map = {
         "connection": "🔗",
@@ -141,7 +142,7 @@ def _insight_response(card: InsightCard) -> InsightResponse:
         "confirmation": "✅",
         "synthesis": "💡",
     }
-    
+
     return InsightResponse(
         id=card.id,
         user_id=card.user_id,
@@ -179,23 +180,23 @@ async def list_insights(
     """List insight cards for the current user with optional filters."""
     base = select(InsightCard).where(InsightCard.user_id == current_user.id)
     count_base = select(func.count(InsightCard.id)).where(InsightCard.user_id == current_user.id)
-    
+
     if status_filter:
         base = base.where(InsightCard.status == status_filter)
         count_base = count_base.where(InsightCard.status == status_filter)
-    
+
     if insight_type:
         base = base.where(InsightCard.insight_type == insight_type)
         count_base = count_base.where(InsightCard.insight_type == insight_type)
-    
+
     # Order by relevance score, then by created date
     base = base.order_by(desc(InsightCard.relevance_score), desc(InsightCard.created_at))
-    
+
     total = (await db.execute(count_base)).scalar_one()
     rows = (await db.execute(
         base.offset(offset).limit(limit)
     )).scalars().all()
-    
+
     return InsightListResponse(
         items=[_insight_response(card) for card in rows],
         total=total,
@@ -209,22 +210,23 @@ async def generate_insights(
     body: InsightGenerateRequest,
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> InsightGenerateResponse:
     """Generate new insights for the user.
-    
+
     Analyzes user's documents to discover hidden connections and patterns.
     """
     from app.models.memory import Memory
-    
+
     # Fetch user's memories (as documents)
     query = select(Memory).where(Memory.user_id == current_user.id)
     if body.document_ids:
         # Filter by specific document IDs if provided
         query = query.where(Memory.id.in_([UUID(d) for d in body.document_ids]))
-    
+
     result = await db.execute(query)
     memories = result.scalars().all()
-    
+
     if not memories:
         return InsightGenerateResponse(
             insights=[],
@@ -232,7 +234,7 @@ async def generate_insights(
             documents_analyzed=0,
             error="No documents found. Add some memories first.",
         )
-    
+
     # Prepare documents for insight generation
     documents = [
         {
@@ -244,27 +246,27 @@ async def generate_insights(
         }
         for m in memories
     ]
-    
+
     # Get recent activity (recent memories by capture date)
     recent_memories = sorted(memories, key=lambda m: m.captured_at or datetime.min, reverse=True)[:20]
     recent_activity = [
         f"{m.title}: {m.summary[:100]}" if m.summary else m.title
         for m in recent_memories
     ]
-    
+
     # Generate insights
     request = InsightGenerationRequest(
         user_id=str(current_user.id),
         document_ids=[str(m.id) for m in memories],
         focus_topics=body.focus_topics,
     )
-    
+
     generation_result = await generate_insight_batch(
         request=request,
         documents=documents,
         recent_activity=recent_activity,
     )
-    
+
     if generation_result.error:
         return InsightGenerateResponse(
             insights=[],
@@ -272,10 +274,10 @@ async def generate_insights(
             documents_analyzed=generation_result.documents_analyzed,
             error=generation_result.error,
         )
-    
+
     # Save generated insights to database
     saved_cards = []
-    for i, insight in enumerate(generation_result.insights[:body.max_insights]):
+    for _i, insight in enumerate(generation_result.insights[:body.max_insights]):
         card = InsightCard(
             user_id=current_user.id,
             title=insight.title,
@@ -293,13 +295,13 @@ async def generate_insights(
         )
         db.add(card)
         saved_cards.append(card)
-    
+
     await db.commit()
-    
+
     # Refresh cards to get IDs
     for card in saved_cards:
         await db.refresh(card)
-    
+
     return InsightGenerateResponse(
         insights=[_insight_response(card) for card in saved_cards],
         generation_time_ms=generation_result.generation_time_ms,
@@ -317,14 +319,14 @@ async def get_insight(
     card = await db.get(InsightCard, insight_id)
     if not card or card.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Insight not found.")
-    
+
     # Mark as shown
     if card.status == InsightStatusEnum.NEW.value:
         card.status = InsightStatusEnum.SHOWN.value
-        card.shown_at = datetime.now(timezone.utc)
+        card.shown_at = datetime.now(UTC)
     card.shown_count += 1
     await db.commit()
-    
+
     return _insight_response(card)
 
 
@@ -338,15 +340,15 @@ async def dismiss_insight(
     card = await db.get(InsightCard, insight_id)
     if not card or card.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Insight not found.")
-    
+
     card.status = InsightStatusEnum.DISMISSED.value
-    card.dismissed_at = datetime.now(timezone.utc)
+    card.dismissed_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(card)
-    
+
     # Invalidate user's insights cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
-    
+
     return _insight_response(card)
 
 
@@ -360,15 +362,15 @@ async def save_insight(
     card = await db.get(InsightCard, insight_id)
     if not card or card.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Insight not found.")
-    
+
     card.status = InsightStatusEnum.SAVED.value
     card.helpful = True
     await db.commit()
     await db.refresh(card)
-    
+
     # Invalidate user's insights cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
-    
+
     return _insight_response(card)
 
 
@@ -383,12 +385,12 @@ async def feedback_insight(
     card = await db.get(InsightCard, insight_id)
     if not card or card.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Insight not found.")
-    
+
     card.helpful = body.helpful
     card.feedback_note = body.note
     await db.commit()
     await db.refresh(card)
-    
+
     # Update user preferences based on feedback
     feedback_list = [{
         "insight_id": str(card.id),
@@ -396,7 +398,7 @@ async def feedback_insight(
         "helpful": body.helpful,
     }]
     await update_user_preferences(str(current_user.id), feedback_list)
-    
+
     return _insight_response(card)
 
 
@@ -404,13 +406,14 @@ async def feedback_insight(
 async def refresh_insights_endpoint(
     current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _quota: None = Depends(enforce_llm_quota),
 ) -> InsightRefreshResponse:
     """Refresh insights based on new activity.
-    
+
     Re-evaluates existing insights and generates new ones if warranted.
     """
     from app.models.memory import Memory
-    
+
     # Get existing non-expired insights
     existing_query = select(InsightCard).where(
         InsightCard.user_id == current_user.id,
@@ -418,31 +421,41 @@ async def refresh_insights_endpoint(
     )
     result = await db.execute(existing_query)
     existing_cards = result.scalars().all()
-    
+
     # Get recent memories for activity
     recent_query = select(Memory).where(
         Memory.user_id == current_user.id
     ).order_by(desc(Memory.captured_at)).limit(10)
     recent_result = await db.execute(recent_query)
     recent_memories = recent_result.scalars().all()
-    
-    # Check for new memories since last refresh
+
+    # Check for new memories since last refresh.
+    # Normalize both sides to aware UTC datetimes — legacy insight cards may
+    # carry naive timestamps, and comparing naive vs aware raises TypeError.
     last_insight_time = max(
-        (card.created_at for card in existing_cards),
-        default=datetime.min,
+        (
+            aware
+            for card in existing_cards
+            if (aware := _to_aware_utc(card.created_at)) is not None
+        ),
+        default=datetime.min.replace(tzinfo=UTC),
     )
-    new_memories = [m for m in recent_memories if m.captured_at and m.captured_at > last_insight_time]
-    
+    new_memories = [
+        m
+        for m in recent_memories
+        if _to_aware_utc(m.captured_at) is not None and _to_aware_utc(m.captured_at) > last_insight_time
+    ]
+
     # Refresh existing insights
     updates = await refresh_insights(
         existing_insights=[{"id": str(c.id), "title": c.title, "summary": c.summary} for c in existing_cards],
         recent_activity=[m.title for m in recent_memories],
         new_documents=[{"id": str(m.id), "title": m.title} for m in new_memories],
     )
-    
+
     updated_count = 0
     expired_count = 0
-    
+
     for update in updates:
         insight_id = UUID(update["insight_id"])
         card = await db.get(InsightCard, insight_id)
@@ -457,12 +470,12 @@ async def refresh_insights_endpoint(
             elif action == "boost":
                 card.relevance_score = update.get("new_insight_score", card.relevance_score)
                 updated_count += 1
-    
+
     await db.commit()
-    
+
     # Invalidate user's insights cache
     await CacheInvalidation.invalidate_pattern(f"response:/api/v1/insights:{current_user.id}:*")
-    
+
     # Generate new insights if there are new documents
     new_insights = []
     if new_memories:
@@ -475,18 +488,18 @@ async def refresh_insights_endpoint(
             }
             for m in recent_memories
         ]
-        
+
         request = InsightGenerationRequest(
             user_id=str(current_user.id),
             document_ids=[str(m.id) for m in recent_memories],
         )
-        
+
         result = await generate_insight_batch(
             request=request,
             documents=documents,
             recent_activity=[m.title for m in recent_memories],
         )
-        
+
         for insight in result.insights[:3]:  # Limit new insights
             card = InsightCard(
                 user_id=current_user.id,
@@ -505,11 +518,11 @@ async def refresh_insights_endpoint(
             )
             db.add(card)
             new_insights.append(card)
-        
+
         await db.commit()
         for card in new_insights:
             await db.refresh(card)
-    
+
     return InsightRefreshResponse(
         updated_count=updated_count,
         new_insights=[_insight_response(card) for card in new_insights],

@@ -13,7 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity, Relation
-from app.schemas.Orivory import GraphCluster, GraphClustersResponse, GraphEdge, GraphNode
+from app.schemas.Orivory import (
+    GraphCluster,
+    GraphClustersResponse,
+    GraphEdge,
+    GraphNode,
+)
 
 
 async def detect_clusters(

@@ -16,29 +16,17 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 # ─── Enums ───────────────────────────────────────────────────────────────────
@@ -76,7 +64,7 @@ class InsightStatus(Enum):
 class DocumentReference:
     """Reference to a document that supports an insight."""
     document_id: str
-    chunk_id: Optional[str] = None
+    chunk_id: str | None = None
     title: str = ""
     excerpt: str = ""
     relevance_score: float = 0.5
@@ -86,34 +74,34 @@ class DocumentReference:
 class InsightCard:
     """
     An insight card representing a discovered connection or pattern.
-    
+
     This is the core data structure for "What I Didn't Know I Knew" feature.
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str = ""
-    
+
     # Insight content
     title: str = ""                          # "You connected X and Y but may not remember"
     insight_type: InsightType = InsightType.CONNECTION
     summary: str = ""                       # Brief description
     detail: str = ""                        # Full explanation
-    
+
     # Sources
     sources: list[DocumentReference] = field(default_factory=list)
     source_count: int = 1
-    
+
     # Metadata
     surprise_level: InsightSurpriseLevel = InsightSurpriseLevel.MEDIUM
     confidence: float = 0.5                # 0.0 - 1.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    shown_at: Optional[datetime] = None
-    dismissed_at: Optional[datetime] = None
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    shown_at: datetime | None = None
+    dismissed_at: datetime | None = None
+
     # User feedback
     status: InsightStatus = InsightStatus.NEW
-    helpful: Optional[bool] = None         # User feedback
-    feedback_note: Optional[str] = None
-    
+    helpful: bool | None = None         # User feedback
+    feedback_note: str | None = None
+
     # Learning
     shown_count: int = 0
     relevance_score: float = 0.5            # Learned from user behavior
@@ -148,7 +136,7 @@ class InsightGenerationResult:
     insights: list[InsightCard]
     generation_time_ms: float
     documents_analyzed: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ─── Prompts ─────────────────────────────────────────────────────────────────
@@ -233,19 +221,19 @@ async def generate_insights(
 ) -> list[dict]:
     """
     Generate insights from documents using LLM.
-    
+
     Args:
         documents: List of document dicts with id, title, content, created_at
         recent_activity: Recent queries/activity
         focus_topics: Topics user is interested in
-    
+
     Returns:
         List of insight dicts
     """
     import json
-    
+
     client = _get_client()
-    
+
     # Format documents for prompt
     doc_text = "\n\n".join([
         f"[{i+1}] {doc.get('title', 'Untitled')}\n"
@@ -253,16 +241,16 @@ async def generate_insights(
         f"    Content: {doc.get('content', '')[:500]}..."
         for i, doc in enumerate(documents[:10])  # Limit to 10 docs
     ])
-    
+
     activity_text = "\n".join([f"- {a}" for a in recent_activity[-10:]]) or "No recent activity"
     focus_text = ", ".join(focus_topics) or "No specific focus topics"
-    
+
     prompt = INSIGHT_DISCOVERY_PROMPT.format(
         documents=doc_text,
         activity=activity_text,
         focus_topics=focus_text,
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.LLM_MODEL,
@@ -271,12 +259,12 @@ async def generate_insights(
             temperature=0.7,
             max_tokens=2000,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         return result.get("insights", [])
-        
+
     except Exception as e:
         log.warning(f"Insight generation failed: {e}")
         return []
@@ -289,36 +277,36 @@ async def refresh_insights(
 ) -> list[dict]:
     """
     Refresh existing insights based on new activity.
-    
+
     Args:
         existing_insights: Current insights
         recent_activity: Recent user activity
         new_documents: Newly added documents
-    
+
     Returns:
         List of update recommendations
     """
     import json
-    
+
     client = _get_client()
-    
+
     existing_text = "\n".join([
         f"- {ins.get('title', 'Unknown')}: {ins.get('summary', '')}"
         for ins in existing_insights[:10]
     ])
-    
+
     activity_text = "\n".join([f"- {a}" for a in recent_activity[-5:]]) or "No recent activity"
-    
+
     new_docs_text = "\n".join([
         f"- {doc.get('title', 'Untitled')}" for doc in new_documents
     ]) or "No new documents"
-    
+
     prompt = INSIGHT_REFRESH_PROMPT.format(
         existing_insights=existing_text,
         recent_activity=activity_text,
         new_documents=new_docs_text,
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.LLM_MODEL,
@@ -327,12 +315,12 @@ async def refresh_insights(
             temperature=0.3,
             max_tokens=500,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         return result.get("updates", [])
-        
+
     except Exception as e:
         log.warning(f"Insight refresh failed: {e}")
         return []
@@ -344,16 +332,16 @@ def calculate_insight_relevance(
 ) -> float:
     """
     Calculate personalized relevance score based on user preferences.
-    
+
     Args:
         insight: The insight to score
         user_preferences: Learned user preferences
-    
+
     Returns:
         Relevance score 0.0 - 1.0
     """
     base_score = insight.relevance_score
-    
+
     # Boost for user's focus topics
     topic_boost = 0.0
     if user_preferences.get("focus_topics"):
@@ -361,20 +349,20 @@ def calculate_insight_relevance(
         for topic in user_preferences["focus_topics"]:
             if topic.lower() in insight_lower:
                 topic_boost += 0.15
-    
+
     # Boost for insight type preference
     type_preference = user_preferences.get("insight_types", {})
     type_boost = type_preference.get(insight.insight_type.value, 0.0) * 0.1
-    
+
     # Boost for surprise level (medium surprises often most valuable)
     surprise_boost = 0.05 if insight.surprise_level == InsightSurpriseLevel.MEDIUM else 0.0
-    
+
     # Penalize if already shown many times without saving
     shown_penalty = -0.1 if insight.shown_count > 3 and insight.status != InsightStatus.SAVED else 0.0
-    
+
     # Combine scores
     final_score = base_score + topic_boost + type_boost + surprise_boost + shown_penalty
-    
+
     return max(0.0, min(1.0, final_score))
 
 
@@ -386,11 +374,11 @@ async def create_insight_card(
 ) -> InsightCard:
     """
     Create an InsightCard from LLM output.
-    
+
     Args:
         insight_data: Dict from LLM insight generation
         user_id: User ID
-    
+
     Returns:
         InsightCard instance
     """
@@ -400,14 +388,14 @@ async def create_insight_card(
         insight_type = InsightType(type_str)
     except ValueError:
         insight_type = InsightType.CONNECTION
-    
+
     # Parse surprise level
     surprise_str = insight_data.get("surprise_level", "medium")
     try:
         surprise_level = InsightSurpriseLevel(surprise_str)
     except ValueError:
         surprise_level = InsightSurpriseLevel.MEDIUM
-    
+
     # Parse sources
     sources = []
     for src in insight_data.get("sources", []):
@@ -417,7 +405,7 @@ async def create_insight_card(
             excerpt=src.get("excerpt", ""),
             relevance_score=src.get("relevance_score", 0.5),
         ))
-    
+
     return InsightCard(
         user_id=user_id,
         title=insight_data.get("title", "Interesting connection found"),
@@ -440,35 +428,35 @@ async def update_user_preferences(
 ) -> dict:
     """
     Update user preferences based on insight feedback.
-    
+
     Args:
         user_id: User ID
         insight_feedback: List of feedback dicts with insight_id, helpful, type
-    
+
     Returns:
         Updated user preferences
     """
     preferences = {
         "focus_topics": [],
         "insight_types": {},  # type -> score
-        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "last_updated": datetime.now(UTC).isoformat(),
     }
-    
+
     # Count helpful/dismissed by type
     type_stats: dict[str, dict[str, int]] = {}
-    
+
     for feedback in insight_feedback:
         insight_type = feedback.get("insight_type", "connection")
         is_helpful = feedback.get("helpful")
-        
+
         if insight_type not in type_stats:
             type_stats[insight_type] = {"helpful": 0, "dismissed": 0}
-        
+
         if is_helpful:
             type_stats[insight_type]["helpful"] += 1
         elif is_helpful is False:
             type_stats[insight_type]["dismissed"] += 1
-    
+
     # Calculate preference scores
     for insight_type, stats in type_stats.items():
         total = stats["helpful"] + stats["dismissed"]
@@ -476,7 +464,7 @@ async def update_user_preferences(
             # Score from -1 to 1, normalized to 0-1
             score = (stats["helpful"] - stats["dismissed"]) / total
             preferences["insight_types"][insight_type] = (score + 1) / 2
-    
+
     return preferences
 
 
@@ -489,20 +477,20 @@ async def generate_insight_batch(
 ) -> InsightGenerationResult:
     """
     Generate a batch of insights for a user.
-    
+
     This is the main entry point for insight generation.
-    
+
     Args:
         request: Generation request parameters
         documents: User's documents
         recent_activity: Recent queries/activity
-    
+
     Returns:
         InsightGenerationResult with generated insights
     """
     import time
     start_time = time.time()
-    
+
     try:
         # Generate insights using LLM
         insight_data_list = await generate_insights(
@@ -510,7 +498,7 @@ async def generate_insight_batch(
             recent_activity=recent_activity,
             focus_topics=request.focus_topics,
         )
-        
+
         # Convert to InsightCard objects
         insights = []
         for insight_data in insight_data_list:
@@ -519,15 +507,15 @@ async def generate_insight_batch(
                 user_id=request.user_id,
             )
             insights.append(card)
-        
+
         generation_time_ms = (time.time() - start_time) * 1000
-        
+
         return InsightGenerationResult(
             insights=insights,
             generation_time_ms=generation_time_ms,
             documents_analyzed=len(documents),
         )
-        
+
     except Exception as e:
         log.error(f"Insight batch generation failed: {e}")
         return InsightGenerationResult(

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from pydantic import ValidationError
 
@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import Settings  # noqa: E402
-from app.services.diagnostics_service import build_config_summary  # noqa: E402
+from app.config import Settings
+from app.services.diagnostics_service import build_config_summary
 
 
 @dataclass

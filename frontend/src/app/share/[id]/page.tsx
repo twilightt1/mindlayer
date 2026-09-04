@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Tag, ExternalLink } from "lucide-react";
@@ -26,7 +27,7 @@ export default function SharedMemoryPage() {
   useEffect(() => {
     const fetchSharedMemory = async () => {
       try {
-        const res = await fetch(`/api/v1/memories/${params.id}/share`);
+        const res = await fetch(`${API_BASE}/api/v1/memories/${params.id}/share`);
         if (!res.ok) {
           setError("Memory not found or not shared publicly");
           return;

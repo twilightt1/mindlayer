@@ -6,9 +6,9 @@ into the existing graph tables without requiring migrations.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Iterable
 from uuid import UUID
 
 from sqlalchemy import func, select

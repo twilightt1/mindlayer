@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Integer, Boolean, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,8 +32,8 @@ class ReferralCode(Base):
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", backref="referral_codes")
-    referrals: Mapped[list["Referral"]] = relationship("Referral", back_populates="referral_code", cascade="all, delete-orphan")
+    user: Mapped[User] = relationship("User", backref="referral_codes")
+    referrals: Mapped[list[Referral]] = relationship("Referral", back_populates="referral_code", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_referral_codes_user_active", "user_id", "is_active"),
@@ -55,7 +55,7 @@ class Referral(Base):
     completed_at: Mapped[datetime | None] = mapped_column(default=None)
 
     # Relationships
-    referral_code: Mapped["ReferralCode"] = relationship("ReferralCode", back_populates="referrals")
+    referral_code: Mapped[ReferralCode] = relationship("ReferralCode", back_populates="referrals")
 
     __table_args__ = (
         UniqueConstraint("referrer_id", "referee_email", name="uq_referrer_email"),

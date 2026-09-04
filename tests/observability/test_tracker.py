@@ -18,7 +18,6 @@ from app.observability.cost import (
 from app.observability.experiments import Experiment, Variant
 from app.observability.tracker import RunTracker, stopwatch
 
-
 # ---------------------------------------------------------------------------
 # RunTracker
 # ---------------------------------------------------------------------------
@@ -165,7 +164,7 @@ class TestCostTracker:
 
     def test_recent(self, tmp_path: Path) -> None:
         tracker = CostTracker(db_path=tmp_path / "c.db")
-        for i in range(5):
+        for _i in range(5):
             tracker.record("agent", "openai/gpt-4o-mini", 100, 50)
         recent = tracker.recent(limit=3)
         assert len(recent) == 3
@@ -212,7 +211,7 @@ class TestExperiment:
         sample_docs = root / "sample_docs"
         if not sample_docs.exists():  # pragma: no cover - skip if env lacks docs
             pytest.skip("sample_docs not available")
-        dataset = root / "eval" / "Orivory_eval_dataset.json"
+        dataset = root / "eval" / "orivory_eval_dataset.json"
         exp = Experiment(
             name="topk_sweep_test",
             dataset_path=dataset,

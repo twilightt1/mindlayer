@@ -12,7 +12,7 @@ malformed trace keys (older messages predate some signals).
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -100,7 +100,7 @@ async def build_quality_trend(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Aggregate assistant-message quality signals over the last ``hours``."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     since = now - timedelta(hours=hours)
 
     rows = (

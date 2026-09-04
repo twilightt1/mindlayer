@@ -16,9 +16,9 @@ the dispatcher writes Memory + MemorySource rows.
 """
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
-import logging
 
 from app.ingestion.types import ConnectorItem, ItemError
 

@@ -4,23 +4,22 @@ Tests for Insight Cards Agent - Proactive Discovery Feature
 Q2 Growth Track: "What I Didn't Know I Knew"
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
-from uuid import uuid4
+
+import pytest
 
 from app.agents.insight_agent import (
-    InsightCard,
-    InsightType,
-    InsightSurpriseLevel,
-    InsightStatus,
     DocumentReference,
+    InsightCard,
     InsightGenerationRequest,
     InsightGenerationResult,
+    InsightStatus,
+    InsightSurpriseLevel,
+    InsightType,
+    calculate_insight_relevance,
+    create_insight_card,
     generate_insights,
     refresh_insights,
-    create_insight_card,
-    calculate_insight_relevance,
     update_user_preferences,
 )
 
@@ -36,7 +35,7 @@ class TestDocumentReference:
             excerpt="Important passage...",
             relevance_score=0.85,
         )
-        
+
         assert ref.document_id == "doc-123"
         assert ref.title == "Test Document"
         assert ref.relevance_score == 0.85
@@ -65,7 +64,7 @@ class TestInsightCard:
             surprise_level=InsightSurpriseLevel.HIGH,
             confidence=0.85,
         )
-        
+
         assert card.user_id == "user-123"
         assert card.insight_type == InsightType.CONNECTION
         assert card.surprise_level == InsightSurpriseLevel.HIGH
@@ -81,7 +80,7 @@ class TestInsightCard:
             summary="Test summary",
             detail="Test detail",
         )
-        
+
         summary = card.to_summary()
         assert "🔗" in summary  # Connection emoji
         assert "Connection between A and B" in summary
@@ -139,7 +138,7 @@ class TestInsightGenerationRequest:
             focus_topics=["AI", "Research"],
             exclude_insights_older_than_days=30,
         )
-        
+
         assert request.user_id == "user-123"
         assert len(request.document_ids) == 2
         assert "AI" in request.focus_topics
@@ -158,13 +157,13 @@ class TestInsightGenerationResult:
             summary="Test",
             detail="Test detail",
         )
-        
+
         result = InsightGenerationResult(
             insights=[card],
             generation_time_ms=1500.0,
             documents_analyzed=10,
         )
-        
+
         assert len(result.insights) == 1
         assert result.generation_time_ms == 1500.0
         assert result.documents_analyzed == 10
@@ -191,13 +190,13 @@ class TestGenerateInsights:
         documents = [
             {"id": "doc-1", "title": "Document 1", "content": "Content about X", "created_at": "2025-01-01"},
         ]
-        
+
         insights = await generate_insights(
             documents=documents,
             recent_activity=["Query about X"],
             focus_topics=["AI"],
         )
-        
+
         assert len(insights) == 1
         assert insights[0]["title"] == "You connected X and Y"
         assert insights[0]["insight_type"] == "connection"
@@ -211,13 +210,13 @@ class TestGenerateInsights:
         mock_get_client.return_value = mock_client
 
         documents = [{"id": "doc-1", "title": "Test", "content": "Content"}]
-        
+
         insights = await generate_insights(
             documents=documents,
             recent_activity=[],
             focus_topics=[],
         )
-        
+
         assert insights == []
 
 
@@ -240,9 +239,9 @@ class TestCreateInsightCard:
                 {"document_id": "doc-2", "title": "Doc 2", "excerpt": "Excerpt 2", "relevance_score": 0.7},
             ],
         }
-        
+
         card = await create_insight_card(insight_data, "user-123")
-        
+
         assert card.user_id == "user-123"
         assert card.title == "Unexpected connection found"
         assert card.insight_type == InsightType.CONNECTION
@@ -261,9 +260,9 @@ class TestCreateInsightCard:
             "surprise_level": "medium",
             "confidence": 0.5,
         }
-        
+
         card = await create_insight_card(insight_data, "user-123")
-        
+
         assert card.insight_type == InsightType.CONNECTION
 
 
@@ -281,11 +280,11 @@ class TestCalculateInsightRelevance:
             surprise_level=InsightSurpriseLevel.MEDIUM,
             relevance_score=0.7,
         )
-        
+
         user_prefs = {"focus_topics": [], "insight_types": {}}
-        
+
         score = calculate_insight_relevance(card, user_prefs)
-        
+
         # Base score + medium surprise boost
         assert score > 0.7
 
@@ -300,11 +299,11 @@ class TestCalculateInsightRelevance:
             surprise_level=InsightSurpriseLevel.LOW,
             relevance_score=0.5,
         )
-        
+
         user_prefs = {"focus_topics": ["AI", "Machine Learning"], "insight_types": {}}
-        
+
         score = calculate_insight_relevance(card, user_prefs)
-        
+
         # Should be boosted due to AI topic match
         assert score > 0.5
 
@@ -321,11 +320,11 @@ class TestCalculateInsightRelevance:
             status=InsightStatus.SHOWN,
             relevance_score=0.5,
         )
-        
+
         user_prefs = {"focus_topics": [], "insight_types": {}}
-        
+
         score = calculate_insight_relevance(card, user_prefs)
-        
+
         # Should be penalized
         assert score < 0.5
 
@@ -342,9 +341,9 @@ class TestUpdateUserPreferences:
             {"insight_type": "pattern", "helpful": False},
             {"insight_type": "gap", "helpful": True},
         ]
-        
+
         prefs = await update_user_preferences("user-123", feedback)
-        
+
         assert "focus_topics" in prefs
         assert "insight_types" in prefs
         # Connection: 2 helpful, 0 dismissed = 1.0 score
@@ -373,13 +372,13 @@ class TestRefreshInsights:
         mock_get_client.return_value = mock_client
 
         existing = [{"id": "insight-1", "title": "Old insight 1", "summary": "Summary 1"}]
-        
+
         updates = await refresh_insights(
             existing_insights=existing,
             recent_activity=["New query"],
             new_documents=[{"id": "doc-new", "title": "New Document"}],
         )
-        
+
         assert len(updates) == 2
         assert updates[0]["action"] == "keep"
         assert updates[1]["action"] == "expire"
@@ -397,7 +396,7 @@ class TestRefreshInsights:
             recent_activity=[],
             new_documents=[],
         )
-        
+
         assert updates == []
 
 
@@ -426,28 +425,28 @@ class TestInsightAgentIntegration:
             {"id": "doc-1", "title": "Research Notes", "content": "Notes about X and Y", "created_at": "2025-01-15"},
             {"id": "doc-2", "title": "Meeting Notes", "content": "Discussed X feature", "created_at": "2025-01-20"},
         ]
-        
-        request = InsightGenerationRequest(
+
+        InsightGenerationRequest(
             user_id="user-123",
             document_ids=["doc-1", "doc-2"],
             focus_topics=["X"],
         )
-        
+
         # Generate insights
         result = await generate_insights(
             documents=documents,
             recent_activity=["Query about X"],
             focus_topics=["X"],
         )
-        
+
         assert len(result) == 1
         assert result[0]["insight_type"] == "pattern"
-        
+
         # Create card
         card = await create_insight_card(result[0], "user-123")
         assert card.insight_type == InsightType.PATTERN
         assert card.confidence == 0.88
-        
+
         # Calculate relevance
         prefs = {"focus_topics": ["X"], "insight_types": {}}
         score = calculate_insight_relevance(card, prefs)

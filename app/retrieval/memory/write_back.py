@@ -33,7 +33,7 @@ async def safe_upsert_to_chroma(memory: Memory) -> bool:
 
         await upsert_memory(memory)
         return True
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning(
             "ChromaDB upsert failed for memory %s: %s",
             memory.id, exc,
@@ -48,7 +48,7 @@ async def safe_delete_from_chroma(memory_id: UUID | str) -> None:
         from app.retrieval.memory.vector_store import delete_memory
 
         await delete_memory(str(memory_id))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning(
             "ChromaDB delete failed for memory %s: %s",
             memory_id, exc,
@@ -62,7 +62,7 @@ def safe_enqueue_graph_build(memory_id: UUID | str) -> None:
         from app.tasks.graph_tasks import build_memory_graph_task
 
         build_memory_graph_task.delay(str(memory_id))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning(
             "Graph build enqueue failed for memory %s: %s",
             memory_id, exc,

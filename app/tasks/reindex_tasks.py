@@ -91,9 +91,9 @@ def reindex_user_memories(self, user_id: str, only_missing: bool = True) -> dict
         }
         log.info("Memory reindex complete", extra=summary)
         return summary
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning(
             "Memory reindex failed",
             extra={"user_id": user_id, "scanned": scanned, "error": str(exc)},
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

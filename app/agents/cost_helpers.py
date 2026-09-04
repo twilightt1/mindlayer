@@ -72,7 +72,7 @@ def _persist_cost(
 
 def record_cost(
     agent: str,
-    state: "AgentState",
+    state: AgentState,
     model: str,
     tokens_in: int,
     tokens_out: int,
@@ -116,7 +116,7 @@ def record_cost(
     }
 
 
-def record_latency(agent: str, state: "AgentState", latency_ms: float) -> None:
+def record_latency(agent: str, state: AgentState, latency_ms: float) -> None:
     """Record a per-agent latency measurement in the state."""
     state.setdefault("agent_latency_ms", {})
     state["agent_latency_ms"][agent] = round(
@@ -128,13 +128,13 @@ def record_latency(agent: str, state: "AgentState", latency_ms: float) -> None:
 class Stopwatch:
     """Tiny stopwatch that records latency on exit."""
 
-    def __init__(self, agent: str, state: "AgentState") -> None:
+    def __init__(self, agent: str, state: AgentState) -> None:
         self.agent = agent
         self.state = state
         self.start = 0.0
         self.elapsed_ms: float = 0.0
 
-    def __enter__(self) -> "Stopwatch":
+    def __enter__(self) -> Stopwatch:
         self.start = time.perf_counter()
         return self
 
@@ -143,18 +143,18 @@ class Stopwatch:
         record_latency(self.agent, self.state, self.elapsed_ms)
 
 
-def get_total_cost(state: "AgentState") -> float:
+def get_total_cost(state: AgentState) -> float:
     return float(state.get("cumulative_cost_usd", 0.0) or 0.0)
 
 
-def get_total_tokens(state: "AgentState") -> tuple[int, int]:
+def get_total_tokens(state: AgentState) -> tuple[int, int]:
     return (
         int(state.get("total_tokens_in", 0) or 0),
         int(state.get("total_tokens_out", 0) or 0),
     )
 
 
-def cost_summary(state: "AgentState") -> dict[str, Any]:
+def cost_summary(state: AgentState) -> dict[str, Any]:
     """Snapshot the per-request cost/latency summary."""
     tokens_in, tokens_out = get_total_tokens(state)
     return {

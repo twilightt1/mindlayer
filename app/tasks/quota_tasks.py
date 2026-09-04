@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 def _utc_today() -> datetime.date:
-    return datetime.datetime.now(datetime.timezone.utc).date()
+    return datetime.datetime.now(datetime.UTC).date()
 
 
 @celery_app.task(name="tasks.reset_daily_quotas")

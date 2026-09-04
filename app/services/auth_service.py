@@ -1,20 +1,22 @@
 """Authentication business logic."""
 from __future__ import annotations
+
+import asyncio
 import hashlib
 import logging
 import secrets
 import string
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
-import bcrypt
 
-from sqlalchemy import select, update, and_
+import bcrypt
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.user import User
 from app.models.email_verification import EmailVerification
 from app.models.password_reset_session import PasswordResetSession
+from app.models.user import User
 from app.redis_client import get_redis
 from app.utils.security import create_access_token
 
@@ -23,7 +25,7 @@ OTP_MAX = 5
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _hash_refresh_token(token: str) -> str:
@@ -35,7 +37,7 @@ def _hash_refresh_token(token: str) -> str:
     """
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
-                                                                                
+
 def _hash(pw: str) -> str:
     pw_bytes = pw.encode('utf-8')
     if len(pw_bytes) > 72:
@@ -50,11 +52,20 @@ def _verify(pw: str, h: str) -> bool:
         return bcrypt.checkpw(pw_bytes, h.encode('utf-8'))
     except Exception:
         return False
+
+
+async def _hash_async(pw: str) -> str:
+    """bcrypt costs ~100-300ms of CPU — must not block the event loop."""
+    return await asyncio.to_thread(_hash, pw)
+
+
+async def _verify_async(pw: str, h: str) -> bool:
+    return await asyncio.to_thread(_verify, pw, h)
 def _otp() -> str:
     return "".join(secrets.choice(string.digits) for _ in range(6))
 
 
-                                                                                
+
 async def register_email(db: AsyncSession, email: str, password: str) -> User:
     from fastapi import HTTPException
     existing = await db.scalar(select(User).where(User.email == email))
@@ -64,7 +75,7 @@ async def register_email(db: AsyncSession, email: str, password: str) -> User:
                   else "Email already in use.")
         raise HTTPException(409, detail=detail)
 
-    user = User(email=email, hashed_password=_hash(password), auth_provider="email",
+    user = User(email=email, hashed_password=await _hash_async(password), auth_provider="email",
                 is_verified=False, onboarding_done=False)
     db.add(user)
     await db.flush()
@@ -75,7 +86,7 @@ async def register_email(db: AsyncSession, email: str, password: str) -> User:
         otp_code=otp, otp_attempts=0,
         expires_at=_now() + timedelta(hours=24),
     ))
-                         
+
     from app.models.user_quota import UserQuota
     db.add(UserQuota(user_id=user.id))
     await db.commit()
@@ -86,7 +97,7 @@ async def register_email(db: AsyncSession, email: str, password: str) -> User:
     return user
 
 
-                                                                                
+
 async def verify_email_otp(db: AsyncSession, email: str, otp_code: str) -> User:
     from fastapi import HTTPException
     user = await db.scalar(select(User).where(User.email == email))
@@ -117,7 +128,7 @@ async def verify_email_otp(db: AsyncSession, email: str, otp_code: str) -> User:
     return user
 
 
-                                                                                
+
 async def verify_email_link(db: AsyncSession, token: str) -> User:
     from fastapi import HTTPException
     ev = await db.scalar(
@@ -140,7 +151,7 @@ async def verify_email_link(db: AsyncSession, token: str) -> User:
     return user
 
 
-                                                                                
+
 async def resend_verification(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
@@ -153,7 +164,7 @@ async def resend_verification(db: AsyncSession, email: str) -> None:
 
     user = await db.scalar(select(User).where(User.email == email))
     if not user or user.is_verified:
-        return          
+        return
 
     await db.execute(
         update(EmailVerification)
@@ -173,7 +184,7 @@ async def resend_verification(db: AsyncSession, email: str) -> None:
     send_verification_email.delay(email, otp, token)
 
 
-                                                                                
+
 async def complete_onboarding(db: AsyncSession, user: User, display_name: str) -> tuple[User, str, str]:
     from fastapi import HTTPException
     if not user.is_verified:
@@ -187,13 +198,13 @@ async def complete_onboarding(db: AsyncSession, user: User, display_name: str) -
     return user, access, refresh
 
 
-                                                                                
+
 async def login_email(db: AsyncSession, email: str, password: str) -> tuple[User, str, str]:
     from fastapi import HTTPException
     user = await db.scalar(select(User).where(User.email == email))
     if (not user or user.auth_provider != "email"
             or not user.hashed_password
-            or not _verify(password, user.hashed_password)):
+            or not await _verify_async(password, user.hashed_password)):
         raise HTTPException(401, detail="Invalid email or password.")
     if not user.is_verified:
         raise HTTPException(403, detail="Please verify your email first.")
@@ -204,7 +215,7 @@ async def login_email(db: AsyncSession, email: str, password: str) -> tuple[User
     return user, access, refresh
 
 
-                                                                                
+
 async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
     from fastapi import HTTPException
     sub, picture = info["sub"], info.get("picture")
@@ -212,7 +223,7 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
     # so a Google login resolves to the same row as an email signup.
     email = str(info["email"]).strip().lower()
 
-                                   
+
     user = await db.scalar(select(User).where(User.google_id == sub))
     if user:
         if user.is_deleted or not user.is_active:
@@ -222,7 +233,7 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
             await db.commit()
         return user
 
-                                             
+
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:
         if existing.is_deleted or not existing.is_active:
@@ -234,7 +245,7 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
         await db.commit()
         return existing
 
-                     
+
     from app.models.user_quota import UserQuota
     user = User(
         email=email, auth_provider="google", google_id=sub,
@@ -250,7 +261,7 @@ async def find_or_create_google_user(db: AsyncSession, info: dict) -> User:
     return user
 
 
-                                                                                
+
 async def create_password_reset_session(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
@@ -265,7 +276,7 @@ async def create_password_reset_session(db: AsyncSession, email: str) -> None:
         select(User).where(and_(User.email == email, User.auth_provider == "email"))
     )
     if not user or not user.is_active or user.is_deleted:
-        return                                      
+        return
 
     await db.execute(
         update(PasswordResetSession)
@@ -345,14 +356,14 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
     user = await db.get(User, session.user_id)
     if not user:
         raise HTTPException(400, detail="Account not found.")
-    user.hashed_password = _hash(new_password)
+    user.hashed_password = await _hash_async(new_password)
     session.used_at = _now()
     await db.commit()
     await _invalidate_all_refresh(user.id)
     log.info("Password reset", extra={"user_id": str(user.id)})
 
 
-                                                                                
+
 async def update_display_name(db: AsyncSession, user: User, display_name: str) -> User:
     user.display_name = display_name
     await db.commit()
@@ -364,15 +375,15 @@ async def change_password(db: AsyncSession, user: User, current: str, new_pw: st
     from fastapi import HTTPException
     if user.auth_provider != "email":
         raise HTTPException(400, detail="Google accounts do not use passwords.")
-    if not user.hashed_password or not _verify(current, user.hashed_password):
+    if not user.hashed_password or not await _verify_async(current, user.hashed_password):
         raise HTTPException(400, detail="Current password is incorrect.")
-    user.hashed_password = _hash(new_pw)
+    user.hashed_password = await _hash_async(new_pw)
     await db.commit()
     await _invalidate_all_refresh(user.id)
     log.info("Password changed", extra={"user_id": str(user.id)})
 
 
-                                                                                
+
 async def _create_refresh(user_id: UUID | str) -> str:
     """Create a refresh token and persist it hashed in Redis.
 

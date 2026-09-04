@@ -1,7 +1,8 @@
 import json
+
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from redis.asyncio import Redis
 
 from app.models.system_setting import SystemSetting
 from app.redis_client import get_redis
@@ -9,9 +10,9 @@ from app.redis_client import get_redis
 
 class SettingsService:
     CACHE_PREFIX = "sys_setting:"
-    CACHE_TTL = 300             
+    CACHE_TTL = 300
 
-                                 
+
     DEFAULTS = {
         "default_user_daily_limit": {"value": 50, "description": "Default daily request limit for new users"},
         "default_user_monthly_limit": {"value": 1000, "description": "Default monthly request limit for new users"},
@@ -26,23 +27,23 @@ class SettingsService:
         redis: Redis = await get_redis()
         cache_key = f"{cls.CACHE_PREFIX}{key}"
 
-                        
+
         cached_value = await redis.get(cache_key)
         if cached_value:
             return json.loads(cached_value)
 
-                           
+
         db_setting = await db.scalar(select(SystemSetting).where(SystemSetting.key == key))
         if db_setting:
             val = db_setting.value
-                      
+
             await redis.setex(cache_key, cls.CACHE_TTL, json.dumps(val))
             return val
 
-                                          
+
         if key in cls.DEFAULTS:
             default_val = cls.DEFAULTS[key]["value"]
-                                                                                       
+
             await redis.setex(cache_key, cls.CACHE_TTL, json.dumps(default_val))
             return default_val
 
@@ -70,9 +71,9 @@ class SettingsService:
             )
             db.add(db_setting)
 
-                                                  
 
-                          
+
+
         redis: Redis = await get_redis()
         cache_key = f"{cls.CACHE_PREFIX}{key}"
         await redis.delete(cache_key)
@@ -88,7 +89,7 @@ class SettingsService:
         if db_setting:
             await db.delete(db_setting)
 
-                              
+
             redis: Redis = await get_redis()
             cache_key = f"{cls.CACHE_PREFIX}{key}"
             await redis.delete(cache_key)

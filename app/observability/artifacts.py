@@ -54,7 +54,7 @@ class ArtifactStore:
 
     def load_text(self, sha256: str) -> str:
         for path in self.root.rglob(f"{sha256[:12]}_*"):
-            if path.suffix == ".meta.json":
+            if path.name.endswith(".meta.json"):
                 continue
             return path.read_text(encoding="utf-8")
         raise FileNotFoundError(f"No artifact with sha256={sha256}")

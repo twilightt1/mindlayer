@@ -24,24 +24,24 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    String,
-    Text,
-    Integer,
     TIMESTAMP,
     ForeignKey,
-    UniqueConstraint,
     Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.types import EncryptedJSONB
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.memory import Memory
+    from app.models.user import User
 
 
 SOURCE_TYPES = (
@@ -91,8 +91,8 @@ class Source(Base):
     created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
 
-    user:        Mapped["User"]                       = relationship(back_populates="sources")
-    memory_links: Mapped[list["MemorySource"]]        = relationship(back_populates="source", cascade="all, delete-orphan")
+    user:        Mapped[User]                       = relationship(back_populates="sources")
+    memory_links: Mapped[list[MemorySource]]        = relationship(back_populates="source", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("user_id", "source_type", "display_name", name="uq_sources_user_type_name"),
@@ -121,8 +121,8 @@ class MemorySource(Base):
     fetched_at:     Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     extra_metadata: Mapped[dict]       = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
 
-    memory: Mapped["Memory"] = relationship(back_populates="source_links")
-    source: Mapped["Source"] = relationship(back_populates="memory_links")
+    memory: Mapped[Memory] = relationship(back_populates="source_links")
+    source: Mapped[Source] = relationship(back_populates="memory_links")
 
     __table_args__ = (
         UniqueConstraint("memory_id", "source_id", name="uq_memory_source"),

@@ -10,20 +10,17 @@ right class for a given Source row.
 """
 from __future__ import annotations
 
-from typing import Type
-
 from app.ingestion.base import BaseConnector
-from app.ingestion.connectors.manual import ManualNoteConnector
 from app.ingestion.connectors.file_upload import FileUploadConnector
-from app.ingestion.connectors.web_clipper import WebClipperConnector
-from app.ingestion.connectors.rss import RSSConnector
-from app.ingestion.connectors.google_drive import GoogleDriveConnector
-from app.ingestion.connectors.notion import NotionConnector
 from app.ingestion.connectors.gmail import GmailConnector
-
+from app.ingestion.connectors.google_drive import GoogleDriveConnector
+from app.ingestion.connectors.manual import ManualNoteConnector
+from app.ingestion.connectors.notion import NotionConnector
+from app.ingestion.connectors.rss import RSSConnector
+from app.ingestion.connectors.web_clipper import WebClipperConnector
 
 # Map source_type string -> connector class
-REGISTRY: dict[str, Type[BaseConnector]] = {
+REGISTRY: dict[str, type[BaseConnector]] = {
     "manual":        ManualNoteConnector,
     "file_upload":   FileUploadConnector,
     "web_clipper":   WebClipperConnector,

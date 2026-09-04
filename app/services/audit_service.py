@@ -1,7 +1,10 @@
 import uuid
 from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.admin_audit import AdminActionLog
+
 
 class AuditService:
     @staticmethod
@@ -32,5 +35,5 @@ class AuditService:
             changes=changes or {}
         )
         db.add(log_entry)
-                                                                               
+
         return log_entry

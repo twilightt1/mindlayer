@@ -90,5 +90,5 @@ class TestContextBudget:
         from app.agents.context_merge_agent import merge_context_chunks
 
         state = {"reranked_chunks": [self._chunk(f"m{i}", 1) for i in range(20)]}
-        merged, dropped = merge_context_chunks(state, max_chunks=5, char_budget=10_000)
+        merged, _dropped = merge_context_chunks(state, max_chunks=5, char_budget=10_000)
         assert len(merged) == 5

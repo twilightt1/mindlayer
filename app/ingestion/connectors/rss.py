@@ -35,6 +35,7 @@ import httpx
 
 from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem, ItemError
+from app.utils.ssrf import fetch_guarded, validate_url
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ def _strip_html(raw: str) -> str:
 
         text = BeautifulSoup(raw, "html.parser").get_text(" ", strip=True)
         return text or raw.strip()
-    except Exception:  # noqa: BLE001 - degrade gracefully
+    except Exception:
         return raw.strip()
 
 
@@ -163,9 +164,10 @@ class RSSConnector(BaseConnector):
         ) as client:
             for feed_url in feed_urls:
                 try:
-                    resp = await client.get(feed_url)
+                    validate_url(feed_url)
+                    resp = await fetch_guarded(client, feed_url)
                     resp.raise_for_status()
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     log.warning("RSSConnector: failed to fetch %s — %s", feed_url, e)
                     self.fetch_errors.append(
                         ItemError(source_ref=feed_url, message=f"Failed to fetch feed: {e}")

@@ -15,29 +15,17 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.config import settings
 
 log = logging.getLogger(__name__)
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 # ─── Enums ───────────────────────────────────────────────────────────────────
@@ -67,7 +55,7 @@ class DocumentNode:
     title: str
     entity_ids: list[str] = field(default_factory=list)
     salience: float = 0.5
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     connection_count: int = 0
 
 
@@ -86,14 +74,14 @@ class DocumentGraph:
     """Document relationship graph."""
     nodes: list[DocumentNode] = field(default_factory=list)
     edges: list[RelationshipEdge] = field(default_factory=list)
-    
-    def get_node(self, node_id: str) -> Optional[DocumentNode]:
+
+    def get_node(self, node_id: str) -> DocumentNode | None:
         """Get a node by ID."""
         for node in self.nodes:
             if node.id == node_id:
                 return node
         return None
-    
+
     def get_neighbors(self, node_id: str) -> list[str]:
         """Get IDs of neighboring nodes."""
         neighbors = []
@@ -110,24 +98,24 @@ class DiscoverySession:
     """A guided discovery session."""
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str = ""
-    
+
     # Flow details
     flow_type: DiscoveryFlowType = DiscoveryFlowType.EXPLORE_RELATED
     starting_doc_id: str = ""
-    target_doc_id: Optional[str] = None
-    
+    target_doc_id: str | None = None
+
     # Path taken
     path: list[str] = field(default_factory=list)  # Document IDs in order
     current_step: int = 0
-    
+
     # Results
     connections_found: list[dict] = field(default_factory=list)
-    
+
     # Metadata
     status: DiscoveryStatus = DiscoveryStatus.ACTIVE
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+
     # Analytics
     steps_taken: int = 0
     documents_explored: int = 0
@@ -276,26 +264,26 @@ async def analyze_document_graph(
 ) -> DocumentGraph:
     """
     Analyze documents to build a relationship graph.
-    
+
     Args:
         documents: List of document dicts with id, title, content
-    
+
     Returns:
         DocumentGraph with nodes and edges
     """
     import json
-    
+
     client = _get_client()
-    
+
     # Format documents for prompt
     doc_text = "\n\n".join([
         f"[{doc.get('id', i+1)}] {doc.get('title', 'Untitled')}\n"
         f"Content: {doc.get('content', '')[:1000]}..."
         for i, doc in enumerate(documents[:15])  # Limit to 15 docs
     ])
-    
+
     prompt = GRAPH_ANALYSIS_PROMPT.format(documents=doc_text)
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.MULTIHOP_MODEL,
@@ -304,10 +292,10 @@ async def analyze_document_graph(
             temperature=0.3,
             max_tokens=2000,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         # Build graph
         nodes = []
         for node_data in result.get("nodes", []):
@@ -318,7 +306,7 @@ async def analyze_document_graph(
                 salience=node_data.get("salience", 0.5),
                 connection_count=node_data.get("connection_count", 0),
             ))
-        
+
         edges = []
         for edge_data in result.get("edges", []):
             edges.append(RelationshipEdge(
@@ -328,9 +316,9 @@ async def analyze_document_graph(
                 weight=edge_data.get("weight", 0.5),
                 evidence=edge_data.get("evidence", ""),
             ))
-        
+
         return DocumentGraph(nodes=nodes, edges=edges)
-        
+
     except Exception as e:
         log.warning(f"Graph analysis failed: {e}")
         return DocumentGraph()
@@ -343,26 +331,26 @@ async def get_next_discovery_step(
 ) -> dict:
     """
     Get the next step in a guided discovery flow.
-    
+
     Args:
         session: Current discovery session
         documents: Available documents
         graph: Document relationship graph
-    
+
     Returns:
         Dict with next_doc_id, reasoning, insight_preview, step_goal
     """
     import json
-    
+
     client = _get_client()
-    
+
     # Get starting document title
     start_title = "Unknown"
     for doc in documents:
         if doc.get("id") == session.starting_doc_id:
             start_title = doc.get("title", "Untitled")
             break
-    
+
     # Get target document title
     target_title = "None specified"
     if session.target_doc_id:
@@ -370,7 +358,7 @@ async def get_next_discovery_step(
             if doc.get("id") == session.target_doc_id:
                 target_title = doc.get("title", "Untitled")
                 break
-    
+
     # Get goal type
     goal_map = {
         DiscoveryFlowType.EXPLORE_RELATED: "Explore related topics and connections",
@@ -380,7 +368,7 @@ async def get_next_discovery_step(
         DiscoveryFlowType.TEMPORAL_JOURNEY: "Journey through time to understand evolution",
     }
     goal_type = goal_map.get(session.flow_type, "Explore connections")
-    
+
     # Format path and explored docs
     path_titles = []
     for doc_id in session.path:
@@ -388,15 +376,15 @@ async def get_next_discovery_step(
             if doc.get("id") == doc_id:
                 path_titles.append(doc.get("title", "Untitled"))
                 break
-    
+
     explored_ids = set(session.path)
     available = [doc for doc in documents if doc.get("id") not in explored_ids][:10]
-    
+
     available_text = "\n".join([
         f"- {doc.get('title', 'Untitled')}"
         for doc in available
     ])
-    
+
     prompt = GUIDED_DISCOVERY_PROMPT.format(
         start_title=start_title,
         goal_type=goal_type,
@@ -405,7 +393,7 @@ async def get_next_discovery_step(
         explored=", ".join(path_titles) or "None",
         available_docs=available_text,
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.MULTIHOP_MODEL,
@@ -414,10 +402,10 @@ async def get_next_discovery_step(
             temperature=0.3,
             max_tokens=500,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         return {
             "next_doc_id": result.get("next_doc_id", ""),
             "next_doc_title": result.get("next_doc_title", ""),
@@ -425,7 +413,7 @@ async def get_next_discovery_step(
             "insight_preview": result.get("insight_preview", ""),
             "step_goal": result.get("step_goal", ""),
         }
-        
+
     except Exception as e:
         log.warning(f"Discovery step failed: {e}")
         return {
@@ -442,25 +430,25 @@ async def find_cross_references(
 ) -> list[CrossDocumentReference]:
     """
     Find references between two documents.
-    
+
     Args:
         doc1: First document dict
         doc2: Second document dict
-    
+
     Returns:
         List of CrossDocumentReference
     """
     import json
-    
+
     client = _get_client()
-    
+
     prompt = CROSS_REFERENCE_PROMPT.format(
         doc1_title=doc1.get("title", "Untitled"),
         doc1_content=doc1.get("content", "")[:2000],
         doc2_title=doc2.get("title", "Untitled"),
         doc2_content=doc2.get("content", "")[:2000],
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.MULTIHOP_MODEL,
@@ -469,10 +457,10 @@ async def find_cross_references(
             temperature=0.3,
             max_tokens=1000,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         references = []
         for ref_data in result.get("references", []):
             references.append(CrossDocumentReference(
@@ -483,9 +471,9 @@ async def find_cross_references(
                 reference_type=ref_data.get("reference_type", "mentions"),
                 relevance_score=ref_data.get("relevance_score", 0.5),
             ))
-        
+
         return references
-        
+
     except Exception as e:
         log.warning(f"Cross-reference search failed: {e}")
         return []
@@ -497,18 +485,18 @@ async def synthesize_discovery(
 ) -> DiscoveryInsight:
     """
     Synthesize findings from a discovery journey.
-    
+
     Args:
         session: Completed discovery session
         documents: All available documents
-    
+
     Returns:
         DiscoveryInsight with synthesized understanding
     """
     import json
-    
+
     client = _get_client()
-    
+
     # Get document titles for path
     path_info = []
     for doc_id in session.path:
@@ -516,17 +504,17 @@ async def synthesize_discovery(
             if doc.get("id") == doc_id:
                 path_info.append(f"- {doc.get('title', 'Untitled')}")
                 break
-    
+
     connections_info = "\n".join([
         f"- {c.get('title', 'Connection')}: {c.get('description', '')}"
         for c in session.connections_found
     ]) or "No specific connections recorded"
-    
+
     prompt = DISCOVERY_SYNTHESIS_PROMPT.format(
         path="\n".join(path_info),
         connections=connections_info,
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.MULTIHOP_MODEL,
@@ -535,10 +523,10 @@ async def synthesize_discovery(
             temperature=0.5,
             max_tokens=800,
         )
-        
+
         content = response.choices[0].message.content
         result = json.loads(content)
-        
+
         return DiscoveryInsight(
             title=result.get("title", "Discovery"),
             description=result.get("description", ""),
@@ -547,7 +535,7 @@ async def synthesize_discovery(
             confidence=result.get("confidence", 0.5),
             evidence=result.get("evidence", []),
         )
-        
+
     except Exception as e:
         log.warning(f"Discovery synthesis failed: {e}")
         return DiscoveryInsight(
@@ -565,17 +553,17 @@ def create_discovery_session(
     user_id: str,
     starting_doc_id: str,
     flow_type: DiscoveryFlowType = DiscoveryFlowType.EXPLORE_RELATED,
-    target_doc_id: Optional[str] = None,
+    target_doc_id: str | None = None,
 ) -> DiscoverySession:
     """
     Create a new discovery session.
-    
+
     Args:
         user_id: User ID
         starting_doc_id: Starting document ID
         flow_type: Type of discovery flow
         target_doc_id: Optional target document ID
-    
+
     Returns:
         DiscoverySession instance
     """
@@ -596,12 +584,12 @@ def advance_session(
 ) -> DiscoverySession:
     """
     Advance a discovery session to the next step.
-    
+
     Args:
         session: Current session
         next_doc_id: Next document ID
         connection: Connection info dict
-    
+
     Returns:
         Updated session
     """
@@ -610,22 +598,22 @@ def advance_session(
     session.steps_taken += 1
     session.documents_explored += 1
     session.connections_found.append(connection)
-    
+
     return session
 
 
 def complete_session(session: DiscoverySession) -> DiscoverySession:
     """
     Mark a discovery session as completed.
-    
+
     Args:
         session: Session to complete
-    
+
     Returns:
         Updated session
     """
     session.status = DiscoveryStatus.COMPLETED
-    session.completed_at = datetime.now(timezone.utc)
+    session.completed_at = datetime.now(UTC)
     return session
 
 
@@ -638,23 +626,23 @@ def get_strongest_connections(
 ) -> list[tuple[str, float]]:
     """
     Get strongest connections for a document.
-    
+
     Args:
         graph: Document graph
         doc_id: Source document ID
         limit: Maximum connections to return
-    
+
     Returns:
         List of (target_id, weight) tuples
     """
     connections = []
-    
+
     for edge in graph.edges:
         if edge.source_id == doc_id:
             connections.append((edge.target_id, edge.weight))
         elif edge.target_id == doc_id:
             connections.append((edge.source_id, edge.weight))
-    
+
     # Sort by weight and return top
     connections.sort(key=lambda x: x[1], reverse=True)
     return connections[:limit]
@@ -665,21 +653,21 @@ def find_bridging_documents(
 ) -> list[str]:
     """
     Find documents that connect otherwise unrelated topics.
-    
+
     Args:
         graph: Document graph
-    
+
     Returns:
         List of bridging document IDs
     """
     # A bridging document connects to multiple disconnected components
     # This is a simplified implementation
     bridging = []
-    
+
     for node in graph.nodes:
         # Documents with high connection count and diverse connections
         neighbors = graph.get_neighbors(node.id)
-        
+
         # Check for diverse relationship types
         edge_types = set()
         for edge in graph.edges:
@@ -687,38 +675,38 @@ def find_bridging_documents(
                 edge_types.add(edge.relationship_type)
             elif edge.target_id == node.id:
                 edge_types.add(edge.relationship_type)
-        
+
         # High connectivity + diverse types = bridging
         if len(neighbors) >= 3 and len(edge_types) >= 2:
             bridging.append(node.id)
-    
+
     return bridging
 
 
 def compute_graph_metrics(graph: DocumentGraph) -> dict:
     """
     Compute metrics for a document graph.
-    
+
     Args:
         graph: Document graph
-    
+
     Returns:
         Dict with graph metrics
     """
     total_nodes = len(graph.nodes)
     total_edges = len(graph.edges)
-    
+
     # Average connections per node
     avg_connections = (total_edges * 2 / total_nodes) if total_nodes > 0 else 0
-    
+
     # Edge type distribution
     edge_types: dict[str, int] = {}
     for edge in graph.edges:
         edge_types[edge.relationship_type] = edge_types.get(edge.relationship_type, 0) + 1
-    
+
     # Average weight
     avg_weight = sum(e.weight for e in graph.edges) / total_edges if total_edges > 0 else 0
-    
+
     return {
         "total_nodes": total_nodes,
         "total_edges": total_edges,

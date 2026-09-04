@@ -11,14 +11,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from eval.metrics import (  # noqa: E402
+from eval.metrics import (
     calculate_fallback_accuracy,
     calculate_keyword_coverage,
     calculate_source_hit,
     has_citation,
     summarize_results,
 )
-from eval.reporting import (  # noqa: E402
+from eval.reporting import (
     build_report,
     write_json_report,
     write_markdown_report,
@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     _HAS_RAGAS = False
 
 
-DEFAULT_DATASET = ROOT / "eval" / "Orivory_eval_dataset.json"
+DEFAULT_DATASET = ROOT / "eval" / "orivory_eval_dataset.json"
 DEFAULT_SAMPLE_DOCS = ROOT / "sample_docs"
 DEFAULT_OUTPUT_DIR = ROOT / "eval" / "results"
 FALLBACK_ANSWER = (

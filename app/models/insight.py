@@ -9,26 +9,26 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import (
-    String,
-    Float,
-    Integer,
-    Boolean,
     TIMESTAMP,
+    Boolean,
+    Float,
     ForeignKey,
     Index,
+    Integer,
+    String,
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 
-class InsightTypeEnum(str, Enum):
+class InsightTypeEnum(StrEnum):
     """Insight type enumeration for database storage."""
     CONNECTION = "connection"
     CONTRADICTION = "contradiction"
@@ -39,14 +39,14 @@ class InsightTypeEnum(str, Enum):
     SYNTHESIS = "synthesis"
 
 
-class InsightSurpriseLevelEnum(str, Enum):
+class InsightSurpriseLevelEnum(StrEnum):
     """Surprise level for database storage."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
-class InsightStatusEnum(str, Enum):
+class InsightStatusEnum(StrEnum):
     """Insight status for database storage."""
     NEW = "new"
     SHOWN = "shown"
@@ -57,15 +57,15 @@ class InsightStatusEnum(str, Enum):
 
 class InsightCard(Base):
     """Insight card model for proactive discovery feature."""
-    
+
     __tablename__ = "insight_cards"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    
+
     # Ownership
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -73,7 +73,7 @@ class InsightCard(Base):
         nullable=False,
         index=True,
     )
-    
+
     # Insight content
     title: Mapped[str] = mapped_column(
         String(500),
@@ -94,7 +94,7 @@ class InsightCard(Base):
         nullable=False,
         default="",
     )
-    
+
     # Source documents (JSON array of document references)
     source_docs: Mapped[list[dict]] = mapped_column(
         JSONB,
@@ -106,7 +106,7 @@ class InsightCard(Base):
         nullable=False,
         server_default="1",
     )
-    
+
     # Metadata
     surprise_level: Mapped[str] = mapped_column(
         String(16),
@@ -118,23 +118,23 @@ class InsightCard(Base):
         nullable=False,
         server_default="0.5",
     )
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text("NOW()"),
         index=True,
     )
     shown_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=True,
     )
     dismissed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP,
+        TIMESTAMP(timezone=True),
         nullable=True,
     )
-    
+
     # Status
     status: Mapped[str] = mapped_column(
         String(32),
@@ -142,7 +142,7 @@ class InsightCard(Base):
         server_default="new",
         index=True,
     )
-    
+
     # User feedback
     helpful: Mapped[bool | None] = mapped_column(
         Boolean,
@@ -152,7 +152,7 @@ class InsightCard(Base):
         String(1000),
         nullable=True,
     )
-    
+
     # Analytics
     shown_count: Mapped[int] = mapped_column(
         Integer,
@@ -164,13 +164,13 @@ class InsightCard(Base):
         nullable=False,
         server_default="0.5",
     )
-    
+
     # Learned preferences (JSONB for flexibility)
     user_preferences_snapshot: Mapped[dict | None] = mapped_column(
         JSONB,
         nullable=True,
     )
-    
+
     # Indexes for common queries
     __table_args__ = (
         Index("ix_insight_cards_user_created", "user_id", "created_at"),
@@ -178,10 +178,10 @@ class InsightCard(Base):
         Index("ix_insight_cards_user_type", "user_id", "insight_type"),
         Index("ix_insight_cards_user_relevance", "user_id", "relevance_score"),
     )
-    
+
     def __repr__(self) -> str:
         return f"<InsightCard {self.id} type={self.insight_type} status={self.status}>"
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary for API response."""
         return {
@@ -204,7 +204,7 @@ class InsightCard(Base):
             "shown_count": self.shown_count,
             "relevance_score": self.relevance_score,
         }
-    
+
     @property
     def type_emoji(self) -> str:
         """Get emoji for insight type."""
@@ -218,7 +218,7 @@ class InsightCard(Base):
             "synthesis": "💡",
         }
         return emoji_map.get(self.insight_type, "💡")
-    
+
     @property
     def display_title(self) -> str:
         """Get title with emoji prefix."""

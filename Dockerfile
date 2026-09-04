@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Match .python-version / pyproject requires-python (>=3.13)
+FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

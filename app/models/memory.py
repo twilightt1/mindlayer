@@ -23,25 +23,25 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    String,
-    Text,
-    Float,
-    Boolean,
-    Integer,
     TIMESTAMP,
+    Boolean,
+    Float,
     ForeignKey,
     Index,
+    Integer,
+    String,
+    Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.entity import MemoryEntity
     from app.models.source import MemorySource
+    from app.models.user import User
 
 
 class Memory(Base):
@@ -80,11 +80,11 @@ class Memory(Base):
     # Free-form metadata
     extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
 
-    user:    Mapped["User"]              = relationship(back_populates="memories")
-    parent:  Mapped["Memory | None"]     = relationship("Memory", remote_side="Memory.id", back_populates="children")
-    children: Mapped[list["Memory"]]    = relationship("Memory", back_populates="parent", cascade="all, delete-orphan")
-    entity_links: Mapped[list["MemoryEntity"]] = relationship(back_populates="memory", cascade="all, delete-orphan")
-    source_links: Mapped[list["MemorySource"]] = relationship(back_populates="memory", cascade="all, delete-orphan")
+    user:    Mapped[User]              = relationship(back_populates="memories")
+    parent:  Mapped[Memory | None]     = relationship("Memory", remote_side="Memory.id", back_populates="children")
+    children: Mapped[list[Memory]]    = relationship("Memory", back_populates="parent", cascade="all, delete-orphan")
+    entity_links: Mapped[list[MemoryEntity]] = relationship(back_populates="memory", cascade="all, delete-orphan")
+    source_links: Mapped[list[MemorySource]] = relationship(back_populates="memory", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_memories_user_captured", "user_id", "captured_at"),

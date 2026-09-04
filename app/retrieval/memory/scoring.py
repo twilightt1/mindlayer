@@ -15,8 +15,7 @@ the user *why* a memory was selected (``match_reasons: [...]``).
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 # ── time-decay scoring ──────────────────────────────────────────────────────
 
@@ -42,13 +41,13 @@ def time_decay_score(
     Returns ``(new_score, match_reasons)``.
     """
     if now is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
     # Normalize to UTC-aware datetimes so subtraction works
     if captured_at.tzinfo is None:
-        captured_at = captured_at.replace(tzinfo=timezone.utc)
+        captured_at = captured_at.replace(tzinfo=UTC)
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
 
     age_seconds = max(0.0, (now - captured_at).total_seconds())
     age_days = age_seconds / 86400.0

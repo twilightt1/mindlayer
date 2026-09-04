@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.agents.state import AgentState
+import pytest
+
 from app.agents.answer_agent import answer_agent
+from app.agents.state import AgentState
+
 
 @pytest.mark.asyncio
 @patch("app.agents.answer_agent._get_client")

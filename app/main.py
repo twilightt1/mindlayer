@@ -1,12 +1,13 @@
-import structlog
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette import status
 
-from app.config import settings
 from app.api.v1.router import api_router
+from app.config import settings
 from app.middleware.logging_middleware import LoggingMiddleware
 
 log = structlog.get_logger()

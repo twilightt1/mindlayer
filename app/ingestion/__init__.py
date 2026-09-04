@@ -15,10 +15,10 @@ The connector layer is the only place that knows the specifics of a
 remote system. Everything else (the dispatcher, the API, the agent)
 talks to connectors via the abstract `BaseConnector` interface.
 """
-from app.ingestion.types import ConnectorItem, SyncResult
 from app.ingestion.base import BaseConnector
-from app.ingestion.dispatcher import SourceSyncService
 from app.ingestion.connectors.registry import get_connector_for_source
+from app.ingestion.dispatcher import SourceSyncService
+from app.ingestion.types import ConnectorItem, SyncResult
 
 __all__ = [
     "ConnectorItem",

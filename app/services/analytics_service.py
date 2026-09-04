@@ -7,15 +7,22 @@ Stores and aggregates user analytics events.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from uuid import UUID
-from typing import Any
+from datetime import UTC, datetime
 
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    and_,
+    func,
+    select,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, insert
 
 from app.database import Base
-from sqlalchemy import Column, String, Integer, Float, JSON, DateTime, Index
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +54,7 @@ class FeatureUsage(Base):
     action: str = Column(String(64), nullable=False)
     count: int = Column(Integer, server_default="1", nullable=False)
     last_used: datetime = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    
+
     __table_args__ = (
         Index("ix_feature_usage_user_feature", "user_id", "feature"),
     )
@@ -71,13 +78,13 @@ async def record_events(
             "path": event.get("properties", {}).get("url", ""),
             "timestamp": datetime.fromtimestamp(
                 event.get("timestamp", 0) / 1000,
-                tz=timezone.utc
-            ) if event.get("timestamp") else datetime.now(timezone.utc),
+                tz=UTC
+            ) if event.get("timestamp") else datetime.now(UTC),
         })
 
     db.add_all([AnalyticsEvent(**r) for r in records])
     await db.commit()
-    
+
     log.info(f"Recorded {len(records)} analytics events for user {user_id}")
     return len(records)
 
@@ -100,17 +107,17 @@ async def record_feature_usage(
         )
     )
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         existing.count += 1
-        existing.last_used = datetime.now(timezone.utc)
+        existing.last_used = datetime.now(UTC)
     else:
         db.add(FeatureUsage(
             user_id=user_id,
             feature=feature,
             action=action,
         ))
-    
+
     await db.commit()
 
 
@@ -120,8 +127,8 @@ async def get_feature_usage(
     days: int = 7,
 ) -> list[dict]:
     """Get feature usage for user in last N days."""
-    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=days)
-    
+    cutoff = datetime.now(UTC) - __import__("datetime").timedelta(days=days)
+
     result = await db.execute(
         select(
             FeatureUsage.feature,
@@ -137,7 +144,7 @@ async def get_feature_usage(
         .group_by(FeatureUsage.feature, FeatureUsage.action)
         .order_by(func.sum(FeatureUsage.count).desc())
     )
-    
+
     return [
         {
             "feature": row.feature,
@@ -154,8 +161,8 @@ async def get_page_views(
     days: int = 7,
 ) -> list[dict]:
     """Get page views for user in last N days."""
-    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=days)
-    
+    cutoff = datetime.now(UTC) - __import__("datetime").timedelta(days=days)
+
     result = await db.execute(
         select(
             AnalyticsEvent.path,
@@ -171,7 +178,7 @@ async def get_page_views(
         .group_by(AnalyticsEvent.path)
         .order_by(func.count().desc())
     )
-    
+
     return [
         {"path": row.path, "views": row.views}
         for row in result.all()
@@ -183,8 +190,8 @@ async def get_daily_active_users(
     days: int = 7,
 ) -> list[dict]:
     """Get daily active users count."""
-    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=days)
-    
+    cutoff = datetime.now(UTC) - __import__("datetime").timedelta(days=days)
+
     result = await db.execute(
         select(
             func.date(AnalyticsEvent.timestamp).label("date"),
@@ -194,7 +201,7 @@ async def get_daily_active_users(
         .group_by(func.date(AnalyticsEvent.timestamp))
         .order_by(func.date(AnalyticsEvent.timestamp))
     )
-    
+
     return [
         {"date": str(row.date), "active_users": row.dau}
         for row in result.all()

@@ -14,8 +14,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.agents.llm_parsing import parse_llm_json_object
 from app.config import settings
 from app.models.memory import Memory
@@ -26,19 +27,6 @@ from app.retrieval.memory.context import format_personal_context as _format_cont
 __all__ = ["rewrite_query", "_format_context", "_fallback"]
 
 log = logging.getLogger(__name__)
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    """Lazily construct the async OpenAI-compatible client."""
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 # System prompt: Vietnamese-friendly, structured JSON output.
@@ -75,9 +63,6 @@ Input query: "what did she say about Atlas?"
 Input context: "Mom prefers Project Atlas over Zephyr. 2026-05-12."
 Output: {{"rewritten_query": "What did Mom say about Project Atlas?", "entities": [{{"name": "Mom", "type": "person"}}, {{"name": "Project Atlas", "type": "project"}}], "reasoning": "Resolved 'she' -> 'Mom' and 'Atlas' -> 'Project Atlas' from context."}}
 ## Output:"""
-
-
-
 
 
 def _fallback(query: str, error: str, raw_preview: str | None = None) -> dict[str, Any]:

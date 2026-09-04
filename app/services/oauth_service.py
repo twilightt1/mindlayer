@@ -1,7 +1,9 @@
 """Google OAuth 2.0 via Authlib + token refresh for Orivory ingestion."""
 import time
+
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
+
 from app.config import settings
 
 GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"

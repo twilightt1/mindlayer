@@ -1,12 +1,14 @@
 import pytest
+
 from app.utils.chunker import (
+    PARENT_SIZE,
     _recursive_split,
     _split_by_headings,
     _split_parents,
     build_parent_child_chunks,
     extract_text,
-    PARENT_SIZE,
 )
+
 
 @pytest.mark.unit
 def test_recursive_split():

@@ -2,7 +2,12 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -16,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
@@ -24,41 +29,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run targeted lint
-        run: |
-          python -m ruff check \
-            app/main.py \
-            app/config.py \
-            app/agents \
-            app/services/health_service.py \
-            app/services/diagnostics_service.py \
-            app/storage.py \
-            app/tasks/ingestion_tasks.py \
-            app/retrieval \
-            app/api/v1/chat.py \
-            app/api/v1/sse.py \
-            app/api/v1/admin.py \
-            eval/run_eval.py \
-            eval/live_api_eval.py \
-            eval/metrics.py \
-            eval/reporting.py \
-            tests/api/test_health_api.py \
-            tests/api/test_sse.py \
-            tests/api/test_chat_streaming.py \
-            tests/api/test_admin_diagnostics.py \
-            tests/api/conftest.py \
-            tests/rag/test_graph_routing.py \
-            tests/rag/test_evaluation.py \
-            tests/rag/test_integration.py \
-            tests/rag/test_ai_hardening.py \
-            tests/rag/conftest.py \
-            tests/services/test_health_service.py \
-            tests/services/test_diagnostics_service.py \
-            tests/services/conftest.py \
-            tests/eval/test_eval_metrics.py \
-            tests/eval/test_live_api_eval.py \
-            tests/config/test_settings_validation.py \
-            tests/integration
+      - name: Run full-repo lint
+        run: python -m ruff check app tests eval scripts
 
       - name: Run API tests
         run: python -m pytest --confcutdir=tests/api tests/api/test_health_api.py tests/api/test_sse.py tests/api/test_chat_streaming.py tests/api/test_admin_diagnostics.py -q
@@ -93,6 +65,36 @@ jobs:
       - name: Validate production Docker Compose config
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: frontend
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: pnpm run build
+
   lint-full:
     name: Full-repo ruff
     runs-on: ubuntu-latest
@@ -104,7 +106,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
@@ -126,7 +128,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
@@ -186,7 +188,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies

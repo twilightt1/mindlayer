@@ -28,3 +28,5 @@ eval/results/
 
 **/.next/*
 **/node_modules/
+# runtime artifacts
+eval/costs.db

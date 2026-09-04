@@ -2,19 +2,20 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Boolean, TIMESTAMP, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import TIMESTAMP, Boolean, String, text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
     from app.models.email_verification import EmailVerification
-    from app.models.password_reset_session import PasswordResetSession
-    from app.models.user_quota import UserQuota
-    from app.models.memory import Memory
     from app.models.entity import Entity
+    from app.models.memory import Memory
+    from app.models.password_reset_session import PasswordResetSession
     from app.models.source import Source
+    from app.models.user_quota import UserQuota
 
 
 class User(Base):

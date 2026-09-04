@@ -123,7 +123,7 @@ class RunTracker:
         name: str,
         tags: dict[str, str] | None = None,
         run_id: str | None = None,
-    ) -> Generator[dict[str, Any], None, None]:
+    ) -> Generator[dict[str, Any]]:
         rid = run_id or f"{name}-{uuid.uuid4().hex[:8]}"
         started = _utcnow_iso()
         with self._lock:
@@ -272,7 +272,7 @@ class RunTracker:
 
 
 @contextlib.contextmanager
-def stopwatch() -> Generator[dict[str, float], None, None]:
+def stopwatch() -> Generator[dict[str, float]]:
     """Time a code block. Writes total_ms into the dict."""
     out: dict[str, float] = {}
     start = time.perf_counter()

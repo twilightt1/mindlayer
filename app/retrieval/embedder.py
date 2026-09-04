@@ -91,7 +91,7 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
         return embeddings
     except Exception as e:
         log.error("Failed to get embeddings", exc_info=True)
-        raise ValueError(f"Failed to get embeddings: {e}")
+        raise ValueError(f"Failed to get embeddings: {e}") from e
 
 
 async def embed_query(query: str) -> list[float]:
@@ -116,4 +116,4 @@ def embed_texts_sync(texts: list[str]) -> list[list[float]]:
         return embeddings
     except Exception as e:
         log.error("Failed to get embeddings (sync)", exc_info=True)
-        raise ValueError(f"Failed to get embeddings: {e}")
+        raise ValueError(f"Failed to get embeddings: {e}") from e

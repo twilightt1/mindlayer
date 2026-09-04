@@ -1,3 +1,5 @@
+import pytest
+
 from app.agents.graph import (
     MAX_RETRIES,
     _record_generation_retry_limit,
@@ -8,8 +10,6 @@ from app.agents.graph import (
     _route_after_grade_docs,
     _route_after_grade_gen,
 )
-
-import pytest
 
 pytestmark = pytest.mark.rag
 

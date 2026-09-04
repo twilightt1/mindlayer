@@ -10,6 +10,7 @@ Splitting strategy:
   - Plain text / no headings       → RecursiveCharacterTextSplitter fallback
 """
 from __future__ import annotations
+
 import io
 import logging
 import re
@@ -41,7 +42,7 @@ class ChildChunk:
     metadata:  dict = field(default_factory=dict)
 
 
-                                                                                
+
 
 def extract_text(file_bytes: bytes, mime_type: str | None) -> str:
     mime = (mime_type or "").lower()
@@ -86,11 +87,11 @@ def _extract_docx(data: bytes) -> str:
     return "\n\n".join(lines)
 
 
-                                                                                
+
 
 def _recursive_split(text: str, size: int, overlap: int) -> list[str]:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-                                                                     
+
     sp = RecursiveCharacterTextSplitter(
         chunk_size=size,
         chunk_overlap=overlap,
@@ -118,7 +119,7 @@ def _split_parents(text: str) -> list[str]:
     return _recursive_split(text, PARENT_SIZE, PARENT_OVERLAP)
 
 
-                                                                                
+
 
 def build_parent_child_chunks(
     text: str,

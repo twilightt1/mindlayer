@@ -21,24 +21,24 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    TIMESTAMP,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
     String,
     Text,
-    Float,
-    Integer,
-    TIMESTAMP,
-    ForeignKey,
     UniqueConstraint,
-    Index,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.memory import Memory
+    from app.models.user import User
 
 
 # Allowed entity_type values. Kept as constants so the agent can pick
@@ -89,17 +89,17 @@ class Entity(Base):
     created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
 
-    user:           Mapped["User"]                  = relationship(back_populates="entities")
-    memory_links:   Mapped[list["MemoryEntity"]]    = relationship(back_populates="entity", cascade="all, delete-orphan")
+    user:           Mapped[User]                  = relationship(back_populates="entities")
+    memory_links:   Mapped[list[MemoryEntity]]    = relationship(back_populates="entity", cascade="all, delete-orphan")
 
     # Source relations (this entity → other entities)
-    outgoing_relations: Mapped[list["Relation"]] = relationship(
+    outgoing_relations: Mapped[list[Relation]] = relationship(
         "Relation",
         foreign_keys="Relation.source_entity_id",
         back_populates="source",
         cascade="all, delete-orphan",
     )
-    incoming_relations: Mapped[list["Relation"]] = relationship(
+    incoming_relations: Mapped[list[Relation]] = relationship(
         "Relation",
         foreign_keys="Relation.target_entity_id",
         back_populates="target",
@@ -128,8 +128,8 @@ class Relation(Base):
     created_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     updated_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
 
-    source: Mapped["Entity"] = relationship("Entity", foreign_keys=[source_entity_id], back_populates="outgoing_relations")
-    target: Mapped["Entity"] = relationship("Entity", foreign_keys=[target_entity_id], back_populates="incoming_relations")
+    source: Mapped[Entity] = relationship("Entity", foreign_keys=[source_entity_id], back_populates="outgoing_relations")
+    target: Mapped[Entity] = relationship("Entity", foreign_keys=[target_entity_id], back_populates="incoming_relations")
 
     __table_args__ = (
         UniqueConstraint("user_id", "source_entity_id", "target_entity_id", "relation", name="uq_relations_user_pair_type"),
@@ -148,8 +148,8 @@ class MemoryEntity(Base):
     salience:  Mapped[float]     = mapped_column(Float, server_default="0.5", nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
 
-    memory: Mapped["Memory"] = relationship(back_populates="entity_links")
-    entity: Mapped["Entity"] = relationship(back_populates="memory_links")
+    memory: Mapped[Memory] = relationship(back_populates="entity_links")
+    entity: Mapped[Entity] = relationship(back_populates="memory_links")
 
     __table_args__ = (
         UniqueConstraint("memory_id", "entity_id", name="uq_memory_entity"),

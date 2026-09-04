@@ -15,8 +15,9 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from openai import AsyncOpenAI
-
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.config import settings
 
 if TYPE_CHECKING:
@@ -25,18 +26,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
-
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
 
 
 # ─── Prompt Templates ─────────────────────────────────────────────────────────
@@ -96,24 +85,24 @@ class HyDEResult:
 async def generate_hypothetical_document(query: str) -> HypotheticalDocument | None:
     """
     Generate a hypothetical document from a query.
-    
+
     This creates a "fake" document that would answer the query,
     which can then be embedded and used for retrieval.
-    
+
     Args:
         query: The user's search query
-    
+
     Returns:
         HypotheticalDocument with passages and key concepts
     """
-    import time
     import json
-    
+    import time
+
     start_time = time.time()
     client = _get_client()
-    
+
     prompt = HYDE_GENERATION_PROMPT.format(query=query)
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.HYDE_MODEL,
@@ -122,9 +111,9 @@ async def generate_hypothetical_document(query: str) -> HypotheticalDocument | N
             temperature=0.7,  # Some creativity for varied passages
             max_tokens=500,
         )
-        
+
         content = response.choices[0].message.content
-        
+
         # Parse JSON response
         try:
             data = json.loads(content)
@@ -143,22 +132,22 @@ async def generate_hypothetical_document(query: str) -> HypotheticalDocument | N
                 else:
                     log.warning(f"HyDE: Could not parse response: {content[:100]}")
                     return None
-        
+
         passages = data.get("passages", [])
         key_concepts = data.get("key_concepts", [])
-        
+
         # Combine passages into single text
         combined = " ".join(passages)
-        
+
         generation_time = (time.time() - start_time) * 1000
         log.info(f"HyDE: Generated {len(passages)} passages in {generation_time:.1f}ms")
-        
+
         return HypotheticalDocument(
             passages=passages,
             key_concepts=key_concepts,
             combined_text=combined,
         )
-        
+
     except Exception as e:
         log.warning(f"HyDE generation failed: {e}")
         return None
@@ -167,18 +156,18 @@ async def generate_hypothetical_document(query: str) -> HypotheticalDocument | N
 async def refine_passage(query: str, passage: str) -> str:
     """
     Refine a hypothetical passage to be more specific.
-    
+
     Args:
         query: The original query
         passage: The passage to refine
-    
+
     Returns:
         Refined passage text
     """
     client = _get_client()
-    
+
     prompt = HYDE_REFINEMENT_PROMPT.format(query=query, passage=passage)
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.HYDE_MODEL,
@@ -186,9 +175,9 @@ async def refine_passage(query: str, passage: str) -> str:
             temperature=0.3,
             max_tokens=300,
         )
-        
+
         return response.choices[0].message.content.strip()
-        
+
     except Exception as e:
         log.warning(f"HyDE refinement failed: {e}")
         return passage  # Return original on error
@@ -199,34 +188,34 @@ async def refine_passage(query: str, passage: str) -> str:
 async def hyde_agent(state: AgentState) -> AgentState:
     """
     HyDE agent node for LangGraph workflow.
-    
+
     This node:
     1. Generates hypothetical document from query
     2. Stores it in state for downstream embedding
     3. Falls back gracefully if HyDE is disabled or fails
-    
+
     Args:
         state: Current agent state
-    
+
     Returns:
         Updated agent state with HyDE results
     """
     import time
-    
+
     state.setdefault("agent_trace", {})
     state.setdefault("hyde_trace", {})
-    
+
     start_time = time.time()
-    
+
     # Check if HyDE is enabled
     if not settings.HYDE_ENABLED:
         log.debug("HyDE disabled, skipping")
         state["hyde_trace"]["enabled"] = False
         state["hyde_result"] = None
         return state
-    
+
     query = state.get("rewritten_query", state.get("query", ""))
-    
+
     # Skip HyDE for certain query types
     query_type = state.get("query_type", "")
     if query_type in ("chitchat", "save_note"):
@@ -235,14 +224,14 @@ async def hyde_agent(state: AgentState) -> AgentState:
         state["hyde_trace"]["skipped_reason"] = f"query_type={query_type}"
         state["hyde_result"] = None
         return state
-    
+
     # Generate hypothetical document
     log.info(f"HyDE: Generating hypothetical document for query: {query[:50]}...")
-    
+
     hyde_doc = await generate_hypothetical_document(query)
-    
+
     generation_time = (time.time() - start_time) * 1000
-    
+
     if hyde_doc:
         state["hyde_result"] = {
             "passages": hyde_doc.passages,
@@ -253,16 +242,16 @@ async def hyde_agent(state: AgentState) -> AgentState:
         state["hyde_trace"]["passage_count"] = len(hyde_doc.passages)
         state["hyde_trace"]["generation_latency_ms"] = generation_time
         state["hyde_trace"]["key_concepts"] = hyde_doc.key_concepts
-        
+
         log.info(f"HyDE: Generated {len(hyde_doc.passages)} passages with concepts: {hyde_doc.key_concepts}")
     else:
         state["hyde_result"] = None
         state["hyde_trace"]["enabled"] = True
         state["hyde_trace"]["generation_failed"] = True
         state["hyde_trace"]["generation_latency_ms"] = generation_time
-        
+
         log.warning("HyDE: Generation failed, continuing without HyDE")
-    
+
     return state
 
 
@@ -271,17 +260,17 @@ async def hyde_agent(state: AgentState) -> AgentState:
 async def get_hyde_embeddings(texts: list[str]) -> list[list[float]]:
     """
     Get embeddings for HyDE hypothetical document passages.
-    
+
     This can be used by the retrieval agent to enhance embedding-based search.
-    
+
     Args:
         texts: List of text passages to embed
-    
+
     Returns:
         List of embedding vectors
     """
     from app.retrieval.embedder import embed_texts
-    
+
     try:
         embeddings = await embed_texts(texts)
         return embeddings

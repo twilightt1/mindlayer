@@ -88,7 +88,10 @@ def _ingest(db, document_id: str) -> None:
     from app.retrieval.bm25_retriever import bm25_retriever
     from app.retrieval.parent_store import store_parents_sync
     from app.retrieval.retrieval_cache import invalidate_query_cache_sync
-    from app.retrieval.vector_retriever import delete_document_chunks_sync, upsert_chunks_sync
+    from app.retrieval.vector_retriever import (
+        delete_document_chunks_sync,
+        upsert_chunks_sync,
+    )
     from app.utils.chunker import build_parent_child_chunks, extract_text
 
     doc = db.get(Document, document_id)
@@ -207,7 +210,7 @@ def _ingest(db, document_id: str) -> None:
     # via the reindex task and must not fail ingestion.
     try:
         _project_document_to_memories(db, document_id, parents)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning(
             "Doc→memory projection failed",
             extra={"doc_id": document_id, "conversation_id": conversation_id, "error": str(exc)},

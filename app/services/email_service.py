@@ -1,7 +1,9 @@
 """SendGrid email service."""
 import logging
+
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, From, To, Subject, HtmlContent
+from sendgrid.helpers.mail import From, HtmlContent, Mail, Subject, To
+
 from app.config import settings
 
 log = logging.getLogger(__name__)

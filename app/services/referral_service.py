@@ -6,17 +6,17 @@ Business logic for referral system.
 
 from __future__ import annotations
 
+import logging
 import secrets
 import string
-import logging
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
-from app.models.referral import ReferralCode, Referral, ReferralReward
+from app.models.referral import Referral, ReferralCode, ReferralReward
 
 if TYPE_CHECKING:
     pass
@@ -37,15 +37,15 @@ async def get_or_create_referral_code(db: AsyncSession, user_id: UUID) -> Referr
         select(ReferralCode).where(
             and_(
                 ReferralCode.user_id == user_id,
-                ReferralCode.is_active == True
+                ReferralCode.is_active
             )
         )
     )
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         return existing
-    
+
     # Create new code
     while True:
         code = generate_referral_code()
@@ -54,7 +54,7 @@ async def get_or_create_referral_code(db: AsyncSession, user_id: UUID) -> Referr
         )
         if not result.scalar_one_or_none():
             break
-    
+
     referral_code = ReferralCode(
         user_id=user_id,
         code=code,
@@ -64,7 +64,7 @@ async def get_or_create_referral_code(db: AsyncSession, user_id: UUID) -> Referr
     db.add(referral_code)
     await db.commit()
     await db.refresh(referral_code)
-    
+
     log.info(f"Created referral code {code} for user {user_id}")
     return referral_code
 
@@ -76,7 +76,7 @@ async def create_referral_link(
 ) -> Referral | None:
     """Create a pending referral link when user shares."""
     referral_code = await get_or_create_referral_code(db, referrer_id)
-    
+
     # Check if referral already exists
     result = await db.execute(
         select(Referral).where(
@@ -87,10 +87,10 @@ async def create_referral_link(
         )
     )
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         return existing
-    
+
     referral = Referral(
         referral_code_id=referral_code.id,
         referrer_id=referrer_id,
@@ -100,7 +100,7 @@ async def create_referral_link(
     db.add(referral)
     await db.commit()
     await db.refresh(referral)
-    
+
     log.info(f"Created referral: {referrer_id} -> {referee_email}")
     return referral
 
@@ -120,24 +120,24 @@ async def complete_referral(
         )
     )
     referral = result.scalar_one_or_none()
-    
+
     if not referral:
         log.info(f"No pending referral found for {referee_email}")
         return None
-    
+
     # Update referral
     referral.referee_id = referee_id
     referral.status = "completed"
-    referral.completed_at = datetime.now(timezone.utc)
-    
+    referral.completed_at = datetime.now(UTC)
+
     await db.commit()
     await db.refresh(referral)
-    
+
     log.info(f"Completed referral: {referral.referrer_id} -> {referee_id}")
-    
+
     # Create reward
     await create_referral_reward(db, referral)
-    
+
     return referral
 
 
@@ -150,13 +150,13 @@ async def create_referral_reward(db: AsyncSession, referral: Referral) -> Referr
         )
     )
     reward_count = result.scalar() or 0
-    
+
     # Tiered rewards
     if reward_count >= 4:
         reward_type, reward_value = "free_months", 3  # 3 months for 5+ referrals
     else:
         reward_type, reward_value = "free_months", 1  # 1 month for first 4
-    
+
     reward = ReferralReward(
         referral_id=referral.id,
         user_id=referral.referrer_id,
@@ -166,7 +166,7 @@ async def create_referral_reward(db: AsyncSession, referral: Referral) -> Referr
     db.add(reward)
     await db.commit()
     await db.refresh(reward)
-    
+
     log.info(f"Created reward: {reward_value} {reward_type} for user {referral.referrer_id}")
     return reward
 
@@ -183,7 +183,7 @@ async def get_referral_stats(db: AsyncSession, user_id: UUID) -> dict:
         )
     )
     total_referrals = result.scalar() or 0
-    
+
     # Pending referrals
     result = await db.execute(
         select(func.count(Referral.id)).where(
@@ -194,21 +194,21 @@ async def get_referral_stats(db: AsyncSession, user_id: UUID) -> dict:
         )
     )
     pending_referrals = result.scalar() or 0
-    
+
     # Unclaimed rewards
     result = await db.execute(
         select(func.count(ReferralReward.id)).where(
             and_(
                 ReferralReward.user_id == user_id,
-                ReferralReward.is_claimed == False
+                not ReferralReward.is_claimed
             )
         )
     )
     unclaimed_rewards = result.scalar() or 0
-    
+
     # Get referral code
     referral_code = await get_or_create_referral_code(db, user_id)
-    
+
     return {
         "total_referrals": total_referrals,
         "pending_referrals": pending_referrals,
@@ -230,12 +230,12 @@ async def get_referral_leaderboard(db: AsyncSession, limit: int = 10) -> list[di
         .order_by(func.count(Referral.id).desc())
         .limit(limit)
     )
-    
+
     leaderboard = []
     for row in result.all():
         leaderboard.append({
             "user_id": str(row.referrer_id),
             "referral_count": row.count
         })
-    
+
     return leaderboard

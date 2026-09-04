@@ -43,7 +43,7 @@ class BM25Retriever:
             redis = await get_redis()
             raw = await redis.get(_GEN_KEY.format(cid=conversation_id))
             return int(raw) if raw is not None else 0
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("BM25 generation read failed", extra={"conversation_id": conversation_id, "error": str(exc)})
             return None
 
@@ -54,7 +54,7 @@ class BM25Retriever:
 
             redis = await get_redis()
             await redis.incr(_GEN_KEY.format(cid=conversation_id))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("BM25 generation bump failed", extra={"conversation_id": conversation_id, "error": str(exc)})
 
     @staticmethod
@@ -66,7 +66,7 @@ class BM25Retriever:
 
             r = redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
             r.incr(_GEN_KEY.format(cid=conversation_id))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("BM25 generation bump failed", extra={"conversation_id": conversation_id, "error": str(exc)})
 
     # ── lifecycle ───────────────────────────────────────────────────────

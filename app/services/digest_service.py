@@ -15,7 +15,7 @@ LLM cost:
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -87,7 +87,7 @@ async def build_digest(
     window_days: int = DEFAULT_WINDOW_DAYS,
     now: datetime | None = None,
 ) -> DigestResponse:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     window_start = now - timedelta(days=window_days)
 
     # ── recent window ────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ async def build_digest(
     for memory in old_rows:
         captured = memory.captured_at
         if captured.tzinfo is None:
-            captured = captured.replace(tzinfo=timezone.utc)
+            captured = captured.replace(tzinfo=UTC)
         if _same_calendar_day(captured, now, RESURFACE_DAY_TOLERANCE):
             age_days = (now - captured).days
             resurfaced.append(

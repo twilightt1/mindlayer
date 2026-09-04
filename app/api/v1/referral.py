@@ -11,20 +11,18 @@ Endpoints for referral system:
 from __future__ import annotations
 
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
 from app.services.referral_service import (
-    get_or_create_referral_code,
-    get_referral_stats,
     create_referral_link,
+    get_or_create_referral_code,
     get_referral_leaderboard,
+    get_referral_stats,
 )
 from app.utils.dependencies import get_current_verified_user
 
@@ -96,11 +94,11 @@ async def share_referral(
     # Don't let users refer themselves
     if body.email.lower() == current_user.email.lower():
         raise HTTPException(status_code=400, detail="Cannot refer yourself")
-    
+
     await create_referral_link(db, current_user.id, body.email)
-    
+
     code = await get_or_create_referral_code(db, current_user.id)
-    
+
     return ShareReferralResponse(
         success=True,
         message=f"Referral link created for {body.email}",
@@ -110,9 +108,10 @@ async def share_referral(
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)
 async def get_leaderboard(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LeaderboardResponse:
-    """Get top referrers leaderboard."""
+    """Get top referrers leaderboard (authenticated — no raw user UUIDs to anon callers)."""
     entries = await get_referral_leaderboard(db)
     return LeaderboardResponse(
         entries=[LeaderboardEntry(**e) for e in entries]

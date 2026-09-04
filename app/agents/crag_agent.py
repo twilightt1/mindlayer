@@ -12,15 +12,16 @@ Reference: https://arxiv.org/abs/2401.15884
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import httpx
-from openai import AsyncOpenAI
 
+# Shared client seam: tests patch <module>._get_client, which rebinds
+# this module attribute and is picked up by all call sites below.
+from app.agents.llm_client import get_llm_client as _get_client
 from app.agents.llm_parsing import parse_llm_json_object
 from app.config import settings
 
@@ -37,23 +38,11 @@ FALLBACK_THRESHOLD = 0.5  # % of docs that must be >= PARTIAL to avoid fallback
 
 # ─── LLM Client ───────────────────────────────────────────────────────────────
 
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-        )
-    return _client
-
 
 # ─── Enums and Dataclasses ────────────────────────────────────────────────────
 
 
-class RetrievalGrade(str, Enum):
+class RetrievalGrade(StrEnum):
     """Classification levels for retrieved document relevance."""
     RELEVANT = "relevant"  # >= 0.7 - Directly answers query
     PARTIAL = "partial"  # 0.4-0.69 - Contains useful context
@@ -116,7 +105,7 @@ Classification Definitions:
               1. It's mixed with irrelevant content
               2. The relevant part requires extraction
               3. Confidence is low
-- "irrelevant": Document CONTRADICTS the question's premise OR is about a 
+- "irrelevant": Document CONTRADICTS the question's premise OR is about a
                 completely different topic. Should NOT be used.
 
 Question: {query}
@@ -163,24 +152,24 @@ def _classify_score(score: float) -> RetrievalGrade:
 def _calculate_consensus(scores: list[float]) -> float:
     """
     Calculate consensus score based on score agreement.
-    
+
     Uses coefficient of variation inverse: high agreement when scores are similar.
     Returns 0.0-1.0 where 1.0 = perfect agreement.
     """
     if len(scores) < 2:
         return 1.0
-    
+
     mean = sum(scores) / len(scores)
     variance = sum((s - mean) ** 2 for s in scores) / len(scores)
     std_dev = variance ** 0.5
-    
+
     # Handle edge case where all scores are identical
     if std_dev < 1e-8:
         return 1.0
-    
+
     # Coefficient of variation
     cv = std_dev / mean if mean > 0 else float('inf')
-    
+
     # Convert CV to consensus: high CV = low consensus
     # Using exponential decay: consensus = exp(-cv)
     consensus = max(0.0, min(1.0, 1.0 / (1.0 + cv)))
@@ -195,23 +184,23 @@ async def grade_single_document(
 ) -> GradedDocument:
     """
     Grade a single document using LLM.
-    
+
     Args:
         doc_id: Unique document identifier
         content: Document text content
         query: The user's search query
         source: Document source ("local" or "web")
-    
+
     Returns:
         GradedDocument with score, grade, and reasoning
     """
     client = _get_client()
-    
+
     # Truncate content to avoid token limits
     truncated_content = content[:2000] if len(content) > 2000 else content
-    
+
     prompt = GRADE_DOCS_PROMPT.format(query=query, chunk_content=truncated_content)
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.CRAG_GRADING_MODEL,
@@ -220,16 +209,16 @@ async def grade_single_document(
             temperature=0.1,
             max_tokens=500,
         )
-        
+
         result = parse_llm_json_object(response.choices[0].message.content)
-        
+
         if not result.ok:
             raise ValueError(f"Failed to parse LLM response: {result.error}")
-        
+
         data = result.data
         score = float(data.get("score", 0.0) if data else 0.0)
         classification = data.get("classification", "irrelevant") if data else "irrelevant"
-        
+
         # Map string classification to enum
         if classification == "relevant":
             grade = RetrievalGrade.RELEVANT
@@ -237,7 +226,7 @@ async def grade_single_document(
             grade = RetrievalGrade.PARTIAL
         else:
             grade = RetrievalGrade.IRRELEVANT
-        
+
         # Ensure score consistency with grade
         if grade == RetrievalGrade.RELEVANT and score < RELEVANT_SCORE_MIN:
             score = RELEVANT_SCORE_MIN
@@ -245,7 +234,7 @@ async def grade_single_document(
             score = (RELEVANT_SCORE_MIN + PARTIAL_SCORE_MIN) / 2
         elif grade == RetrievalGrade.IRRELEVANT and score >= PARTIAL_SCORE_MIN:
             score = PARTIAL_SCORE_MIN - 0.1
-        
+
         return GradedDocument(
             doc_id=doc_id,
             score=score,
@@ -254,7 +243,7 @@ async def grade_single_document(
             source=source,
             key_information=data.get("key_information") if data else None,
         )
-        
+
     except Exception as e:
         log.warning(f"CRAG grading failed for doc {doc_id}: {e}")
         # Default to IRRELEVANT on error (fail-safe)
@@ -274,15 +263,15 @@ async def grade_retrieval(
 ) -> GradingResult:
     """
     Grade retrieved documents and determine if web fallback is needed.
-    
+
     This is the core CRAG function that evaluates each document's relevance
     to the query and decides whether to trigger a web search fallback.
-    
+
     Args:
         documents: List of document dicts with 'id' and 'content' keys
         query: The user's search query
         threshold: Minimum ratio of PARTIAL+ documents required (default 0.5)
-    
+
     Returns:
         GradingResult with graded documents and fallback decision
     """
@@ -295,7 +284,7 @@ async def grade_retrieval(
             partial_count=0,
             irrelevant_count=0,
         )
-    
+
     # Prepare document summaries for grading
     doc_summaries = [
         {
@@ -305,15 +294,15 @@ async def grade_retrieval(
         }
         for i, doc in enumerate(documents)
     ]
-    
+
     # Grade each document (parallelized LLM calls)
     grading_tasks = [
         grade_single_document(doc["id"], doc["content"], query, doc["source"])
         for doc in doc_summaries
     ]
-    
+
     results = await asyncio.gather(*grading_tasks, return_exceptions=True)
-    
+
     graded_docs = []
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -327,19 +316,19 @@ async def grade_retrieval(
             ))
         else:
             graded_docs.append(result)
-    
+
     # Calculate statistics
     relevant_count = sum(1 for d in graded_docs if d.grade == RetrievalGrade.RELEVANT)
     partial_count = sum(1 for d in graded_docs if d.grade == RetrievalGrade.PARTIAL)
     irrelevant_count = sum(1 for d in graded_docs if d.grade == RetrievalGrade.IRRELEVANT)
-    
+
     usable_count = relevant_count + partial_count
     usable_ratio = usable_count / len(graded_docs) if graded_docs else 0
-    
+
     # Calculate consensus
     scores = [d.score for d in graded_docs]
     consensus = _calculate_consensus(scores)
-    
+
     # Determine fallback reason
     fallback_reason = None
     if usable_ratio < threshold:
@@ -347,7 +336,7 @@ async def grade_retrieval(
             f"{irrelevant_count}/{len(graded_docs)} docs irrelevant "
             f"(usable ratio: {usable_ratio:.1%}, threshold: {threshold:.1%})"
         )
-    
+
     return GradingResult(
         graded_documents=graded_docs,
         needs_web_fallback=usable_ratio < threshold,
@@ -376,12 +365,12 @@ async def tavily_search(
 ) -> list[WebSearchResult]:
     """
     Execute web search via Tavily API.
-    
+
     Args:
         query: Search query
         api_key: Tavily API key
         max_results: Maximum number of results
-    
+
     Returns:
         List of WebSearchResult objects
     """
@@ -401,7 +390,7 @@ async def tavily_search(
             )
             response.raise_for_status()
             data = response.json()
-            
+
             results = []
             for result in data.get("results", []):
                 domain = _extract_domain(result["url"])
@@ -413,9 +402,9 @@ async def tavily_search(
                     published_date=result.get("published_date"),
                     domain=domain,
                 ))
-            
+
             return results
-            
+
         except httpx.HTTPStatusError as e:
             log.error(f"Tavily API error: {e.response.status_code}")
             raise
@@ -433,7 +422,7 @@ async def duckduckgo_search(
     Fallback when Tavily is not available.
     """
     from urllib.parse import quote
-    
+
     async with httpx.AsyncClient(timeout=15.0) as client:
         try:
             response = await client.get(
@@ -446,7 +435,7 @@ async def duckduckgo_search(
             )
             response.raise_for_status()
             data = response.json()
-            
+
             results = []
             for topic in data.get("RelatedTopics", [])[:max_results]:
                 if "Text" in topic and "FirstURL" in topic:
@@ -458,9 +447,9 @@ async def duckduckgo_search(
                         published_date=None,
                         domain=_extract_domain(topic["FirstURL"]),
                     ))
-            
+
             return results
-            
+
         except Exception as e:
             log.error(f"DuckDuckGo search failed: {e}")
             raise
@@ -478,21 +467,21 @@ def _extract_domain(url: str) -> str:
 async def expand_query(query: str, context: str = "") -> str:
     """
     Generate expanded search query using LLM.
-    
+
     Args:
         query: Original query
         context: Existing context for query expansion
-    
+
     Returns:
         Expanded search query
     """
     client = _get_client()
-    
+
     prompt = QUERY_EXPANSION_PROMPT.format(
         query=query,
         existing_context=context[:1000] if context else "No additional context",
     )
-    
+
     try:
         response = await client.chat.completions.create(
             model=settings.CRAG_GRADING_MODEL,
@@ -500,14 +489,14 @@ async def expand_query(query: str, context: str = "") -> str:
             max_tokens=50,
             temperature=0.0,
         )
-        
+
         expanded = response.choices[0].message.content.strip()
         # Validate response is reasonable
         if len(expanded) < 5 or len(expanded) > 200:
             log.warning(f"Query expansion returned unusual result: {expanded[:50]}")
             return query
         return expanded
-        
+
     except Exception as e:
         log.warning(f"Query expansion failed: {e}")
         return query  # Fallback to original query
@@ -521,30 +510,30 @@ async def execute_web_fallback(
 ) -> WebFallbackResult:
     """
     Execute web fallback search with query expansion.
-    
+
     Steps:
     1. Expand query using existing context
     2. Execute web search (Tavily primary, DDG fallback)
     3. Filter blocked domains
     4. Format results
-    
+
     Args:
         query: Original query
         existing_context: Context from local retrieval
         existing_doc_ids: IDs of already retrieved docs (to avoid duplicates)
         max_results: Maximum web results to return
-    
+
     Returns:
         WebFallbackResult with formatted web documents
     """
     # Step 1: Query expansion
     expanded_query = await expand_query(query, existing_context)
     log.info(f"CRAG: Expanded query: {query} -> {expanded_query}")
-    
+
     # Step 2: Execute search
     web_results: list[WebSearchResult] = []
     tavily_key = settings.TAVILY_API_KEY
-    
+
     try:
         if tavily_key:
             web_results = await tavily_search(expanded_query, tavily_key, max_results)
@@ -562,7 +551,7 @@ async def execute_web_fallback(
             domains_included=[],
             domains_excluded=[],
         )
-    
+
     # Step 3: Filter blocked domains
     domains_excluded = []
     filtered_results = []
@@ -571,7 +560,7 @@ async def execute_web_fallback(
             domains_excluded.append(result.domain)
         else:
             filtered_results.append(result)
-    
+
     # Step 4: Format results
     web_documents = [
         {
@@ -588,7 +577,7 @@ async def execute_web_fallback(
         }
         for i, r in enumerate(filtered_results)
     ]
-    
+
     return WebFallbackResult(
         web_documents=filtered_results,
         merged_documents=web_documents,
@@ -603,53 +592,63 @@ async def execute_web_fallback(
 async def crag_agent(state: AgentState) -> AgentState:
     """
     CRAG agent node for LangGraph workflow.
-    
+
     This node:
     1. Grades retrieved documents using LLM
     2. Determines if web fallback is needed
     3. Executes web fallback if threshold not met
     4. Merges local + web results
-    
+
     Args:
         state: Current agent state
-    
+
     Returns:
         Updated agent state with CRAG results
     """
     state.setdefault("agent_trace", {})
     state.setdefault("crag_trace", {})
-    
+
     # Check if CRAG is enabled
     if not settings.CRAG_ENABLED:
         log.debug("CRAG disabled, skipping")
         state["crag_trace"]["enabled"] = False
         return state
-    
+
     query = state.get("rewritten_query", state.get("query", ""))
-    retrieved_docs = state.get("fused_chunks", [])
-    
+    # Grade the SAME population the answer agent will consume
+    # (reranked_chunks = post-merge, evaluator-filtered context). Grading the
+    # upstream fused_chunks instead meant CRAG's verdicts — and, critically,
+    # its web-fallback documents — never reached the answer.
+    retrieved_docs = state.get("reranked_chunks", [])
     if not retrieved_docs:
         log.debug("No retrieved docs to grade")
         state["crag_trace"]["no_documents"] = True
         return state
-    
+
     # Get existing context for query expansion
     existing_context = ""
     if state.get("graph_context_chunks"):
         existing_context = " ".join(
-            c.get("content", "")[:500] 
+            c.get("content", "")[:500]
             for c in state["graph_context_chunks"][:3]
         )
-    
+
+    # Normalize doc identity: every graded doc must have an "id" so the
+    # score/grade lookups below can never KeyError, and so graded ids match
+    # the fallback ids grade_retrieval assigns (doc_{i}) for unkeyed chunks.
+    for i, doc in enumerate(retrieved_docs):
+        if not doc.get("id"):
+            doc["id"] = f"doc_{i}"
+
     # Step 1: Grade retrieved documents
     log.info(f"CRAG: Grading {len(retrieved_docs)} retrieved documents")
-    
+
     grading_result = await grade_retrieval(
         documents=retrieved_docs,
         query=query,
         threshold=settings.CRAG_FALLBACK_THRESHOLD,
     )
-    
+
     # Store grading trace
     state["crag_trace"]["grade_result"] = {
         "relevant_count": grading_result.relevant_count,
@@ -659,18 +658,18 @@ async def crag_agent(state: AgentState) -> AgentState:
         "needs_web_fallback": grading_result.needs_web_fallback,
         "fallback_reason": grading_result.fallback_reason,
     }
-    
+
     # Step 2: Determine action based on grading
     if grading_result.needs_web_fallback:
         log.info(f"CRAG: Triggering web fallback - {grading_result.fallback_reason}")
-        
+
         # Execute web fallback
         fallback_result = await execute_web_fallback(
             query=query,
             existing_context=existing_context,
             max_results=settings.CRAG_MAX_WEB_RESULTS,
         )
-        
+
         # Store web fallback trace
         state["crag_trace"]["web_fallback"] = {
             "triggered": True,
@@ -678,13 +677,13 @@ async def crag_agent(state: AgentState) -> AgentState:
             "results_count": len(fallback_result.merged_documents),
             "domains": fallback_result.domains_included,
         }
-        
+
         # Merge local and web documents
         local_docs = {doc.get("id"): doc for doc in retrieved_docs}
         for doc in fallback_result.merged_documents:
             if doc["id"] not in local_docs:
                 local_docs[doc["id"]] = doc
-        
+
         # Re-grade combined documents
         combined_docs = list(local_docs.values())
         combined_result = await grade_retrieval(
@@ -692,7 +691,7 @@ async def crag_agent(state: AgentState) -> AgentState:
             query=query,
             threshold=settings.CRAG_FALLBACK_THRESHOLD,
         )
-        
+
         # Apply weighting: local × 1.2, web × 0.8
         weighted_docs = []
         for doc in combined_docs:
@@ -701,14 +700,14 @@ async def crag_agent(state: AgentState) -> AgentState:
                 (g for g in combined_result.graded_documents if g.doc_id == doc["id"]),
                 None
             )
-            
+
             if grade_info:
                 # Adjust score based on source
                 if doc.get("metadata", {}).get("source") == "local":
                     adjusted_score = min(1.0, grade_info.score * 1.2)
                 else:
                     adjusted_score = grade_info.score * 0.8
-                
+
                 # Update the document with adjusted score
                 doc["crag_score"] = adjusted_score
                 doc["crag_grade"] = grade_info.grade.value
@@ -717,28 +716,28 @@ async def crag_agent(state: AgentState) -> AgentState:
                 doc["crag_score"] = 0.0
                 doc["crag_grade"] = "irrelevant"
                 weighted_docs.append(doc)
-        
+
         # Sort by adjusted score
         weighted_docs.sort(key=lambda x: x.get("crag_score", 0), reverse=True)
-        
+
         # Update state
-        state["fused_chunks"] = weighted_docs
+        state["reranked_chunks"] = weighted_docs
         state["crag_trace"]["merged_result"] = {
             "total_documents": len(weighted_docs),
             "local_weighted": sum(1 for d in weighted_docs if d.get("metadata", {}).get("source") == "local"),
             "web_added": len(fallback_result.merged_documents),
         }
-        
+
         state["agent_trace"]["crag"] = {
             "mode": "web_fallback",
             "grade_summary": f"{combined_result.relevant_count}R/{combined_result.partial_count}P/{combined_result.irrelevant_count}I",
             "consensus": combined_result.consensus_score,
         }
-        
+
     else:
         # No fallback needed - add scores to documents
         log.info(f"CRAG: Retrieval passed - {grading_result.relevant_count}R/{grading_result.partial_count}P")
-        
+
         doc_scores = {g.doc_id: g for g in grading_result.graded_documents}
         for doc in retrieved_docs:
             doc["crag_score"] = doc_scores.get(doc["id"], GradedDocument(
@@ -755,13 +754,13 @@ async def crag_agent(state: AgentState) -> AgentState:
                 reasoning="Not graded",
                 source="local",
             )).grade.value
-        
-        state["fused_chunks"] = retrieved_docs
+
+        state["reranked_chunks"] = retrieved_docs
         state["agent_trace"]["crag"] = {
             "mode": "local_pass",
             "grade_summary": f"{grading_result.relevant_count}R/{grading_result.partial_count}P/{grading_result.irrelevant_count}I",
             "consensus": grading_result.consensus_score,
         }
-    
+
     state["crag_trace"]["enabled"] = True
     return state

@@ -20,14 +20,14 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import timezone
+from datetime import UTC
 from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
 
-from app.ingestion.base import BaseConnector
 from app.ingestion.backoff import with_retry
+from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem
 from app.services.oauth_service import google_token_refresher
 
@@ -156,7 +156,7 @@ async def _fetch_message(
         try:
             dt = parsedate_to_datetime(date)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             captured_at = dt.isoformat()
         except Exception:
             captured_at = None

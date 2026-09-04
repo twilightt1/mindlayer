@@ -1,9 +1,11 @@
-import pytest
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.settings_service import SettingsService
+
 
 @pytest.fixture
 def mock_redis():
@@ -18,16 +20,16 @@ async def test_get_setting_fallback(mock_redis):
     mock_db = MagicMock(spec=AsyncSession)
     mock_db.scalar = AsyncMock(return_value=None)
 
-                                     
+
     mock_redis.get.return_value = None
 
-                                                    
+
     value = await SettingsService.get_setting(mock_db, "maintenance_mode")
 
-                                     
+
     assert value is False
 
-                              
+
     mock_redis.setex.assert_called_once_with(
         f"{SettingsService.CACHE_PREFIX}maintenance_mode",
         SettingsService.CACHE_TTL,
@@ -38,13 +40,13 @@ async def test_get_setting_fallback(mock_redis):
 async def test_get_setting_cache_hit(mock_redis):
     mock_db = MagicMock(spec=AsyncSession)
 
-                                               
+
     mock_redis.get.return_value = json.dumps(True)
 
     value = await SettingsService.get_setting(mock_db, "maintenance_mode")
 
     assert value is True
-                                           
+
     mock_db.scalar.assert_not_called()
-                                   
+
     mock_redis.setex.assert_not_called()

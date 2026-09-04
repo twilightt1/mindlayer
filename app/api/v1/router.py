@@ -1,7 +1,21 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, chat, admin, system_settings
-from app.api.v1 import memories, entities, sources, insights, discovery, workspaces
-from app.api.v1 import demo, analytics, referral
+
+from app.api.v1 import (
+    admin,
+    analytics,
+    auth,
+    chat,
+    demo,
+    discovery,
+    entities,
+    insights,
+    memories,
+    referral,
+    sources,
+    system_settings,
+    users,
+    workspaces,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)

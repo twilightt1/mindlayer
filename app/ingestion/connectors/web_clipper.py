@@ -36,6 +36,7 @@ from bs4 import BeautifulSoup
 
 from app.ingestion.base import BaseConnector
 from app.ingestion.types import ConnectorItem, ItemError
+from app.utils.ssrf import fetch_guarded, validate_url
 
 log = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ class WebClipperConnector(BaseConnector):
         ) as client:
             for url in urls:
                 try:
+                    validate_url(url)
                     item = await _clip_url(client, url, max_chars)
                     metadata = dict(item.metadata or {})
                     if isinstance(source_title, str) and source_title.strip():
@@ -141,7 +143,7 @@ class WebClipperConnector(BaseConnector):
                         "tags": _merge_tags(item.tags, configured_tags),
                         "metadata": metadata,
                     }))
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     # Record as a sync error and skip — never fabricate a memory.
                     log.warning("WebClipperConnector: failed to clip %s — %s", url, e)
                     self.fetch_errors.append(
@@ -156,6 +158,7 @@ async def clip_url(url: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> Connector
     """Clip a single URL and return a ConnectorItem. Raises on failure."""
     if not _is_valid_http_url(url):
         raise ValueError("clip_url requires an http(s) URL")
+    validate_url(url)
     async with httpx.AsyncClient(
         timeout=HTTP_TIMEOUT,
         follow_redirects=True,
@@ -167,7 +170,7 @@ async def clip_url(url: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> Connector
 # ── Internals ───────────────────────────────────────────────────────────────
 
 async def _clip_url(client: httpx.AsyncClient, url: str, max_chars: int) -> ConnectorItem:
-    response = await client.get(url)
+    response = await fetch_guarded(client, url)
     response.raise_for_status()
 
     content_type = response.headers.get("content-type", "").lower()

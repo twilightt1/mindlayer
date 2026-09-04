@@ -2,7 +2,12 @@
 """Run LLM-as-Judge evaluation with heuristics fallback."""
 import json
 from pathlib import Path
-from eval.llm_judge import evaluate_case_offline, summarize_judge_results, generate_judge_report
+
+from eval.llm_judge import (
+    evaluate_case_offline,
+    generate_judge_report,
+    summarize_judge_results,
+)
 
 # Load dataset
 dataset = json.loads(Path('eval/orivory_extreme_eval_dataset.json').read_text())

@@ -1,10 +1,16 @@
 """User profile endpoints."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
-from app.utils.dependencies import get_current_verified_user
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
+    UpdateProfileRequest,
+    UserResponse,
+)
 from app.services import auth_service
-from app.schemas.auth import UserResponse, UpdateProfileRequest, ChangePasswordRequest, ChangePasswordResponse
+from app.utils.dependencies import get_current_verified_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
