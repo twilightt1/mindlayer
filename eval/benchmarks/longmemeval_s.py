@@ -1,7 +1,13 @@
-"""LongMemEval-S adapter: loader, history ingestion, exact-match judge."""
+"""LongMemEval-S adapter: loader, history ingestion, exact-match judge.
+
+Short numeric/boolean golds are exact-match scored here; long-prose golds and
+abstention instances score 0 by this guard until the pinned LLM-judge follow-up
+lands (aggregate reports will read artificially low — by design, never fabricate).
+"""
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -167,13 +173,15 @@ def _normalize(text: str) -> str:
 def judge_answer(question: str, answer: str, response: str) -> bool:
     """Exact-match guard per the official non-LLM subset.
 
-    Case-insensitive, whitespace-normalized containment of the gold answer
-    in the response, restricted to short numeric/boolean gold answers.
-    Everything else needs the LLM judge (protocol follow-up) and scores False.
+    Case-insensitive, whitespace-normalized word-boundary match of the gold
+    answer in the response, restricted to short numeric/boolean gold answers
+    (so ``"3"`` never matches inside ``"35"``). Everything else needs the LLM
+    judge (protocol follow-up) and scores False.
     """
     del question  # question is not used by the exact-match guard; kept for LLM-judge parity
     if _infer_answer_type(answer) in _SHORT_ANSWER_TYPES:
-        return _normalize(answer) in _normalize(response)
+        gold = _normalize(answer)
+        return re.search(rf"(?<!\w){re.escape(gold)}(?!\w)", _normalize(response)) is not None
     return False
 
 

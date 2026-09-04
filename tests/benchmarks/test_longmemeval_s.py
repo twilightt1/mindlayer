@@ -95,6 +95,15 @@ def test_load_instances_raises_value_error_on_bad_role(tmp_path):
         load_instances(broken)
 
 
+def test_load_instances_raises_value_error_on_unknown_answer_session_id(tmp_path):
+    records = json.loads(FIXTURE.read_text())
+    records[0]["answer_session_ids"] = ["s_nonexistent"]
+    broken = tmp_path / "unknown_answer_session.json"
+    broken.write_text(json.dumps(records))
+    with pytest.raises(ValueError, match="answer_session_ids not in haystack_session_ids"):
+        load_instances(broken)
+
+
 async def test_ingest_history_calls_create_memory_once_per_turn_with_prefix_and_date():
     instances = load_instances(FIXTURE)
     session = instances[0].sessions[0]
@@ -176,3 +185,9 @@ def test_judge_answer_normalizes_case_and_whitespace():
     assert judge_answer("How many?", "Yes", "  YES  ") is True
     assert judge_answer("How many?", "yes", "well, Yes indeed") is True
     assert judge_answer("How many?", "No", "yes") is False
+
+
+def test_judge_answer_numeric_gold_matches_word_boundary_not_substring():
+    # Regression: substring containment let gold "3" match inside "35".
+    assert judge_answer("How many?", "3", "You logged 35 runs") is False
+    assert judge_answer("How many?", "3", "You logged 3 runs") is True
