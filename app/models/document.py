@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
@@ -35,7 +36,7 @@ class Document(Base):
     chunk_count:     Mapped[int]          = mapped_column(Integer(), server_default="0")
     error_msg:       Mapped[str|None]     = mapped_column(Text, nullable=True)
     created_at:      Mapped[datetime]     = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
-    updated_at:      Mapped[datetime]     = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:      Mapped[datetime]     = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)
 
     conversation: Mapped["Conversation"]        = relationship(back_populates="documents")
     chunks:       Mapped[list["DocumentChunk"]] = relationship(back_populates="document", cascade="all, delete-orphan")

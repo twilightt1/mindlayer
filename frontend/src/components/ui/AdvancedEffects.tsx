@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 
 interface TracingBeamProps {
@@ -181,19 +181,27 @@ export function TypewriterText({
     if (!isInView) return;
     
     let currentIndex = 0;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
     const timeout = setTimeout(() => {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         if (currentIndex < text.length) {
           setDisplayedText(text.slice(0, currentIndex + 1));
           currentIndex++;
-        } else {
+        } else if (interval) {
           clearInterval(interval);
+          interval = null;
         }
       }, speed);
-      return () => clearInterval(interval);
     }, delay);
 
-    return () => clearTimeout(timeout);
+    // Cleanup must clear BOTH timers: returning clearInterval from the
+    // setTimeout callback was silently discarded, leaking an interval that
+    // kept setting state on unmounted components.
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
   }, [isInView, text, delay, speed]);
 
   return (
@@ -207,8 +215,6 @@ export function TypewriterText({
     </span>
   );
 }
-
-import { useState } from "react";
 
 interface NumberCounterProps {
   target: number;
@@ -224,16 +230,22 @@ export function NumberCounter({ target, className = "", duration = 2000 }: Numbe
   useEffect(() => {
     if (!isInView) return;
 
+    let raf: number;
     let startTime: number;
+
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime;
       const progress = Math.min((currentTime - startTime) / duration, 1);
       setCount(Math.floor(progress * target));
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        raf = requestAnimationFrame(animate);
       }
     };
-    requestAnimationFrame(animate);
+    raf = requestAnimationFrame(animate);
+
+    // Cancel the in-flight frame on unmount — the loop kept calling
+    // setState on removed components.
+    return () => cancelAnimationFrame(raf);
   }, [isInView, target, duration]);
 
   return <span ref={ref} className={className}>{count}</span>;

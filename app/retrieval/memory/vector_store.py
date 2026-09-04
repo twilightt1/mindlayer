@@ -165,15 +165,20 @@ def _memory_to_metadata(memory: Memory) -> dict[str, Any]:
     All values must be scalar or list-of-str (ChromaDB constraint).
     """
     captured_iso = memory.captured_at.isoformat() if memory.captured_at else None
-    return {
+    metadata: dict[str, Any] = {
         "user_id":     str(memory.user_id),
         "memory_id":   str(memory.id),
         "source_type": memory.source_type,
         "captured_at": captured_iso,
         "salience":    float(memory.salience),
         "pinned":      bool(memory.pinned),
-        "tags":        list(memory.tags or []),
     }
+    # ChromaDB rejects empty-list metadata values ("Expected metadata list
+    # value ... to be non-empty"), which silently broke the doc→memory
+    # projection for every untagged memory. Only store `tags` when non-empty.
+    if memory.tags:
+        metadata["tags"] = list(memory.tags)
+    return metadata
 
 
 # ── public API ──────────────────────────────────────────────────────────────

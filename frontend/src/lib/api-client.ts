@@ -78,8 +78,13 @@ export function getRefreshToken(): string | null {
 export function setTokens(accessToken: string, refreshToken?: string | null) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, accessToken);
+  // The refresh token lives in an httpOnly cookie (orivory_refresh) set by
+  // the backend. Drop any legacy localStorage copy so XSS can't read it;
+  // only a non-cookie client (native app) would re-store it explicitly.
   if (refreshToken) {
     localStorage.setItem(REFRESH_KEY, refreshToken);
+  } else {
+    localStorage.removeItem(REFRESH_KEY);
   }
   setAuthStateCookie();
 }
@@ -162,8 +167,18 @@ export class ApiClient {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Request failed" }));
-      throw new Error(error.detail || error.message || `HTTP ${response.status}`);
+      const error = await response.json().catch(() => ({}));
+      // 422 responses carry `detail` as an array of validation issues.
+      let message: string = error.detail ?? error.message ?? `HTTP ${response.status}`;
+      if (Array.isArray(message)) {
+        message = message.map((d: any) => d?.msg ?? String(d)).join("; ");
+      }
+      throw new Error(message);
+    }
+    // 204 No Content (and other empty bodies) have no JSON to parse —
+    // response.json() would throw SyntaxError on a successful delete.
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return undefined as T;
     }
     return response.json();
   }
@@ -184,7 +199,7 @@ export function createSSEStream(
     onError?: (error: Error) => void;
   },
   body?: any
-): { abort: () => void } {
+): { promise: Promise<void>; abort: () => void } {
   let aborted = false;
   const controller = new AbortController();
 
@@ -195,14 +210,18 @@ export function createSSEStream(
         headers: {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
-          Authorization: `Bearer ${getAccessToken()}`,
+          Authorization: `Bearer ${getAccessToken() ?? ""}`,
         },
         body: body ? JSON.stringify({ ...body, stream: true }) : JSON.stringify({ stream: true }),
         signal: controller.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`SSE error: ${response.status}`);
+        // Include the server's detail message when available (403 onboarding,
+        // 401 expired token, 429 quota...) instead of a bare status code.
+        const errBody: any = await response.json().catch(() => ({}));
+        const detail = errBody?.detail ?? errBody?.message;
+        throw new Error(detail ? `SSE error ${response.status}: ${detail}` : `SSE error: ${response.status}`);
       }
 
       if (!response.body) {
@@ -250,9 +269,10 @@ export function createSSEStream(
     }
   };
 
-  makeRequest();
+  const promise = makeRequest();
 
   return {
+    promise,
     abort: () => {
       aborted = true;
       controller.abort();

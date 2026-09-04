@@ -10,7 +10,7 @@ of what happened, with a per-item error log.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ class ConnectorItem(BaseModel):
     source_ref:    str | None      = Field(default=None, max_length=500)
     source_url:    str | None      = Field(default=None, max_length=1000)
     source_excerpt: str | None     = Field(default=None, max_length=2000)
-    captured_at:   datetime        = Field(default_factory=datetime.utcnow)
+    captured_at:   datetime        = Field(default_factory=lambda: datetime.now(UTC))
     tags:          list[str]       = Field(default_factory=list, max_length=50)
     metadata:      dict[str, Any]  = Field(default_factory=dict)
 
@@ -35,7 +35,7 @@ class ItemError(BaseModel):
 
     source_ref: str | None = None
     message:     str
-    raised_at:   datetime  = Field(default_factory=datetime.utcnow)
+    raised_at:   datetime  = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class SyncResult(BaseModel):

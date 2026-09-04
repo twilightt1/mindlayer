@@ -17,7 +17,7 @@ Returns a `SyncResult` with counts and per-item errors.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +38,7 @@ class SourceSyncService:
         self.db = db
 
     async def sync(self, source: Source) -> SyncResult:
-        started_at = datetime.utcnow()
+        started_at = datetime.now(UTC)
         result = SyncResult(
             source_id=str(source.id),
             started_at=started_at,
@@ -223,7 +223,7 @@ class SourceSyncService:
             cfg.pop("last_error", None)
             cfg.pop("last_error_at", None)
             source.config = cfg
-        result.finished_at = datetime.utcnow()
+        result.finished_at = datetime.now(UTC)
         try:
             await self.db.commit()
         except Exception as e:

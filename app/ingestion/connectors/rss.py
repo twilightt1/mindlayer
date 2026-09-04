@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import calendar
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from time import struct_time
 from urllib.parse import urlparse
 
@@ -57,7 +57,7 @@ def _struct_to_datetime(value: struct_time | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.utcfromtimestamp(calendar.timegm(value))
+        return datetime.fromtimestamp(calendar.timegm(value), tz=UTC)
     except (ValueError, OverflowError, TypeError):
         return None
 
@@ -218,7 +218,7 @@ class RSSConnector(BaseConnector):
             source_ref=ref,
             source_url=link if isinstance(link, str) else None,
             source_excerpt=content[:500],
-            captured_at=entry_dt or datetime.utcnow(),
+            captured_at=entry_dt or datetime.now(UTC),
             tags=["rss"],
             metadata={
                 "feed_url": feed_url,
@@ -233,6 +233,11 @@ class RSSConnector(BaseConnector):
         if not cursor:
             return None
         try:
-            return datetime.fromisoformat(cursor)
+            # Handle ISO format with or without timezone
+            parsed = datetime.fromisoformat(cursor.replace("Z", "+00:00"))
+            # Ensure timezone-aware (assume UTC if naive)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed
         except (ValueError, TypeError):
             return None

@@ -22,7 +22,16 @@ async def lifespan(app: FastAPI):
         log.info("MinIO bucket ready")
     except Exception as e:
         log.warning("MinIO init failed", error=str(e))
-    yield
+    if settings.MCP_HUB_ENABLED:
+        # Starlette does not run a mounted app's lifespan, so the host lifespan
+        # must run the MCP session manager itself (see app/mcp_hub/server.py).
+        from app.mcp_hub.server import build_mcp_server
+
+        async with build_mcp_server().session_manager.run():
+            log.info("MCP hub ready", path="/mcp")
+            yield
+    else:
+        yield
     log.info("Shutting down")
 
 
@@ -45,6 +54,17 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+if settings.MCP_HUB_ENABLED:
+    from starlette.routing import Route
+
+    from app.mcp_hub.server import get_mcp_app
+
+    app.mount("/mcp", get_mcp_app())
+    # Starlette 307-redirects an exact POST /mcp (mount root) to /mcp/, a hop
+    # that can drop the Authorization header — register the same app on an
+    # exact route so both /mcp and /mcp/ answer directly.
+    app.router.routes.append(Route("/mcp", get_mcp_app(), name="mcp"))
 
 
 @app.get("/health", tags=["health"])

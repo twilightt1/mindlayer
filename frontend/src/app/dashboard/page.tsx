@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth";
 import { getMemoryStats, listMemories } from "@/lib/api/memories";
 import { listSources } from "@/lib/api/sources";
 import { listInsights } from "@/lib/api/insights";
+import { listDocuments } from "@/lib/api/documents";
 import { cn } from "@/lib/utils";
 import { 
   Sparkles, 
@@ -91,7 +92,14 @@ function StatsCard({
               <stat.icon className={cn("w-5 h-5", stat.accent)} />
             )}
           </div>
-          <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span
+            className={cn(
+              "text-xs font-medium px-2 py-1 rounded-full border",
+              stat.change === "Get started" || stat.change === "None yet"
+                ? "bg-white/[0.05] text-white/40 border-white/[0.1]"
+                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+            )}
+          >
             {stat.change}
           </span>
         </div>
@@ -216,10 +224,10 @@ export default function DashboardPage() {
     insights: 0,
     memories: 0,
     queries: 0,
-    documentChange: "+0",
-    insightChange: "+0",
-    memoryChange: "+0",
-    queryChange: "+0",
+    documentChange: "",
+    insightChange: "",
+    memoryChange: "",
+    queryChange: "",
   });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,22 +237,30 @@ export default function DashboardPage() {
     async function fetchData() {
       try {
         // Fetch all data in parallel
-        const [sourcesData, memoriesData, insightsData] = await Promise.allSettled([
+        const [sourcesData, memoriesData, insightsData, docsData] = await Promise.allSettled([
           listSources({ limit: 1 }).catch(() => ({ total: 0 })),
           getMemoryStats().catch(() => ({ total_memories: 0 })),
           listInsights({ status: "new", limit: 100 }).catch(() => ({ items: [] })),
+          listDocuments().catch(() => []),
         ]);
+
+        const docCount = docsData.status === "fulfilled" ? docsData.value.length : 0;
+        const insightCount = insightsData.status === "fulfilled" ? insightsData.value.items.length : 0;
+        const memoryCount = memoriesData.status === "fulfilled" ? memoriesData.value.total_memories : 0;
+
+        // Honest per-stat context instead of a fake "+0" delta.
+        const ctx = (n: number, noun: string) => (n > 0 ? "All time" : noun);
 
         // Update stats
         setStats({
-          documents: sourcesData.status === "fulfilled" ? sourcesData.value.total : 0,
-          insights: insightsData.status === "fulfilled" ? insightsData.value.items.length : 0,
-          memories: memoriesData.status === "fulfilled" ? memoriesData.value.total_memories : 0,
+          documents: docCount,
+          insights: insightCount,
+          memories: memoryCount,
           queries: 0, // Chat queries not tracked yet
-          documentChange: "+0",
-          insightChange: "+0",
-          memoryChange: "+0",
-          queryChange: "+0",
+          documentChange: ctx(docCount, "Get started"),
+          insightChange: ctx(insightCount, "None yet"),
+          memoryChange: ctx(memoryCount, "None yet"),
+          queryChange: "Coming soon",
         });
 
         // Generate recent activity from insights

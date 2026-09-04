@@ -6,7 +6,7 @@ components over relation edges above a configurable weight threshold.
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -33,7 +33,7 @@ async def detect_clusters(
         select(Entity).where(Entity.user_id == user_id)
     )).scalars().all()
     if not entities:
-        return GraphClustersResponse(clusters=[], generated_at=datetime.utcnow())
+        return GraphClustersResponse(clusters=[], generated_at=datetime.now(UTC))
 
     entity_by_id = {entity.id: entity for entity in entities}
     relations = (await db.execute(
@@ -92,7 +92,7 @@ async def detect_clusters(
         )
 
     clusters.sort(key=lambda cluster: (cluster.score, len(cluster.nodes)), reverse=True)
-    return GraphClustersResponse(clusters=clusters[:limit], generated_at=datetime.utcnow())
+    return GraphClustersResponse(clusters=clusters[:limit], generated_at=datetime.now(UTC))
 
 
 def _walk_component(start: UUID, adjacency: dict[UUID, set[UUID]], visited: set[UUID]) -> set[UUID]:

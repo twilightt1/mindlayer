@@ -18,14 +18,22 @@ ALLOWED_MIME = {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
+    "text/markdown",
 }
+# Some browsers upload Markdown with an octet-stream / missing MIME — accept
+# these by extension as well (the ingestion connector already parses .md).
+ALLOWED_EXTENSIONS = (".md", ".txt", ".pdf", ".docx")
 MAX_SIZE = 50 * 1024 * 1024
 MAX_DOCS = 20
 
 
 async def upload_document(db: AsyncSession, conversation: Conversation, file: UploadFile) -> Document:
-    if file.content_type not in ALLOWED_MIME:
-        raise HTTPException(400, detail="Only PDF, DOCX, and TXT files are supported.")
+    name = (file.filename or "").lower()
+    if file.content_type not in ALLOWED_MIME and not name.endswith(ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            400,
+            detail="Only PDF, DOCX, TXT, and Markdown (MD) files are supported.",
+        )
     content = await file.read()
     if len(content) > MAX_SIZE:
         raise HTTPException(413, detail="File exceeds 50 MB limit.")

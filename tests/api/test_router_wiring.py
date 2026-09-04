@@ -30,6 +30,7 @@ ROUTERS_TO_CHECK = [
     "app.api.v1.admin",
     "app.api.v1.analytics",
     "app.api.v1.referral",
+    "app.api.v1.agents",
 ]
 
 

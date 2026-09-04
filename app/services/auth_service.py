@@ -68,6 +68,7 @@ def _otp() -> str:
 
 async def register_email(db: AsyncSession, email: str, password: str) -> User:
     from fastapi import HTTPException
+    from sqlalchemy.exc import IntegrityError
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:
         detail = ("Email already registered via Google. Please sign in with Google."
@@ -78,7 +79,13 @@ async def register_email(db: AsyncSession, email: str, password: str) -> User:
     user = User(email=email, hashed_password=await _hash_async(password), auth_provider="email",
                 is_verified=False, onboarding_done=False)
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Two concurrent registrations for the same email both passed the
+        # pre-check above; the unique constraint is the real arbiter.
+        await db.rollback()
+        raise HTTPException(409, detail="Email already in use.") from None
 
     otp, token = _otp(), secrets.token_urlsafe(64)
     db.add(EmailVerification(
@@ -152,13 +159,23 @@ async def verify_email_link(db: AsyncSession, token: str) -> User:
 
 
 
+async def _count_with_window(redis, key: str, window_seconds: int) -> int:
+    """Increment a rate counter with a TTL set atomically.
+
+    ``INCR`` followed by ``EXPIRE`` is not atomic: a crash between the two
+    leaves a key with no TTL that blocks the email forever. Ensure the
+    window exists via ``SET NX`` first, then INCR — the first request
+    yields 1, the second 2, and the key always carries a TTL.
+    """
+    await redis.set(key, 0, ex=window_seconds, nx=True)
+    return await redis.incr(key)
+
+
 async def resend_verification(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
     key = f"resend_limit:{email}"
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, 3600)
+    count = await _count_with_window(redis, key, 3600)
     if count > 3:
         raise HTTPException(429, detail="Too many resend requests. Try again in 1 hour.")
 
@@ -266,9 +283,7 @@ async def create_password_reset_session(db: AsyncSession, email: str) -> None:
     from fastapi import HTTPException
     redis = await get_redis()
     key = f"forgot_pw:{email}"
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, 3600)
+    count = await _count_with_window(redis, key, 3600)
     if count > 3:
         raise HTTPException(429, detail="Too many requests. Try again in 1 hour.")
 

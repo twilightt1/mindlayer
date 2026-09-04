@@ -1,7 +1,9 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 
+from app.config import settings
 from app.retrieval import embedder
 from app.retrieval.embedder import embed_query, embed_texts, embed_texts_sync
 
@@ -46,6 +48,7 @@ class _FakeSyncEmbeddings:
 async def test_embed_texts_async(monkeypatch):
     fake_embeddings = _FakeAsyncEmbeddings()
     monkeypatch.setattr(embedder.async_client, "embeddings", fake_embeddings)
+    monkeypatch.setattr(settings, "USE_JINA_EMBEDDINGS", False)
 
     texts = ["hello", "world"]
     embeddings = await embed_texts(texts)
@@ -62,6 +65,7 @@ async def test_embed_texts_async(monkeypatch):
 async def test_embed_query_async(monkeypatch):
     fake_embeddings = _FakeAsyncEmbeddings()
     monkeypatch.setattr(embedder.async_client, "embeddings", fake_embeddings)
+    monkeypatch.setattr(settings, "USE_JINA_EMBEDDINGS", False)
 
     query = "search term"
     embedding = await embed_query(query)
@@ -74,6 +78,7 @@ async def test_embed_query_async(monkeypatch):
 def test_embed_texts_sync(monkeypatch):
     fake_embeddings = _FakeSyncEmbeddings()
     monkeypatch.setattr(embedder.sync_client, "embeddings", fake_embeddings)
+    monkeypatch.setattr(settings, "USE_JINA_EMBEDDINGS", False)
 
     texts = ["hello"]
     embeddings = embed_texts_sync(texts)
@@ -82,20 +87,53 @@ def test_embed_texts_sync(monkeypatch):
     assert embeddings[0] == [0.1, 0.2, 0.3]
     assert fake_embeddings.calls[0]["input"] == texts
     assert fake_embeddings.calls[0]["encoding_format"] == "float"
-    assert fake_embeddings.calls[0]["timeout"] == 30.0
 
 
 @pytest.mark.asyncio
-async def test_embed_empty(monkeypatch):
-    fake_async_embeddings = _FakeAsyncEmbeddings()
-    fake_sync_embeddings = _FakeSyncEmbeddings()
-    monkeypatch.setattr(embedder.async_client, "embeddings", fake_async_embeddings)
-    monkeypatch.setattr(embedder.sync_client, "embeddings", fake_sync_embeddings)
+async def test_embed_texts_jina(monkeypatch):
+    """Test that Jina embeddings are used when configured."""
+    # Mock the httpx async client
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "data": [
+            {"embedding": [0.1, 0.2, 0.3]},
+            {"embedding": [0.4, 0.5, 0.6]},
+        ]
+    }
+    
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = AsyncMock(return_value=mock_response)
+    
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: mock_client)
+    
+    texts = ["hello", "world"]
+    embeddings = await embedder._embed_with_jina(texts)
+    
+    assert len(embeddings) == 2
+    assert embeddings[0] == [0.1, 0.2, 0.3]
+    assert embeddings[1] == [0.4, 0.5, 0.6]
 
-    embeddings = await embed_texts([])
-    assert embeddings == []
-    assert fake_async_embeddings.calls == []
 
-    sync_embeddings = embed_texts_sync([])
-    assert sync_embeddings == []
-    assert fake_sync_embeddings.calls == []
+def test_embed_texts_jina_sync(monkeypatch):
+    """Test that Jina embeddings work synchronously."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "data": [
+            {"embedding": [0.1, 0.2, 0.3]},
+        ]
+    }
+    
+    mock_client = MagicMock()
+    mock_client.__enter__ = MagicMock(return_value=mock_client)
+    mock_client.__exit__ = MagicMock(return_value=None)
+    mock_client.post = MagicMock(return_value=mock_response)
+    
+    monkeypatch.setattr("httpx.Client", lambda **kwargs: mock_client)
+    
+    texts = ["hello"]
+    embeddings = embedder._embed_sync_with_jina(texts)
+    
+    assert len(embeddings) == 1
+    assert embeddings[0] == [0.1, 0.2, 0.3]

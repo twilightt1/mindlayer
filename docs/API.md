@@ -20,8 +20,9 @@ Base URL: `https://api.orivory.io/api/v1`
 10. [Webhooks (Future)](#10-webhooks-future)
 11. [Rate Limits & Quotas](#11-rate-limits--quotas)
 12. [Error Reference](#12-error-reference)
-13. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
-14. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
+13. [Agent Clients & MCP Hub](#13-agent-clients--mcp-hub)
+14. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
+15. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
 
 ---
 
@@ -2632,6 +2633,164 @@ Every error response follows this structure:
 
 ---
 
+## 13. Agent Clients & MCP Hub
+
+The Open Memory Hub lets external AI agents (Claude Desktop, Claude Code, OpenClaw, Cursor, custom agents) read and write your memory over MCP (Model Context Protocol). Access is controlled by **agent clients**: per-agent tokens with scoped permissions (`memory:read` / `memory:write`), and every authorized call is recorded in an **access ledger** — which AI read or wrote what, and when.
+
+> **Note:** The MCP endpoint is mounted at `/mcp` and is gated by the `MCP_HUB_ENABLED` setting (`true` by default; set `MCP_HUB_ENABLED=false` in `.env` to disable it).
+
+### POST /api/v1/agents
+
+Register an agent client. Returns the plaintext token — **shown exactly once**. Only a SHA-256 hash is stored; the token cannot be recovered or re-displayed afterwards.
+
+**Request:**
+
+```bash
+curl -s -X POST https://api.orivory.io/api/v1/agents \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Claude Desktop", "scopes": ["memory:read", "memory:write"]}'
+```
+
+| Field    | Type     | Required | Description                                                       |
+|----------|----------|----------|-------------------------------------------------------------------|
+| `name`   | string   | Yes      | Display name (max 100 chars)                                      |
+| `scopes` | string[] | No       | `memory:read` (search/get/list), `memory:write` (add/delete). Defaults to `["memory:read"]` |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "name": "Claude Desktop",
+  "scopes": ["memory:read", "memory:write"],
+  "status": "active",
+  "created_at": "2026-09-02T10:30:00Z",
+  "token": "oa_9f8e7d6c5b4a3210fedcba9876543210"
+}
+```
+
+> **Warning: the token is shown once.** Copy it immediately and store it in your MCP client's config — it will never appear in any API response again. Anyone who loses it must revoke the client and register a new one.
+
+### GET /api/v1/agents
+
+List the current user's agent clients, newest first. Never includes token material.
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Claude Desktop",
+      "scopes": ["memory:read", "memory:write"],
+      "status": "active",
+      "created_at": "2026-09-02T10:30:00Z",
+      "last_used_at": "2026-09-02T14:22:00Z",
+      "revoked_at": null
+    }
+  ],
+  "total": 1
+}
+```
+
+### DELETE /api/v1/agents/{id}
+
+Revoke an agent client. The token stops working immediately and revocation is idempotent (re-revoking the caller's own already-revoked client still returns `204`).
+
+**Response `204 No Content`**
+
+### GET /api/v1/agents/access-log
+
+The access ledger: every authorized MCP call, newest first. Which agent did what, when.
+
+**Query Parameters:**
+
+| Parameter         | Type    | Default | Description                              |
+|-------------------|---------|---------|------------------------------------------|
+| `agent_client_id` | string  | null    | Filter by agent client ID                |
+| `limit`           | integer | 50      | Items per page (max 200)                 |
+| `offset`          | integer | 0       | Offset for pagination                    |
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "agent_client_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "action": "mcp_search",
+      "memory_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "detail": {"query": "CRISPR specificity"},
+      "created_at": "2026-09-02T14:22:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+Ledger `action` values: `mcp_search`, `mcp_get`, `mcp_list`, `mcp_add`, `mcp_delete`. `memory_id` is null for search/list actions.
+
+---
+
+### MCP Endpoint
+
+The hub speaks **streamable HTTP MCP** at:
+
+```
+http://localhost:8000/mcp
+```
+
+Authentication uses your agent token in either header:
+
+```http
+Authorization: Bearer oa_9f8e7d6c5b4a3210fedcba9876543210
+```
+
+```http
+X-Orivory-Agent-Token: oa_9f8e7d6c5b4a3210fedcba9876543210
+```
+
+Requests without a valid token — or with a revoked token — are rejected before any tool runs; only authorized calls are ledgered.
+
+#### Tools
+
+| Tool            | Scope         | Description                                          |
+|-----------------|---------------|------------------------------------------------------|
+| `search_memory` | `memory:read` | Semantic search over the caller's memory hub          |
+| `get_memory`    | `memory:read` | Fetch one memory by ID                                |
+| `list_recent`   | `memory:read` | List the caller's most recent memories                |
+| `add_memory`    | `memory:write`| Store a new memory (title, content, optional tags)    |
+| `delete_memory` | `memory:write`| Delete one memory by ID                               |
+
+Scopes are enforced per call: a token with only `memory:read` cannot `add_memory` or `delete_memory`.
+
+#### Connecting an MCP Client (Claude Desktop example)
+
+```json
+{
+  "mcpServers": {
+    "orivory-memory": {
+      "type": "http",
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "X-Orivory-Agent-Token": "oa_9f8e7d6c5b4a3210fedcba9876543210"
+      }
+    }
+  }
+}
+```
+
+> **Note — DNS-rebinding protection is on by default (localhost-only).** `/mcp` is constructed without explicit transport security, and in `mcp` 1.29.x FastMCP defaults `host="127.0.0.1"`, which auto-enables localhost-only DNS-rebind protection — so **any non-localhost `Host` header is answered `421` as shipped** (connection attempts against a public hostname will fail until configured).
+>
+> To accept other hostnames — e.g. behind a reverse proxy that forwards a public `Host` — set `MCP_HUB_ALLOWED_HOSTS=your.host.example` in the environment (comma-separated for several). This explicitly enables `TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=[...])` on the FastMCP instance.
+>
+> Until configured, keep the endpoint localhost-bound or proxy with `Host` preservation pointing at localhost.
+
+---
+
 ## Appendix A: OpenAPI Schema (YAML)
 
 ```yaml
@@ -3312,4 +3471,4 @@ curl -X GET "https://api.orivory.io/api/v1/insights/connections?entity_a=eSpCas9
 
 ---
 
-*Document version: 2.0 | Last updated: 2025-01-20*
+*Document version: 2.0 | Last updated: 2026-09-02*

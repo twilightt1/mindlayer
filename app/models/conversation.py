@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.document import Document
@@ -22,7 +23,7 @@ class Conversation(Base):
     title:          Mapped[str]       = mapped_column(String(500), server_default="New Conversation")
     document_count: Mapped[int]       = mapped_column(Integer(), server_default="0")
     created_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
-    updated_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow)
+    updated_at:     Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now)
 
     user:      Mapped["User"]           = relationship(back_populates="conversations")
     messages:  Mapped[list["Message"]]  = relationship(back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")

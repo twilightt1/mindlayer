@@ -71,6 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
+      // The localStorage token is gone (storage eviction, partial site-data
+      // clear, private-mode quirks) but the middleware-facing `auth_state`
+      // cookie may still exist. Without clearing it, /login bounces back to
+      // /dashboard and the user is trapped in an infinite redirect loop.
+      clearTokens();
       setIsLoading(false);
       return;
     }
@@ -83,39 +88,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.ok) {
-        const data = await handleResponse<{ user: User }>(response);
-        setUser(data.user);
-      } else {
+        const data = await handleResponse<User & { user?: User }>(response);
+        // /users/me returns the user object directly (no {user: ...} wrapper)
+        setUser(data.user ?? data);
+      } else if (response.status === 401 || response.status === 403) {
         // Token invalid, try refresh
         const refreshed = await tryRefreshToken();
         if (!refreshed) {
           clearTokens();
           setUser(null);
         }
+      } else {
+        // 5xx / network-level failures: keep the session — a transient
+        // backend outage must not log the user out and discard their
+        // still-valid tokens.
+        console.error(`Session check failed (HTTP ${response.status}); keeping session.`);
       }
     } catch (error) {
+      // Network failure (offline, timeout, DNS): keep tokens, surface state
+      // via a null-safe retry on the next fetchUser instead of logging out.
       console.error("Failed to fetch user:", error);
-      setUser(null);
+      setUser((prev) => prev ?? null);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Try to refresh token
+  // Try to refresh token. The refresh token lives in an httpOnly cookie —
+  // include credentials so the browser sends it; the response body only
+  // carries the new access token.
   const tryRefreshToken = async (): Promise<boolean> => {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
 
     try {
       const response = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        // Legacy body fallback for sessions created before the cookie flow
+        ...(refreshToken ? { body: JSON.stringify({ refresh_token: refreshToken }) } : {}),
+        credentials: "include",
       });
 
       if (response.ok) {
-        const data = await handleResponse<{ access_token: string; refresh_token: string }>(response);
-        setTokens(data.access_token, data.refresh_token);
+        const data = await handleResponse<{ access_token: string; refresh_token?: string | null }>(response);
+        setTokens(data.access_token, data.refresh_token ?? null);
         await fetchUser();
         return true;
       }
@@ -174,8 +190,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Surface failures (duplicate email 409, validation 422, rate limit 429)
       // instead of pretending registration succeeded.
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Registration failed" }));
-        throw new Error(error.detail || error.message || `Registration failed (HTTP ${response.status})`);
+        const error = await response.json().catch(() => ({}));
+        // 422 responses carry `detail` as an array of validation issues.
+        let message: string = error.detail ?? error.message ?? `Registration failed (HTTP ${response.status})`;
+        if (Array.isArray(message)) {
+          message = message
+            .map((d: any) => d?.msg ?? String(d))
+            .join("; ");
+        }
+        throw new Error(message);
       }
 
       // Registration successful, needs email verification.

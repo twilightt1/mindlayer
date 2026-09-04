@@ -35,6 +35,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.memory import Memory
@@ -87,7 +88,7 @@ class Entity(Base):
 
     extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
     created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
+    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
 
     user:           Mapped[User]                  = relationship(back_populates="entities")
     memory_links:   Mapped[list[MemoryEntity]]    = relationship(back_populates="entity", cascade="all, delete-orphan")
@@ -126,7 +127,7 @@ class Relation(Base):
     last_evidence_at:  Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
     extra_metadata:    Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
     created_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=datetime.utcnow, nullable=False)
+    updated_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
 
     source: Mapped[Entity] = relationship("Entity", foreign_keys=[source_entity_id], back_populates="outgoing_relations")
     target: Mapped[Entity] = relationship("Entity", foreign_keys=[target_entity_id], back_populates="incoming_relations")

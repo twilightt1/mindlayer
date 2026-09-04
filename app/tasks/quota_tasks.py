@@ -16,13 +16,21 @@ def _utc_today() -> datetime.date:
 
 @celery_app.task(name="tasks.reset_daily_quotas")
 def reset_daily_quotas() -> None:
-    """Reset daily request counters — runs at midnight UTC via Celery Beat."""
+    """Reset daily request counters — runs at midnight UTC via Celery Beat.
+
+    Guarded by ``last_daily_reset`` like the monthly variant: Celery Beat can
+    fire a missed schedule more than once after downtime, and an unguarded
+    re-run mid-day would zero out users' counters and let them overshoot.
+    """
+    today = _utc_today()
     with sync_session() as db:
         db.execute(
-            update(UserQuota).values(
+            update(UserQuota)
+            .where(UserQuota.last_daily_reset < today)
+            .values(
                 requests_today=0,
                 tokens_today=0,
-                last_daily_reset=_utc_today(),
+                last_daily_reset=today,
             )
         )
         db.commit()

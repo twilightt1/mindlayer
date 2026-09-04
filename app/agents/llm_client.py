@@ -26,22 +26,123 @@ log = logging.getLogger(__name__)
 # 600s: the answer path chains up to ~10 serial stages, and one hung call
 # must not stall an SSE stream for 10 minutes.
 DEFAULT_LLM_TIMEOUT_SECONDS = 60.0
-DEFAULT_LLM_MAX_RETRIES = 2
+# Free-tier OpenRouter models 429 under burst; the SDK backs off per retry.
+DEFAULT_LLM_MAX_RETRIES = 3
 
 _client: AsyncOpenAI | None = None
 
 
+def _is_unsupported_feature_error(exc: Exception) -> bool:
+    """Detect provider 400s that mean 'this model lacks structured outputs'."""
+    text = str(exc).lower()
+    markers = (
+        "does not support feature",
+        "structured-outputs",
+        "response_format",
+        "invalid_request_body",
+    )
+    return "400" in text and any(m in text for m in markers)
+
+
+class _ResilientCompletions:
+    """Wrapper around ``chat.completions`` adding provider-error fallbacks.
+
+    Every agent shares one AsyncOpenAI client, so wrapping here fixes all
+    ~20 call sites at once. Handles:
+      * structured-outputs 400s → retry without ``response_format`` (with an
+        app-default token budget, since reasoning-style models would truncate
+        mid-CoT under a small per-agent cap)
+    Concurrency gating and 429 retries live in the SDK + semaphore below.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    def _strip_rf_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        kwargs["response_format"] = None
+        # Reasoning models burn tokens on CoT before content; a small
+        # per-agent cap (grader: 500) truncates to empty text on fallback.
+        kwargs["max_tokens"] = max(int(kwargs.get("max_tokens") or 0), settings.LLM_MAX_TOKENS)
+        return kwargs
+
+    async def create(self, **kwargs: Any) -> Any:
+        try:
+            return await self._inner.create(**kwargs)
+        except Exception as exc:
+            if kwargs.get("response_format") and _is_unsupported_feature_error(exc):
+                kwargs = self._strip_rf_kwargs(kwargs)
+                return await self._inner.create(**kwargs)
+            raise
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+class ResilientAsyncOpenAI:
+    """Duck-typed AsyncOpenAI whose ``chat.completions`` is resilient."""
+
+    def __init__(self, inner: AsyncOpenAI) -> None:
+        self._inner = inner
+        self.chat = type("Chat", (), {"completions": _ResilientCompletions(inner.chat.completions)})()
+        self._llm_gate = _get_llm_semaphore()
+
+    async def __aenter__(self) -> "ResilientAsyncOpenAI":
+        return self
+
+    async def __aexit__(self, *exc: Any) -> None:
+        return None
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
 def get_llm_client() -> AsyncOpenAI:
-    """Return the shared configured AsyncOpenAI client (OpenRouter by default)."""
+    """Return the shared configured client (OpenRouter by default).
+
+    Returns a ResilientAsyncOpenAI duck-type: transparent to callers, but
+    every ``chat.completions.create`` gains the structured-outputs fallback.
+    """
     global _client
     if _client is None:
-        _client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-            timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
-            max_retries=DEFAULT_LLM_MAX_RETRIES,
+        _client = ResilientAsyncOpenAI(
+            AsyncOpenAI(
+                api_key=settings.OPENROUTER_API_KEY,
+                base_url=settings.OPENROUTER_BASE_URL,
+                timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
+                max_retries=DEFAULT_LLM_MAX_RETRIES,
+                default_headers={
+                    "HTTP-Referer": settings.FRONTEND_URL,
+                    "X-Title": "Orivory",
+                },
+            )
         )
     return _client
+
+
+# App-wide gate on concurrent provider calls. The RAG pipeline fans out
+# (router + rewriter + N parallel graders + answer), and free-tier models
+# reject bursts with 429 — serializing through a small semaphore trades a
+# little latency for a much higher success rate.
+_llm_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_llm_semaphore() -> asyncio.Semaphore:
+    global _llm_semaphore
+    if _llm_semaphore is None:
+        _llm_semaphore = asyncio.Semaphore(max(1, settings.LLM_MAX_CONCURRENCY))
+    return _llm_semaphore
+
+
+def _is_unsupported_feature_error(exc: Exception) -> bool:
+    """Detect provider 400s that mean 'this model lacks structured outputs'."""
+    text = str(exc).lower()
+    markers = (
+        "does not support feature",
+        "structured-outputs",
+        "response_format",
+        "invalid_request_body",
+    )
+    return any(m in text for m in markers) and "400" in text
 
 
 def _usage_to_tokens(usage: Any) -> tuple[int, int]:
@@ -102,7 +203,7 @@ async def complete(
     Returns the raw completion object (callers read `.choices[0].message`).
     """
     client = get_llm_client()
-    response = await client.chat.completions.create(
+    kwargs: dict[str, Any] = dict(
         model=model or settings.LLM_MODEL,
         messages=messages,
         temperature=temperature,
@@ -111,6 +212,28 @@ async def complete(
         extra_headers=extra_headers,
         timeout=timeout or DEFAULT_LLM_TIMEOUT_SECONDS,
     )
+    async with _get_llm_semaphore():
+        try:
+            response = await client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            # Some providers/models (e.g. ling, deepseek-reasoner variants)
+            # reject `response_format` with a 400 "does not support feature:
+            # structured-outputs". Fall back to a plain call — the agents'
+            # prompts already demand JSON, and parse_llm_json_object is
+            # tolerant of fenced/messy output.
+            if response_format and _is_unsupported_feature_error(exc):
+                kwargs["response_format"] = None
+                # Reasoning-style models burn the token budget on CoT before
+                # emitting content; a small per-agent cap (e.g. 500 for the
+                # grader) would truncate mid-reasoning and yield empty text.
+                # Give the fallback the app-default budget instead.
+                kwargs["max_tokens"] = max(
+                    int(kwargs["max_tokens"] or 0), settings.LLM_MAX_TOKENS
+                )
+                async with _get_llm_semaphore():
+                    response = await client.chat.completions.create(**kwargs)
+            else:
+                raise
     record_usage(state, agent, model or settings.LLM_MODEL, getattr(response, "usage", None))
     return response
 
@@ -132,15 +255,16 @@ async def complete_stream(
     chunk (if any) carries `usage`.
     """
     client = get_llm_client()
-    stream = await client.chat.completions.create(
-        model=model or settings.LLM_MODEL,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens or settings.LLM_MAX_TOKENS,
-        extra_headers=extra_headers,
-        timeout=timeout or DEFAULT_LLM_TIMEOUT_SECONDS,
-        stream=True,
-    )
+    async with _get_llm_semaphore():
+        stream = await client.chat.completions.create(
+            model=model or settings.LLM_MODEL,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens or settings.LLM_MAX_TOKENS,
+            extra_headers=extra_headers,
+            timeout=timeout or DEFAULT_LLM_TIMEOUT_SECONDS,
+            stream=True,
+        )
     last_usage: Any = None
     try:
         async for chunk in stream:

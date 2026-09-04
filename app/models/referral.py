@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models._datetime_helpers import utc_now
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -29,7 +30,7 @@ class ReferralCode(Base):
     code: Mapped[str] = mapped_column(String(12), unique=True, nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     max_uses: Mapped[int] = mapped_column(Integer, default=10)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utc_now)
 
     # Relationships
     user: Mapped[User] = relationship("User", backref="referral_codes")
@@ -51,7 +52,7 @@ class Referral(Base):
     referee_email: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, completed, rewarded
     reward_tier: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(default=None)
 
     # Relationships
@@ -73,5 +74,5 @@ class ReferralReward(Base):
     reward_type: Mapped[str] = mapped_column(String(20), nullable=False)  # free_months, increased_quota
     reward_value: Mapped[int] = mapped_column(Integer, default=1)
     is_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utc_now)
     claimed_at: Mapped[datetime | None] = mapped_column(default=None)

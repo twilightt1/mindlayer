@@ -232,3 +232,56 @@ class RecallResponse(BaseModel):
     results:          list[MemoryWithScore]
     personal_context: list[MemoryResponse] | None = None
     trace:            RecallTrace
+
+
+# ─── Agent clients (Open Memory Hub) ────────────────────────────────────────
+
+class AgentClientCreate(BaseModel):
+    """Request body for ``POST /api/v1/agents`` — register a hub client."""
+    name:   str       = Field(min_length=1, max_length=100)
+    scopes: list[str] = Field(default_factory=list, max_length=16)
+
+
+class AgentClientCreated(BaseModel):
+    """Registration response — carries the plaintext token, shown exactly once."""
+    id:         UUID
+    name:       str
+    scopes:     list[str]
+    status:     str
+    created_at: datetime
+    token:      str
+
+
+class AgentClientResponse(BaseModel):
+    """Client record without any token material (list/detail views)."""
+    id:           UUID
+    name:         str
+    scopes:       list[str]
+    status:       str
+    created_at:   datetime
+    last_used_at: datetime | None
+    revoked_at:   datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentClientListResponse(BaseModel):
+    items: list[AgentClientResponse]
+    total: int
+
+
+class AccessLogItem(BaseModel):
+    """One row of the access ledger ("which AI saw what, and when")."""
+    id:              UUID
+    agent_client_id: UUID | None
+    action:          str
+    memory_id:       UUID | None
+    detail:          dict
+    created_at:      datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AccessLogListResponse(BaseModel):
+    items: list[AccessLogItem]
+    total: int

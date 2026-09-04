@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/layout";
@@ -273,7 +273,19 @@ export default function DiscoveryPage() {
     insights: MOCK_INSIGHTS,
   });
 
+  // Keep the interval in a ref so unmount mid-run doesn't leave it firing
+  // setState into a dead component.
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   const runDiscovery = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
     setState((prev) => ({
       ...prev,
       isRunning: true,
@@ -283,7 +295,7 @@ export default function DiscoveryPage() {
     }));
 
     const messages = [
-      { progress: 20, message: "Scanning 127 documents..." },
+      { progress: 20, message: "Scanning your documents..." },
       { progress: 40, message: "Extracting entities..." },
       { progress: 60, message: "Finding connections..." },
       { progress: 80, message: "Analyzing patterns..." },
@@ -291,7 +303,7 @@ export default function DiscoveryPage() {
     ];
 
     let index = 0;
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (index < messages.length) {
         setState((prev) => ({
           ...prev,
@@ -300,7 +312,8 @@ export default function DiscoveryPage() {
         }));
         index++;
       } else {
-        clearInterval(interval);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
         setState((prev) => ({
           ...prev,
           isRunning: false,

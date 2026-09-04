@@ -21,6 +21,41 @@ export interface Memory {
   tags?: string[];
 }
 
+/**
+ * Backend MemoryResponse uses a different shape (title/content/source_type/
+ * recall_count...). Map it onto the client Memory interface the UI renders.
+ * `type` is derived from source_type since the backend has no memory-type
+ * column; entity/relationship/concept are graph artifacts.
+ */
+export function mapBackendMemory(m: any): Memory {
+  const sourceType = String(m.source_type || "other");
+  const type: Memory["type"] = sourceType.includes("conversation")
+    ? "observation"
+    : sourceType === "manual_note"
+      ? "concept"
+      : "entity";
+  return {
+    id: m.id,
+    type,
+    name: m.title || m.summary || sourceType,
+    description: m.summary || undefined,
+    content: m.content,
+    metadata: m.metadata,
+    importance_score: m.salience,
+    source_document_ids: m.source_ref ? [m.source_ref] : undefined,
+    created_at: new Date(m.captured_at ?? m.created_at),
+    updated_at: new Date(m.updated_at),
+    last_accessed_at: m.last_used_at ? new Date(m.last_used_at) : undefined,
+    access_count: m.recall_count ?? 0,
+    tags: m.tags ?? [],
+  };
+}
+
+function mapListResponse(data: { items?: any[]; memories?: any[] }): Memory[] {
+  const rows = data.items ?? data.memories ?? [];
+  return rows.map(mapBackendMemory);
+}
+
 export interface MemoryConnection {
   id: string;
   source_id: string;
@@ -77,22 +112,17 @@ export async function listMemories(params?: {
   offset?: number;
 }): Promise<Memory[]> {
   const searchParams = new URLSearchParams();
-  
-  if (params?.type) searchParams.set("type", params.type);
-  if (params?.tags?.length) searchParams.set("tags", params.tags.join(","));
-  if (params?.search) searchParams.set("search", params.search);
+
+  // Backend filter params (source_type/tag/query), mapped from client params
+  if (params?.search) searchParams.set("query", params.search);
+  if (params?.tags?.length) searchParams.set("tag", params.tags[0]);
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.offset) searchParams.set("offset", String(params.offset));
-  
+
   const query = searchParams.toString();
-  const data = await apiClient.get<{ memories: any[] }>(`/api/v1/memories${query ? `?${query}` : ""}`);
-  
-  return data.memories.map((m: any) => ({
-    ...m,
-    created_at: new Date(m.created_at),
-    updated_at: new Date(m.updated_at),
-    last_accessed_at: m.last_accessed_at ? new Date(m.last_accessed_at) : undefined,
-  }));
+  const data = await apiClient.get<{ items: any[]; memories?: any[] }>(`/api/v1/memories${query ? `?${query}` : ""}`);
+
+  return mapListResponse(data);
 }
 
 /**
@@ -100,36 +130,38 @@ export async function listMemories(params?: {
  */
 export async function getMemory(id: string): Promise<Memory> {
   const data = await apiClient.get<any>(`/api/v1/memories/${id}`);
-  return {
-    ...data,
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
-    last_accessed_at: data.last_accessed_at ? new Date(data.last_accessed_at) : undefined,
-  };
+  return mapBackendMemory(data);
 }
 
 /**
  * Create a new memory
  */
 export async function createMemory(params: CreateMemoryParams): Promise<Memory> {
-  const data = await apiClient.post<any>("/api/v1/memories", params);
-  return {
-    ...data,
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
-  };
+  // Backend expects MemoryCreate: title/content/summary/source_type/tags...
+  const data = await apiClient.post<any>("/api/v1/memories", {
+    title: params.name,
+    content: params.content ?? params.description ?? params.name,
+    summary: params.description,
+    source_type: "manual_note",
+    tags: params.tags,
+    metadata: params.metadata,
+  });
+  return mapBackendMemory(data);
 }
 
 /**
  * Update a memory
  */
 export async function updateMemory(id: string, params: UpdateMemoryParams): Promise<Memory> {
-  const data = await apiClient.patch<any>(`/api/v1/memories/${id}`, params);
-  return {
-    ...data,
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
-  };
+  const data = await apiClient.patch<any>(`/api/v1/memories/${id}`, {
+    ...(params.name !== undefined ? { title: params.name } : {}),
+    ...(params.description !== undefined ? { summary: params.description } : {}),
+    ...(params.content !== undefined ? { content: params.content } : {}),
+    ...(params.importance_score !== undefined ? { salience: params.importance_score } : {}),
+    ...(params.tags !== undefined ? { tags: params.tags } : {}),
+    ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
+  });
+  return mapBackendMemory(data);
 }
 
 /**
@@ -161,12 +193,11 @@ export async function getRelatedMemories(id: string): Promise<MemoryConnection[]
  * Search memories by semantic similarity
  */
 export async function searchMemories(query: string, limit = 10): Promise<Memory[]> {
-  const data = await apiClient.post<{ results: any[] }>("/api/v1/memories/search", { query, limit });
-  return data.results.map((m: any) => ({
-    ...m,
-    created_at: new Date(m.created_at),
-    updated_at: new Date(m.updated_at),
-  }));
+  // Backend list endpoint supports a `query` substring filter (no separate
+  // /search route). POST /recall is LLM-quota-gated — too heavy for typing.
+  const searchParams = new URLSearchParams({ query, limit: String(limit) });
+  const data = await apiClient.get<{ items: any[]; memories?: any[] }>(`/api/v1/memories?${searchParams.toString()}`);
+  return mapListResponse(data);
 }
 
 /**
