@@ -1,0 +1,56 @@
+[
+  {
+    "question_id": "fixture_0001",
+    "question_type": "temporal-reasoning",
+    "question": "Which app did I use to track my runs before I switched to Strava?",
+    "answer": "Runkeeper",
+    "question_date": "2026-08-20",
+    "haystack_session_ids": ["s_2026_05_02", "s_2026_06_14", "s_2026_07_30"],
+    "haystack_dates": ["2026-05-02", "2026-06-14", "2026-07-30"],
+    "haystack_sessions": [
+      [
+        {"role": "user", "content": "I finally set up my apartment in Oakland. The moving boxes are finally gone."},
+        {"role": "assistant", "content": "That is a great feeling! What did you do to celebrate finishing the move?"},
+        {"role": "user", "content": "I just ordered takeout and watched a movie. Nothing fancy, but it felt earned."},
+        {"role": "assistant", "content": "Sometimes the quiet nights are the best reward after a big project. Enjoy the new place!"}
+      ],
+      [
+        {"role": "user", "content": "I have been logging my morning runs in Runkeeper and it has been going really well."},
+        {"role": "assistant", "content": "Nice streak! How far are you usually going on these morning runs?"},
+        {"role": "user", "content": "About 5k every other day. Runkeeper tracks my pace and the route along the lake.", "has_answer": true},
+        {"role": "assistant", "content": "A lakeside 5k is a beautiful routine. Consistency like that builds up quickly."}
+      ],
+      [
+        {"role": "user", "content": "I cancelled my Runkeeper subscription and switched everything over to Strava this week."},
+        {"role": "assistant", "content": "What made you switch to Strava after using Runkeeper for a while?"},
+        {"role": "user", "content": "Most of my running club friends are on Strava, so the segments and club leaderboard were the pull."},
+        {"role": "assistant", "content": "Community is a strong motivator. Your running club will keep the streak alive on Strava."}
+      ]
+    ],
+    "answer_session_ids": ["s_2026_06_14"]
+  },
+  {
+    "question_id": "fixture_0002_abs",
+    "question_type": "knowledge-update",
+    "question": "What is the model of the car I am currently driving?",
+    "answer": "I have no information about what car you are currently driving.",
+    "question_date": "2026-08-22",
+    "haystack_session_ids": ["s_2026_04_11", "s_2026_07_05"],
+    "haystack_dates": ["2026-04-11", "2026-07_05"],
+    "haystack_sessions": [
+      [
+        {"role": "user", "content": "My lease on the Honda Civic was up for renewal so I handed it back to the dealership last weekend."},
+        {"role": "assistant", "content": "Handing back a leased Civic is a clean exit. Are you planning to lease again or buy this time?"},
+        {"role": "user", "content": "I have not decided yet. For now I am biking to work and taking the bus on rainy days.", "has_answer": true},
+        {"role": "assistant", "content": "That is a flexible way to test life without a car before committing to the next one."}
+      ],
+      [
+        {"role": "user", "content": "I rented a Toyota Corolla for a trip to the mountains, but I returned it on Monday."},
+        {"role": "assistant", "content": "How was the Corolla on those mountain roads?"},
+        {"role": "user", "content": "It handled the climbs fine, but I was glad to give the keys back and get back to the bus."},
+        {"role": "assistant", "content": "Sounds like the rental did its job for the trip without tempting you back into ownership."}
+      ]
+    ],
+    "answer_session_ids": ["s_2026_04_11"]
+  }
+]
