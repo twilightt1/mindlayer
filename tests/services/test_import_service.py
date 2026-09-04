@@ -125,8 +125,9 @@ async def test_run_import_dedup_select_is_one_batched_query_scoped_to_user(index
     """The dedup pre-check must be ONE select with source_ref IN (...), scoped
     to user_id + source_type — never N per-item queries (plan's 'batched'
     requirement, locked as a compiled-SQL guard)."""
+    user_id = uuid.uuid4()
     db = _FakeDB()
-    await run_import(db, uuid.uuid4(), _payload_bytes(CHATGPT_PAYLOAD), "chatgpt",
+    await run_import(db, user_id, _payload_bytes(CHATGPT_PAYLOAD), "chatgpt",
                      requested_by="rest_api")
 
     assert len(db.statements) == 1, "run_import must issue exactly one dedup select"
@@ -134,6 +135,9 @@ async def test_run_import_dedup_select_is_one_batched_query_scoped_to_user(index
     assert "IN" in sql.upper()
     params = db.statements[0].compile(dialect=postgresql.dialect()).params
     assert set(params["source_ref_1"]) == {"c1", "c2"}, "refs must go in as one list param"
+    # User-bind guard (carried T3 review fix): the UUID(as_uuid=True) column
+    # binds the uuid object itself, so compare against user_id, not str(user_id).
+    assert params["user_id_1"] == user_id, "dedup select must bind the caller's user id"
 
 
 async def test_run_import_dedups_against_db_and_within_file(indexed):
