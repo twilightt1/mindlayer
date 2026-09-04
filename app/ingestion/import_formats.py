@@ -16,6 +16,7 @@ Verified format sources (also published in docs/API.md §Imports):
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -149,3 +150,201 @@ def parse_chatgpt(data: Any) -> list[ImportItem]:
             )
         )
     return items
+
+
+def parse_claude(data: Any) -> list[ImportItem]:
+    """Claude conversations.json (JSON array) → one ImportItem per conversation.
+
+    Verified shape (PAM importer-mappings §2): messages live in
+    ``chat_messages`` (NOT ``messages``) as a flat linear array; senders are
+    ``"human"``/``"assistant"``; the message-level ``text`` is the plain-text
+    duplicate of the content[] text parts. thinking/tool_use/tool_result
+    blocks are model plumbing, not user knowledge — dropped in v0.
+    """
+    if not isinstance(data, list):
+        raise ImportFormatError(
+            "Claude export must be the conversations.json JSON array "
+            "(claude.ai Settings → Privacy → Export data)."
+        )
+    items: list[ImportItem] = []
+    for conversation in data:
+        if not isinstance(conversation, dict):
+            continue
+        lines: list[str] = []
+        for message in conversation.get("chat_messages") or []:
+            if not isinstance(message, dict):
+                continue
+            sender = message.get("sender")
+            text = str(message.get("text") or "").strip()
+            if not text or sender not in ("human", "assistant"):
+                continue
+            lines.append(f"{'User' if sender == 'human' else 'Assistant'}: {text}")
+        if not lines:
+            continue
+        items.append(
+            ImportItem(
+                title=_clip(conversation.get("name"), 500) or "Untitled Claude conversation",
+                content="\n\n".join(lines),
+                source_ref=_clip(conversation.get("uuid"), 500),
+                captured_at=_to_utc_datetime(conversation.get("created_at")),
+                tags=["claude"],
+                metadata={"import_format": "claude"},
+            )
+        )
+    return items
+
+
+def _parse_pam(data: dict) -> list[ImportItem]:
+    """PAM memory-store.json → one ImportItem per memory (generic path).
+
+    PAM memories carry no title (content is the payload), so synthesize
+    ``[<type>] <content preview>``. Relations/conversations companions are
+    out of scope for v0.
+    """
+    items: list[ImportItem] = []
+    for memory in data.get("memories") or []:
+        if not isinstance(memory, dict):
+            continue
+        content = str(memory.get("content") or "").strip()
+        if not content:
+            continue
+        mem_type = str(memory.get("type") or "memory")
+        provenance = memory.get("provenance") or {}
+        items.append(
+            ImportItem(
+                title=_clip(f"[{mem_type}] {content[:120]}", 500),
+                content=content,
+                source_ref=_clip(memory.get("id"), 500),
+                captured_at=_to_utc_datetime((memory.get("temporal") or {}).get("created_at")),
+                tags=[mem_type],
+                metadata={
+                    "import_format": "generic",
+                    "pam": True,
+                    "platform": provenance.get("platform"),
+                },
+            )
+        )
+    return items
+
+
+def parse_generic(data: Any) -> list[ImportItem]:
+    """Generic JSON → ImportItems.
+
+    Accepts either a PAM ``memory-store.json`` (dict with
+    ``schema == "portable-ai-memory"``) or a JSON array of
+    ``{title?, content, created_at?, url?, ref?, tags?}`` items — the shape
+    any provider (or an OpenRecall sqlite dump, see docs) can be reduced to.
+    """
+    if isinstance(data, dict) and data.get("schema") == "portable-ai-memory":
+        return _parse_pam(data)
+    if not isinstance(data, list):
+        raise ImportFormatError(
+            "Generic import must be a JSON array of "
+            "{title?, content, created_at?, url?, ref?, tags?} items "
+            "or a PAM memory-store.json object."
+        )
+    items: list[ImportItem] = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        content = str(entry.get("content") or "").strip()
+        if not content:
+            continue
+        items.append(
+            ImportItem(
+                title=_clip(entry.get("title"), 500),
+                content=content,
+                source_ref=_clip(entry.get("ref"), 500),
+                source_url=_clip(entry.get("url"), 1000),
+                captured_at=_to_utc_datetime(entry.get("created_at")),
+                tags=[str(t) for t in (entry.get("tags") or []) if str(t).strip()][:50],
+                metadata={"import_format": "generic"},
+            )
+        )
+    return items
+
+
+def detect_format(data: Any) -> str:
+    """Best-effort provider detection (PAM spec §9 heuristics, verified).
+
+    Keys off the first array element: ``mapping`` → chatgpt,
+    ``chat_messages`` → claude, ``content`` → generic; a dict with the PAM
+    ``schema`` marker → generic.
+    """
+    if isinstance(data, list):
+        sample = data[0] if data else {}
+        if isinstance(sample, dict):
+            if "mapping" in sample:
+                return "chatgpt"
+            if "chat_messages" in sample:
+                return "claude"
+            if "content" in sample:
+                return "generic"
+    if isinstance(data, dict) and data.get("schema") == "portable-ai-memory":
+        return "generic"
+    return "unknown"
+
+
+_PARSERS: dict[str, Any] = {
+    "chatgpt": parse_chatgpt,
+    "claude": parse_claude,
+    "generic": parse_generic,
+}
+
+
+def _cap_content(items: list[ImportItem]) -> list[ImportItem]:
+    """Clip every item's content to exactly ``MAX_CONTENT_CHARS``.
+
+    The cap applies to the FINAL assembled content — role prefixes and
+    joined turns included, not just raw message text. T1 review handoff.
+    """
+    for item in items:
+        if len(item.content) > MAX_CONTENT_CHARS:
+            keep = MAX_CONTENT_CHARS - len(TRUNCATION_MARKER)
+            item.content = item.content[:keep] + TRUNCATION_MARKER
+    return items
+
+
+def parse_import(data: Any, source_format: str | None = None) -> list[ImportItem]:
+    """Parse an export payload → ImportItems with content capped at 10k.
+
+    ``source_format`` may be a concrete format (``"chatgpt" | "claude" |
+    "generic"``) or None to auto-detect via :func:`detect_format` (the
+    service layer passes the user's explicit choice through; ``"auto"``
+    resolves to None here). Payloads that are raw JSON text (str/bytes —
+    what a caller that has not decoded yet hands us) are decoded here,
+    with decode errors surfaced as ``ImportFormatError``.
+    """
+    if isinstance(data, (str, bytes, bytearray)):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise ImportFormatError(f"import payload is not valid JSON: {exc}") from exc
+    if source_format in (None, "auto"):
+        source_format = detect_format(data)
+        if source_format == "unknown":
+            raise ImportFormatError(
+                "could not detect the export format — pass source_format "
+                "explicitly (chatgpt | claude | generic)."
+            )
+    parser = _PARSERS.get(source_format)
+    if parser is None:
+        raise ImportFormatError(
+            f"unknown source_format: {source_format!r} (supported: {SOURCE_FORMATS})"
+        )
+    return _cap_content(parser(data))
+
+
+__all__ = [
+    "MAX_CONTENT_CHARS",
+    "SOURCE_FORMATS",
+    "SOURCE_TYPE_FOR_FORMAT",
+    "TRUNCATION_MARKER",
+    "ImportFormatError",
+    "ImportItem",
+    "detect_format",
+    "parse_chatgpt",
+    "parse_claude",
+    "parse_generic",
+    "parse_import",
+]

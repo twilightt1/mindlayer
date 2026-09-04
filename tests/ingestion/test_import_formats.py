@@ -12,11 +12,17 @@ from datetime import UTC, datetime
 import pytest
 
 from app.ingestion.import_formats import (
+    MAX_CONTENT_CHARS,
     SOURCE_TYPE_FOR_FORMAT,
+    TRUNCATION_MARKER,
     ImportFormatError,
     ImportItem,
     _to_utc_datetime,
+    detect_format,
     parse_chatgpt,
+    parse_claude,
+    parse_generic,
+    parse_import,
 )
 
 # Real ChatGPT conversations.json shape: array of conversations; mapping is a
@@ -131,3 +137,191 @@ def test_import_item_rejects_empty_content():
     # constructing items, so this is a belt-and-suspenders guard.
     with pytest.raises(ValidationError):
         ImportItem(content="")
+
+
+# ————————————————— Task 2: Claude / generic / PAM / dispatch ————————————————
+
+# Real Claude conversations.json shape: array; chat_messages (NOT messages);
+# sender "human"/"assistant"; message-level text is the plain-text duplicate
+# of content[] text parts; created_at ISO 8601 — verified against PAM
+# importer-mappings.md §2.
+CLAUDE_SAMPLE = [
+    {
+        "uuid": "9f1c2ab3-1111-4222-8333-444444444444",
+        "name": "Vector db selection",
+        "summary": "Choosing a vector database",
+        "created_at": "2026-01-20T09:15:00Z",
+        "updated_at": "2026-01-20T09:20:00Z",
+        "chat_messages": [
+            {
+                "uuid": "m1",
+                "sender": "human",
+                "text": "pgvector or Qdrant for 10M vectors?",
+                "created_at": "2026-01-20T09:15:00Z",
+                "content": [],
+            },
+            {
+                "uuid": "m2",
+                "sender": "assistant",
+                "text": "pgvector keeps data in Postgres; Qdrant separates storage.",
+                "created_at": "2026-01-20T09:16:00Z",
+                "content": [{"type": "text", "text": "pgvector keeps data in Postgres; Qdrant separates storage."}],
+            },
+        ],
+    },
+    {"uuid": "empty-conv", "name": "No text", "chat_messages": []},
+]
+
+# Real PAM memory-store.json shape (minimal example from portable-ai-memory.org).
+PAM_SAMPLE = {
+    "schema": "portable-ai-memory",
+    "schema_version": "1.0",
+    "owner": {"id": "user-123"},
+    "memories": [
+        {
+            "id": "mem-001",
+            "type": "skill",
+            "content": "User is a cloud infrastructure engineer",
+            "temporal": {"created_at": "2025-01-15T00:00:00Z"},
+            "provenance": {"platform": "chatgpt"},
+        },
+        {
+            "id": "mem-002",
+            "type": "preference",
+            "content": "Prefers concise answers",
+            "temporal": {"created_at": "2025-02-01T00:00:00Z"},
+            "provenance": {"platform": "claude"},
+        },
+    ],
+}
+
+GENERIC_SAMPLE = [
+    {
+        "title": "Rewind daily digest",
+        "content": "Worked on the import path today.",
+        "created_at": "2026-09-01T10:00:00Z",
+        "url": "https://example.com/d",
+        "tags": ["rewind"],
+        "ref": "rewind-2026-09-01",
+    },
+    {"content": "untitled note"},
+    {"title": "no content — skipped"},
+]
+
+
+def test_parse_claude_one_memory_per_conversation():
+    items = parse_claude(CLAUDE_SAMPLE)
+    assert len(items) == 1
+    item = items[0]
+    assert item.title == "Vector db selection"
+    assert item.source_ref == "9f1c2ab3-1111-4222-8333-444444444444"
+    assert item.captured_at == datetime(2026, 1, 20, 9, 15, tzinfo=UTC)
+    assert item.content.startswith("User: pgvector or Qdrant")
+    assert "Assistant: pgvector keeps data in Postgres" in item.content
+    assert item.tags == ["claude"]
+    assert item.metadata == {"import_format": "claude"}
+
+
+def test_parse_claude_requires_array():
+    with pytest.raises(ImportFormatError, match=r"conversations\.json JSON array"):
+        parse_claude({"chat_messages": []})
+
+
+def test_parse_generic_array():
+    items = parse_generic(GENERIC_SAMPLE)
+    assert len(items) == 2  # third entry has no content → skipped
+    assert items[0].source_ref == "rewind-2026-09-01"
+    assert items[0].source_url == "https://example.com/d"
+    assert items[0].tags == ["rewind"]
+    assert items[0].captured_at == datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
+    assert items[1].title is None  # untitled note
+
+
+def test_parse_generic_pam_bundle():
+    items = parse_generic(PAM_SAMPLE)
+    assert len(items) == 2
+    first = items[0]
+    assert first.title == "[skill] User is a cloud infrastructure engineer"
+    assert first.source_ref == "mem-001"
+    assert first.tags == ["skill"]
+    assert first.metadata["pam"] is True
+    assert first.metadata["platform"] == "chatgpt"
+    assert first.captured_at == datetime(2025, 1, 15, tzinfo=UTC)
+
+
+def test_detect_format():
+    assert detect_format(CHATGPT_SAMPLE) == "chatgpt"
+    assert detect_format(CLAUDE_SAMPLE) == "claude"
+    assert detect_format(GENERIC_SAMPLE) == "generic"
+    assert detect_format(PAM_SAMPLE) == "generic"  # PAM rides the generic path
+    assert detect_format([]) == "unknown"
+    assert detect_format({"stray": 1}) == "unknown"
+
+
+def test_parse_import_truncates_long_content():
+    payload = [{"content": "x" * (MAX_CONTENT_CHARS + 500)}]
+    items = parse_import(payload, "generic")
+    assert len(items) == 1
+    assert len(items[0].content) == MAX_CONTENT_CHARS  # exactly at the cap
+    assert items[0].content.endswith(TRUNCATION_MARKER)
+
+
+def test_parse_import_caps_chatgpt_transcript():
+    """Controller-mandated handoff from T1 review: the 10k cap applies to the
+    FINAL assembled transcript (role prefixes + joined turns included), not
+    just raw message text — and the ChatGPT path must be covered too."""
+    # 1200 user turns × ("User: " + 9 chars + "\n\n") ≈ 19k chars assembled
+    conv = {
+        "id": "big-conv",
+        "title": "Big conversation",
+        "create_time": 1738454400.0,
+        "mapping": {
+            str(i): {
+                "id": str(i),
+                "message": {
+                    "author": {"role": "user"},
+                    "create_time": float(1738454400 + i),
+                    "content": {"parts": ["abcdefghi"]},
+                },
+            }
+            for i in range(1200)
+        },
+    }
+    items = parse_import([conv], "chatgpt")
+    assert len(items) == 1
+    assert len(items[0].content) == MAX_CONTENT_CHARS
+    assert items[0].content.endswith(TRUNCATION_MARKER)
+    # the marker is appended, not spliced into the middle: the kept text is
+    # exactly the first (cap − marker) chars of the uncapped transcript
+    uncapped = parse_chatgpt([conv])[0].content
+    keep = MAX_CONTENT_CHARS - len(TRUNCATION_MARKER)
+    assert items[0].content == uncapped[:keep] + TRUNCATION_MARKER
+
+
+def test_parse_import_dispatches_by_detected_format():
+    # explicit concrete format → that parser
+    assert [i.source_ref for i in parse_import(CLAUDE_SAMPLE, "claude")] == [
+        "9f1c2ab3-1111-4222-8333-444444444444"
+    ]
+    # format None → detect_format dispatch (claude sample detected as claude)
+    auto = parse_import(CLAUDE_SAMPLE)
+    assert [i.tags for i in auto] == [["claude"]]
+    # PAM rides the generic path under auto too
+    pam = parse_import(PAM_SAMPLE)
+    assert len(pam) == 2
+    assert pam[0].metadata["pam"] is True
+
+
+def test_parse_import_invalid_json_payload():
+    """Controller-mandated: JSON decode errors surface as ImportFormatError
+    (a str/bytes payload is what json.loads would have raised on)."""
+    with pytest.raises(ImportFormatError):
+        parse_import("not json at all {", "generic")
+
+
+def test_parse_import_unknown_format_rejected():
+    with pytest.raises(ImportFormatError, match=r"unknown source_format: 'rewind'"):
+        parse_import([{"content": "x"}], "rewind")
+    # also when detection fails: no content-bearing shape at all
+    with pytest.raises(ImportFormatError, match=r"could not detect"):
+        parse_import({"stray": 1})
