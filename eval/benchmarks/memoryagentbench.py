@@ -175,17 +175,20 @@ async def run_forgetting_scenario(
     ``forget_memory`` path); then each question is asked via ``recall``.
     ``recalled_after_forget`` reports whether the question's expected answer
     still appears in the post-forget recall response (case-insensitive,
-    whitespace-normalized word-boundary match). For the fixture's
-    selective-forgetting record the expected answer is the surviving updated
-    fact, so False means forgetting caused collateral damage; scenarios whose
-    answer is the forgotten fact itself invert that reading — the runner
-    interprets per competency.
+    whitespace-normalized word-boundary match). ``stale_fact_still_present``
+    reports whether any forget-flagged turn's content still appears in that
+    response (same normalized word-boundary search) — True means the stale
+    fact survived the forget call. For the fixture's selective-forgetting
+    record the expected answer is the surviving updated fact, so False means
+    forgetting caused collateral damage; scenarios whose answer is the
+    forgotten fact itself invert that reading — the runner interprets per
+    competency.
     """
     for turn in scenario.history:
         await ingest_turn(turn.content)
-    for turn in scenario.history:
-        if isinstance(turn, ScenarioTurn) and turn.forget:
-            await forget(turn.content)
+    stale_contents = [turn.content for turn in scenario.history if isinstance(turn, ScenarioTurn) and turn.forget]
+    for content in stale_contents:
+        await forget(content)
 
     questions = []
     for instance in scenario.questions:
@@ -194,6 +197,7 @@ async def run_forgetting_scenario(
             {
                 "question_id": instance.question_id,
                 "recalled_after_forget": _answer_recalled(instance.answer, response),
+                "stale_fact_still_present": any(_answer_recalled(content, response) for content in stale_contents),
             }
         )
     return {

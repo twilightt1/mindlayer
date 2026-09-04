@@ -32,16 +32,16 @@ The MemoryAgentBench stub adapter consumes `eval/benchmarks/fixtures/memoryagent
 
 ## How to run
 
-The runner CLI (Task 4 of the scaffold) drives each benchmark in **phases** so ingest (potentially hours) is never accidentally repeated:
+The v0 boundary is: **download dataset → plan → score**. Live ingest/query/judge wiring is a pinned follow-up — in v0, `--phase ingest` and `--phase query` exit 3 with a refusal message and write nothing; `--phase score` aggregates an existing per-question results JSON (the one phase that needs no live stack):
 
 ```bash
 .venv/bin/python eval/run_benchmark.py --benchmark longmemeval_s \
   --dataset eval/benchmarks/data/longmemeval_s_cleaned.json \
   --output-dir eval/benchmarks/results/longmemeval_s \
-  --limit 20 --phase ingest   # then: --phase query, --phase score
+  --limit 20 --phase plan        # then: --phase score --results PATH
 ```
 
-Without a dataset the CLI exits with a pointer back to this README; without a live stack it prints the plan (instance count, phases) and exits 0 — it never fabricates results. Adapters (upcoming, Tasks 2–3 of the scaffold plan) live in `eval/benchmarks/longmemeval_s.py` (loader + ingest/query interfaces + exact-match judge guard) and `eval/benchmarks/memoryagentbench.py` (selective-forgetting scenario driver). LLM-judge integration for answers that fail the exact-match guard is a pinned follow-up.
+Without a dataset the CLI exits 2 with a pointer back to this README; without a live stack it prints the plan (instance count, phases) and exits 0 — it never fabricates results. Adapters are shipped: `eval/benchmarks/longmemeval_s.py` (loader + ingest/query interfaces + exact-match judge guard) and `eval/benchmarks/memoryagentbench.py` (selective-forgetting scenario driver). LLM-judge integration for answers that fail the exact-match guard is a pinned follow-up.
 
 **MemoryAgentBench grouping contract (pinned for the adapter):** the v0 fixture stores **one self-contained record per competency** — each record yields exactly one scenario (its own ingest turns + its own question). Grouping is per-record/competency, NOT per-phase; do not merge consecutive query records across competencies. Because MemoryAgentBench sessions are unnamed, `answer_session_ids` use the synthetic ids `s0`, `s1`, … parallel to the record's sessions.
 

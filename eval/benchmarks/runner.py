@@ -79,17 +79,17 @@ def record_sha256(path: Path) -> str:
 
 
 def aggregate(results: list[dict]) -> dict:
-    """Aggregate ``[{"question_id", "correct"}]`` into ``{"mean", "runs"}``.
+    """Aggregate ``[{"question_id", "correct"}]`` into ``{"mean", "questions"}``.
 
     Only actual ``True`` counts as correct — ``None``/missing flags count as
     failures rather than being dropped or fabricated into passes. Empty
-    input yields ``{"mean": 0.0, "runs": 0}`` (never a division by zero).
+    input yields ``{"mean": 0.0, "questions": 0}`` (never a division by zero).
     """
-    runs = len(results)
-    if runs == 0:
-        return {"mean": 0.0, "runs": 0}
+    questions = len(results)
+    if questions == 0:
+        return {"mean": 0.0, "questions": 0}
     correct = sum(1 for r in results if r.get("correct") is True)
-    return {"mean": correct / runs, "runs": runs}
+    return {"mean": correct / questions, "questions": questions}
 
 
 async def run_ingest(
@@ -127,11 +127,14 @@ async def run_ingest(
 async def run_score(config: RunnerConfig, results: list[dict]) -> dict:
     """Aggregate judged per-question results into a hygiene-compliant summary.
 
-    The returned dict carries the aggregated ``{"mean", "runs"}`` plus the
+    The returned dict carries the aggregated ``{"mean", "questions"}`` plus the
     dataset digest (``dataset_sha256``) and benchmark name, ready for
     ``write_results``. MemoryAgentBench records are interpreted per
     competency via :func:`interpret_result` (pending interpretations are
     excluded from the mean and reported separately — never silently scored).
+    The remaining hygiene rules (committed judge prompt, full-context
+    baseline, protocol deviations) are surfaced as explicit null/empty
+    placeholders until real runs fill them — never silently omitted.
     """
     sha = record_sha256(config.dataset_path)
     interpreted: list[dict] = []
@@ -151,6 +154,9 @@ async def run_score(config: RunnerConfig, results: list[dict]) -> dict:
             "benchmark": config.benchmark,
             "dataset_sha256": sha,
             "pending_interpretation": pending,
+            "judge_prompt_version": None,
+            "full_context_baseline": None,
+            "deviations": [],
         }
     )
     return summary

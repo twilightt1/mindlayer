@@ -30,7 +30,7 @@ pytestmark = pytest.mark.eval
 # --- aggregate -----------------------------------------------------------
 
 
-def test_aggregate_three_results_mean_and_runs():
+def test_aggregate_three_results_mean_and_questions():
     results = [
         {"question_id": "q1", "correct": True},
         {"question_id": "q2", "correct": True},
@@ -38,12 +38,12 @@ def test_aggregate_three_results_mean_and_runs():
     ]
     summary = aggregate(results)
     assert summary["mean"] == pytest.approx(2 / 3)
-    assert summary["runs"] == 3
+    assert summary["questions"] == 3
 
 
 def test_aggregate_empty_results_mean_zero():
     summary = aggregate([])
-    assert summary == {"mean": 0.0, "runs": 0}
+    assert summary == {"mean": 0.0, "questions": 0}
 
 
 def test_aggregate_ignores_non_bool_correct_values():
@@ -55,7 +55,7 @@ def test_aggregate_ignores_non_bool_correct_values():
         ]
     )
     assert summary["mean"] == pytest.approx(1 / 2)
-    assert summary["runs"] == 2
+    assert summary["questions"] == 2
 
 
 # --- record_sha256 -------------------------------------------------------
@@ -181,7 +181,7 @@ async def test_run_score_aggregates_injected_results(tmp_path):
     ]
     summary = await run_score(config, results)
     assert summary["mean"] == pytest.approx(0.5)
-    assert summary["runs"] == 2
+    assert summary["questions"] == 2
     # Hygiene rule: the dataset digest travels with the score.
     assert "dataset_sha256" in summary
     assert len(summary["dataset_sha256"]) == 64
@@ -191,8 +191,19 @@ def test_write_results_writes_json_payload(tmp_path):
     from eval.benchmarks.runner import write_results
 
     out = tmp_path / "nested" / "results.json"
-    write_results(out, {"mean": 0.5, "runs": 2})
-    assert json.loads(out.read_text()) == {"mean": 0.5, "runs": 2}
+    write_results(out, {"mean": 0.5, "questions": 2})
+    assert json.loads(out.read_text()) == {"mean": 0.5, "questions": 2}
+
+
+async def test_run_score_output_carries_hygiene_placeholders(tmp_path):
+    """Hygiene rules 1/4/5 surface as explicit placeholders, never silently omitted."""
+    config = RunnerConfig(
+        benchmark="longmemeval_s", dataset_path=LONGMEMEVAL_FIXTURE, output_dir=tmp_path
+    )
+    summary = await run_score(config, [{"question_id": "q1", "correct": True}])
+    assert summary["judge_prompt_version"] is None
+    assert summary["full_context_baseline"] is None
+    assert summary["deviations"] == []
 
 
 # --- interpret_result: the polarity handoff, pinned ----------------------

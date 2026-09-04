@@ -171,7 +171,7 @@ def _normalize(text: str) -> str:
 
 
 def judge_answer(question: str, answer: str, response: str) -> bool:
-    """Exact-match guard per the official non-LLM subset.
+    """Conservative non-LLM guard, NOT the official judge — official LongMemEval scoring is judge-based for ALL question types (pinned follow-up).
 
     Case-insensitive, whitespace-normalized word-boundary match of the gold
     answer in the response, restricted to short numeric/boolean gold answers

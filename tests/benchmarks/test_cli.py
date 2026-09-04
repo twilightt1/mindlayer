@@ -109,15 +109,48 @@ def test_score_phase_on_existing_results_json_aggregates(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "mean: 0.667" in proc.stdout  # 2/3 mean, honestly aggregated
-    assert "runs: 3" in proc.stdout
+    assert "questions: 3" in proc.stdout
 
 
-def test_score_phase_without_results_file_exits_with_followup_message(tmp_path):
+def test_score_phase_without_results_flag_exits_three_with_pointer(tmp_path):
     proc = run_cli(
         "--benchmark", "longmemeval_s",
         "--dataset", str(FIXTURES / "longmemeval_s_fixture.json"),
         "--output-dir", str(tmp_path),
         "--phase", "score",
     )
-    assert proc.returncode != 0
-    assert "live wiring is a follow-up" in proc.stdout + proc.stderr
+    assert proc.returncode == 3
+    combined = proc.stdout + proc.stderr
+    assert "pass --results PATH" in combined
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_score_phase_with_missing_results_file_exits_two_echoing_path(tmp_path):
+    missing = tmp_path / "nope.json"
+    proc = run_cli(
+        "--benchmark", "longmemeval_s",
+        "--dataset", str(FIXTURES / "longmemeval_s_fixture.json"),
+        "--output-dir", str(tmp_path),
+        "--phase", "score",
+        "--results", str(missing),
+    )
+    assert proc.returncode == 2
+    assert str(missing) in proc.stderr
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_score_phase_with_malformed_results_json_exits_two_cleanly(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json")
+    proc = run_cli(
+        "--benchmark", "longmemeval_s",
+        "--dataset", str(FIXTURES / "longmemeval_s_fixture.json"),
+        "--output-dir", str(tmp_path),
+        "--phase", "score",
+        "--results", str(bad),
+    )
+    assert proc.returncode == 2
+    assert "not valid JSON" in proc.stderr
+    assert str(bad) in proc.stderr
+    assert "Traceback" not in proc.stderr
+    assert list(tmp_path.rglob("*.json")) == [bad]

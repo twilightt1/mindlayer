@@ -96,31 +96,33 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: --phase {args.phase}: {_LIVE_WIRING}", file=sys.stderr)
         return 3
 
-    # --phase score: aggregate an existing per-question results JSON, if given.
-    if args.results is not None and args.results.is_file():
+    # --phase score: aggregate an existing per-question results JSON.
+    if args.results is None:
+        print(f"error: --phase score: {_LIVE_WIRING}", file=sys.stderr)
+        print("error: pass --results PATH pointing at a per-question results JSON", file=sys.stderr)
+        return 3
+    if not args.results.is_file():
+        print(f"error: --results file not found: {args.results}", file=sys.stderr)
+        return 2
+    try:
         records = json.loads(args.results.read_text())
-        if not isinstance(records, list):
-            print(f"error: {args.results} must be a JSON array of per-question results", file=sys.stderr)
-            return 2
-        summary = run_score_sync(config, records)
-        print(f"benchmark: {args.benchmark}")
-        print(f"mean: {summary['mean']:.3f}")
-        print(f"runs: {summary['runs']}")
-        print(f"dataset_sha256: {summary['dataset_sha256']}")
-        if summary["pending_interpretation"]:
-            print(f"pending_interpretation: {len(summary['pending_interpretation'])} (not yet scoreable — LLM-judge follow-up)")
-        out = args.output_dir / "results.json"
-        write_results(out, summary)
-        print(f"results written: {out}")
-        return 0
-
-    print(f"error: --phase score: {_LIVE_WIRING}", file=sys.stderr)
-    print(
-        "hint: pass --results PATH pointing at a per-question results JSON "
-        "from a real run to aggregate it",
-        file=sys.stderr,
-    )
-    return 3
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"error: --results {args.results} is not valid JSON: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(records, list):
+        print(f"error: {args.results} must be a JSON array of per-question results", file=sys.stderr)
+        return 2
+    summary = run_score_sync(config, records)
+    print(f"benchmark: {args.benchmark}")
+    print(f"mean: {summary['mean']:.3f}")
+    print(f"questions: {summary['questions']}")
+    print(f"dataset_sha256: {summary['dataset_sha256']}")
+    if summary["pending_interpretation"]:
+        print(f"pending_interpretation: {len(summary['pending_interpretation'])} (not yet scoreable — LLM-judge follow-up)")
+    out = args.output_dir / "results.json"
+    write_results(out, summary)
+    print(f"results written: {out}")
+    return 0
 
 
 def run_score_sync(config: RunnerConfig, records: list[dict]) -> dict:

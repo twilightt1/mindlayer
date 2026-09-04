@@ -165,11 +165,14 @@ async def test_run_forgetting_scenario_drives_ingest_forget_recall():
     # Recall: once per question, passing the question text.
     assert recalled == ["What time does my flight to Tokyo depart and from which gate?"]
 
-    # Returned dict shape; the expected (surviving, updated) answer was still recalled.
+    # Returned dict shape; the expected (surviving, updated) answer was still recalled
+    # and the stale (forgotten) fact is gone from the response.
     assert result == {
         "scenario_id": "fixture_sf_0001",
         "competency": "selective_forgetting",
-        "questions": [{"question_id": "fixture_sf_0001", "recalled_after_forget": True}],
+        "questions": [
+            {"question_id": "fixture_sf_0001", "recalled_after_forget": True, "stale_fact_still_present": False}
+        ],
     }
 
 
@@ -184,13 +187,40 @@ async def test_run_forgetting_scenario_false_when_stale_fact_replaces_the_answer
         return None
 
     async def recall(question: str) -> str:
-        # Bad hygiene: the "forgotten" old fact dominates the response instead of the answer.
-        return "Your flight departs at 7:30 AM from gate B12."
+        # Bad hygiene: the memory regurgitates the whole "forgotten" turn verbatim.
+        return "Just booked my trip! My flight to Tokyo departs at 7:30 AM from gate B12."
 
     result = await run_forgetting_scenario(sf, ingest_turn=ingest_turn, forget=forget, recall=recall)
 
     # The expected (updated) answer text does not appear in the response.
     assert result["questions"][0]["recalled_after_forget"] is False
+    # The stale fact dominates the response instead — it is still present.
+    assert result["questions"][0]["stale_fact_still_present"] is True
+
+
+async def test_run_forgetting_scenario_stale_fact_alongside_surviving_answer():
+    scenarios = load_instances(FIXTURE)
+    sf = next(s for s in scenarios if s.competency == "selective_forgetting")
+
+    async def ingest_turn(content: str) -> None:
+        return None
+
+    async def forget(content: str) -> None:
+        return None
+
+    async def recall(question: str) -> str:
+        # Both in one response: the surviving updated answer AND the stale
+        # fact (with the forgotten turn's exact wording) leaked through.
+        return (
+            "Your flight now departs at 10:45 AM from gate C3. "
+            "Just booked my trip! My flight to Tokyo departs at 7:30 AM from gate B12."
+        )
+
+    result = await run_forgetting_scenario(sf, ingest_turn=ingest_turn, forget=forget, recall=recall)
+
+    # The surviving answer is recalled, but the stale fact leaked through too.
+    assert result["questions"][0]["recalled_after_forget"] is True
+    assert result["questions"][0]["stale_fact_still_present"] is True
 
 
 async def test_run_forgetting_scenario_recall_match_is_case_and_whitespace_insensitive():
@@ -232,5 +262,7 @@ async def test_run_forgetting_scenario_without_forget_flag_never_calls_forget():
     assert result == {
         "scenario_id": "fixture_ar_0002",
         "competency": "accurate_retrieval",
-        "questions": [{"question_id": "fixture_ar_0002", "recalled_after_forget": True}],
+        "questions": [
+            {"question_id": "fixture_ar_0002", "recalled_after_forget": True, "stale_fact_still_present": False}
+        ],
     }
