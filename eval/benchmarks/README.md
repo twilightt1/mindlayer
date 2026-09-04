@@ -41,7 +41,9 @@ The runner CLI (Task 4 of the scaffold) drives each benchmark in **phases** so i
   --limit 20 --phase ingest   # then: --phase query, --phase score
 ```
 
-Without a dataset the CLI exits with a pointer back to this README; without a live stack it prints the plan (instance count, phases) and exits 0 — it never fabricates results. Adapters live in `eval/benchmarks/longmemeval_s.py` (loader + ingest/query interfaces + exact-match judge guard) and `eval/benchmarks/memoryagentbench.py` (selective-forgetting scenario driver). LLM-judge integration for answers that fail the exact-match guard is a pinned follow-up.
+Without a dataset the CLI exits with a pointer back to this README; without a live stack it prints the plan (instance count, phases) and exits 0 — it never fabricates results. Adapters (upcoming, Tasks 2–3 of the scaffold plan) live in `eval/benchmarks/longmemeval_s.py` (loader + ingest/query interfaces + exact-match judge guard) and `eval/benchmarks/memoryagentbench.py` (selective-forgetting scenario driver). LLM-judge integration for answers that fail the exact-match guard is a pinned follow-up.
+
+**MemoryAgentBench grouping contract (pinned for the adapter):** the v0 fixture stores **one self-contained record per competency** — each record yields exactly one scenario (its own ingest turns + its own question). Grouping is per-record/competency, NOT per-phase; do not merge consecutive query records across competencies. Because MemoryAgentBench sessions are unnamed, `answer_session_ids` use the synthetic ids `s0`, `s1`, … parallel to the record's sessions.
 
 ## Leaderboard hygiene
 
