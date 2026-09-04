@@ -285,3 +285,28 @@ class AccessLogItem(BaseModel):
 class AccessLogListResponse(BaseModel):
     items: list[AccessLogItem]
     total: int
+
+
+# ─── Erasure receipts (Open Memory Hub MVP 5) ───────────────────────────────
+
+
+class ErasureReceiptCreate(BaseModel):
+    """Request body for ``POST /api/v1/erasure-receipts`` — erase + verify."""
+    memory_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
+class ErasureReceiptItem(BaseModel):
+    """One erasure receipt: what was requested and what verification found."""
+    id:                   UUID
+    user_id:              UUID
+    requested_memory_ids: list[UUID]
+    status:               str
+    detail:               dict
+    created_at:           datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ErasureReceiptListResponse(BaseModel):
+    items: list[ErasureReceiptItem]
+    total: int

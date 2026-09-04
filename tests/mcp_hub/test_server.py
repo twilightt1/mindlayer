@@ -72,3 +72,9 @@ def test_resolve_transport_security_csv_enables_protection_with_hosts():
     assert isinstance(ts, TransportSecuritySettings)
     assert ts.enable_dns_rebinding_protection is True
     assert ts.allowed_hosts == ["a.example", "b.example"]
+
+
+async def test_build_mcp_server_registers_forget_tool():
+    server = build_mcp_server()
+    tools = await server.list_tools()
+    assert any(t.name == "forget_memory" for t in tools)

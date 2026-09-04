@@ -80,6 +80,12 @@ async def create_memory(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MemoryResponse:
     """Create a new memory. The owning user is taken from the auth context."""
+    if body.parent_id is not None:
+        # Parent must exist and belong to the caller — otherwise a client could
+        # parent into (and later cascade-delete into) another user's subtree.
+        parent = await db.get(Memory, body.parent_id)
+        if parent is None or parent.user_id != current_user.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Parent memory not found")
     memory = Memory(
         user_id=current_user.id,
         title=body.title,

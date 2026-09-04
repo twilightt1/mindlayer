@@ -11,6 +11,7 @@ from app.models.entity import (
     MemoryEntity,
     Relation,
 )
+from app.models.erasure_receipt import ErasureReceipt
 from app.models.feedback import Feedback
 from app.models.insight import (
     InsightCard,
@@ -81,4 +82,5 @@ __all__ = [
     # Open Memory Hub
     "AgentClient",
     "MemoryAccessLog",
+    "ErasureReceipt",
 ]

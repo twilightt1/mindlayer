@@ -150,6 +150,11 @@ def _build_server() -> FastMCP:
         """Delete one memory owned by the caller (memory:write)."""
         return await _call_with_identity(hub_tools.delete_memory(memory_id=memory_id), ctx)
 
+    @mcp.tool()
+    async def forget_memory(memory_ids: list[str], ctx: Context = None) -> dict[str, Any]:
+        """Erase memories and derived artifacts with a verification receipt (memory:write)."""
+        return await _call_with_identity(hub_tools.forget_memory(memory_ids=memory_ids), ctx)
+
     return mcp
 
 
@@ -157,7 +162,7 @@ mcp = _build_server()
 
 
 def build_mcp_server() -> FastMCP:
-    """Return the module's FastMCP instance with the five tools registered.
+    """Return the module's FastMCP instance with the six tools registered.
 
     A single instance is shared with :func:`get_mcp_app` so the mounted app
     and the host lifespan drive the same session manager.

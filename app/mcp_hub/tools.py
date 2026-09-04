@@ -24,6 +24,7 @@ from app.database import AsyncSessionLocal
 from app.mcp_hub.identity import (
     ACTION_ADD,
     ACTION_DELETE,
+    ACTION_FORGET,
     ACTION_GET,
     ACTION_LIST,
     ACTION_SEARCH,
@@ -32,6 +33,7 @@ from app.mcp_hub.identity import (
 from app.models.memory import Memory
 from app.models.memory_access_log import MemoryAccessLog
 from app.retrieval.memory.write_back import index_new_memory, safe_delete_from_chroma
+from app.services.erasure_service import erase_memories
 
 log = logging.getLogger(__name__)
 
@@ -272,9 +274,58 @@ async def delete_memory(memory_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(mid)}
 
 
+async def forget_memory(memory_ids: list[str]) -> dict[str, Any]:
+    """Erase memories + every derived artifact, with a verification receipt.
+
+    Requires ``memory:write``. Foreign/missing ids are recorded in the
+    receipt as ``not_found_or_foreign`` (never an existence leak). Every
+    authorized call appends one ``mcp_forget`` ledger row pointing at the
+    receipt; the receipt carries the per-target cascade + verification detail.
+    """
+    principal = _current_principal()
+    if principal is None:
+        return IDENTITY_ERROR
+    if not principal.can_write():
+        return WRITE_SCOPE_ERROR
+    valid: list[UUID] = []
+    invalid: list[str] = []
+    for raw in memory_ids:
+        try:
+            valid.append(UUID(raw))
+        except (ValueError, TypeError, AttributeError):
+            invalid.append(raw)
+    valid = list(dict.fromkeys(valid))  # dedupe: service call + ledger stay consistent
+    if not valid:
+        return {"error": "invalid memory id"}
+    async with _session() as db:
+        receipt = await erase_memories(db, principal.user_id, valid, requested_by=f"agent:{principal.name}")
+        summary = receipt.detail.get("summary", {})
+        db.add(
+            _ledger_entry(
+                principal,
+                ACTION_FORGET,
+                detail={
+                    "receipt_id": str(receipt.id),
+                    "requested": [str(m) for m in valid],
+                    "erased": summary.get("erased", 0),
+                    "skipped": summary.get("skipped", 0),
+                },
+            )
+        )
+        await db.commit()
+    return {
+        "receipt_id": str(receipt.id),
+        "status": receipt.status,
+        "erased": summary.get("erased", 0),
+        "skipped": summary.get("skipped", 0),
+        "invalid": invalid,
+    }
+
+
 __all__ = [
     "add_memory",
     "delete_memory",
+    "forget_memory",
     "get_memory",
     "list_recent",
     "search_memory",

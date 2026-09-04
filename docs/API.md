@@ -21,8 +21,9 @@ Base URL: `https://api.orivory.io/api/v1`
 11. [Rate Limits & Quotas](#11-rate-limits--quotas)
 12. [Error Reference](#12-error-reference)
 13. [Agent Clients & MCP Hub](#13-agent-clients--mcp-hub)
-14. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
-15. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
+14. [Erasure Receipts](#14-erasure-receipts)
+15. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
+16. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
 
 ---
 
@@ -2731,7 +2732,7 @@ The access ledger: every authorized MCP call, newest first. Which agent did what
 }
 ```
 
-Ledger `action` values: `mcp_search`, `mcp_get`, `mcp_list`, `mcp_add`, `mcp_delete`. `memory_id` is null for search/list actions.
+Ledger `action` values: `mcp_search`, `mcp_get`, `mcp_list`, `mcp_add`, `mcp_delete`, `mcp_forget`. `memory_id` is null for search/list actions.
 
 ---
 
@@ -2764,6 +2765,7 @@ Requests without a valid token — or with a revoked token — are rejected befo
 | `list_recent`   | `memory:read` | List the caller's most recent memories                |
 | `add_memory`    | `memory:write`| Store a new memory (title, content, optional tags)    |
 | `delete_memory` | `memory:write`| Delete one memory by ID                               |
+| `forget_memory` | `memory:write`| Erase memories with cascades + verification receipt (see [§14](#14-erasure-receipts)) |
 
 Scopes are enforced per call: a token with only `memory:read` cannot `add_memory` or `delete_memory`.
 
@@ -2788,6 +2790,120 @@ Scopes are enforced per call: a token with only `memory:read` cannot `add_memory
 > To accept other hostnames — e.g. behind a reverse proxy that forwards a public `Host` — set `MCP_HUB_ALLOWED_HOSTS=your.host.example` in the environment (comma-separated for several). This explicitly enables `TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=[...])` on the FastMCP instance.
 >
 > Until configured, keep the endpoint localhost-bound or proxy with `Host` preservation pointing at localhost.
+
+---
+
+## 14. Erasure Receipts
+
+Erasing a memory removes the row **and every derived artifact** (child memories, entity links, source links, ChromaDB vectors), then runs a post-deletion verification pass: re-query the vector store and re-count residual DB rows per target. Each erasure call returns one **receipt** with per-target detail. Receipts are user-scoped and are deleted with the user.
+
+> **Honest v0 verification:** v0 verifies erasure by **absence-checks** — the receipt confirms that vectors and DB rows are *gone*. It does not probe whether facts can be re-inferred from correlated knowledge-graph data (KG-correlation re-inference probing is a planned follow-up). Also note that `Entity`/`Relation` nodes themselves survive memory erasure in v0 (link counts are recorded in the receipt; orphan pruning is a follow-up). Don't market this as "adversarially verified" until the deeper protocol ships.
+
+### POST /api/v1/erasure-receipts
+
+Erase memories owned by the caller. Foreign or unknown ids are recorded in the receipt as `"not_found_or_foreign"` — never deleted, no existence leak. Erasure is best-effort per target: one failing target never aborts the other targets.
+
+**Request:**
+
+```bash
+curl -s -X POST https://api.orivory.io/api/v1/erasure-receipts \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"memory_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"]}'
+```
+
+| Field        | Type   | Required | Description                                    |
+|--------------|--------|----------|------------------------------------------------|
+| `memory_ids` | UUID[] | Yes      | 1–100 memory ids (duplicates are deduplicated) |
+
+**Response `201 Created`:** one receipt. `detail.targets[]` carries one entry per requested id — `affected_memory_ids` (transitive descendants erased with the target), `traversal_depth`, `entity_links` / `source_links` counts, `vectors_deleted`, `vector_residual`, `vector_residual_checked`, and `db_residual`:
+
+```json
+{
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "user_id": "5f0b3a2e-1c4d-4e8f-9a7b-2d6c8e1f0a3b",
+  "requested_memory_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+  "status": "completed",
+  "detail": {
+    "requested_by": "rest_api",
+    "targets": [
+      {
+        "memory_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "status": "deleted",
+        "affected_memory_ids": [],
+        "traversal_depth": 0,
+        "entity_links": 2,
+        "source_links": 1,
+        "vectors_deleted": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+        "vector_residual": [],
+        "vector_residual_checked": true,
+        "db_residual": {"children": 0, "entity_links": 0, "source_links": 0}
+      }
+    ],
+    "summary": {"requested": 1, "erased": 1, "skipped": 0, "errors": 0, "residual_vectors": 0, "residual_rows": 0}
+  },
+  "created_at": "2026-09-02T14:22:00Z"
+}
+```
+
+**Receipt status semantics:**
+
+| Status                    | Meaning                                                              |
+|---------------------------|----------------------------------------------------------------------|
+| `completed`               | Every target erased and verified clean — no residual vectors or rows |
+| `completed_with_residual` | Erasure succeeded, but the verification pass found leftover vectors or DB rows |
+| `completed_with_errors`   | At least one target's erasure raised; the error is recorded per-target and the remaining targets were still erased |
+
+`vector_residual_checked: false` means the Chroma re-query was unavailable during verification (the DB delete still succeeded — Postgres is the source of truth). A `false` flag alone does not imply residual data.
+
+### GET /api/v1/erasure-receipts
+
+List the current user's receipts, newest first.
+
+**Query Parameters:**
+
+| Parameter | Type    | Default | Description                              |
+|-----------|---------|---------|------------------------------------------|
+| `limit`   | integer | 50      | Items per page (max 200)                 |
+| `offset`  | integer | 0       | Offset for pagination                    |
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "user_id": "5f0b3a2e-1c4d-4e8f-9a7b-2d6c8e1f0a3b",
+      "requested_memory_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+      "status": "completed",
+      "detail": {"targets": [], "summary": {}},
+      "created_at": "2026-09-02T14:22:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+```bash
+curl -s "https://api.orivory.io/api/v1/erasure-receipts?limit=50&offset=0" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### GET /api/v1/erasure-receipts/{id}
+
+Fetch one receipt. Unknown or other users' receipts return `404` (no existence leak).
+
+```bash
+curl -s https://api.orivory.io/api/v1/erasure-receipts/7c9e6679-7425-40de-944b-e07fc1f90ae7 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### MCP: forget_memory
+
+Agents with the `memory:write` scope can call the `forget_memory` MCP tool (endpoint `/mcp`, see [§13](#13-agent-clients--mcp-hub)) with `{"memory_ids": ["<uuid>", ...]}`. It returns a compact summary (`receipt_id`, `status`, `erased`, `skipped`, `invalid`) instead of the full receipt — fetch the receipt via `GET /api/v1/erasure-receipts/{id}` for the per-target detail. Every authorized call appends an `mcp_forget` row to the access ledger pointing at the receipt.
+
+> **Note — ledger rows survive erasure by design.** The access ledger is append-only and is never erased by an erasure call: it records that a memory was *accessed before* deletion, which is exactly what makes it an audit trail. Receipts, by contrast, quote personal memory ids and are deleted with the user.
 
 ---
 
