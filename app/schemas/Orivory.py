@@ -33,6 +33,15 @@ class MemoryUpdate(BaseModel):
     metadata:      dict | None       = None
 
 
+class ImportSummary(BaseModel):
+    """Result of one import run (POST /api/v1/imports)."""
+    parsed:              int
+    created:             int
+    skipped_duplicates:  int
+    failed:              int
+    index_failures:      int
+
+
 class MemoryEntityLink(BaseModel):
     id:        UUID
     entity_id: UUID
