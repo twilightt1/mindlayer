@@ -35,7 +35,7 @@ Cầu đã đo được: OpenClaw issues #3922 ("dementia effect"), #5429 ("mấ
 2. **ClawHub skill + 1-line install** — `docker compose up` tự chẩn đoán; import memory từ OpenClaw session logs.
 3. **Import paths** — Rewind/Limitless/OpenRecall exports; ChatGPT/Claude/Gemini memory exports (PAM mappings).
 4. ✅ **Permissions v0 + Access Ledger** — per-agent read/write scope; UI "AI nào đã đọc gì, khi nào". (backend done 2026-09-02; UI ledger page pending)
-5. **Erasure receipts v0** — cascade deletion + verification report (RAG-store deletion: literature xác nhận sạch hơn weight-level; adversarially verified).
+5. ✅ **Erasure receipts v0** — cascade deletion + verification report (RAG-store deletion: literature xác nhận sạch hơn weight-level; adversarially verified). (backend done 2026-09-02; deeper adversarial verification + entity pruning = follow-ups)
 6. **Benchmark page** — LongMemEval-S + MemoryAgentBench, protocol công khai, chạy trong CI.
 7. **Second-brain app giữ nguyên làm client đầu tiên**; digest tuân thủ guardrails từ papers (batched morning/evening, "should-I-speak" gate, action-attached).
 

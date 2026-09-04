@@ -46,6 +46,8 @@ Orivory is an open-source, self-hosted AI second brain that transforms scattered
 
 Any MCP-capable agent can connect to your second brain. You register an agent client, get a scoped token (`memory:read` / `memory:write`), and point the agent at the MCP endpoint — every call is recorded in the access ledger ("which AI read what, when"). See [docs/API.md — Agent Clients & MCP Hub](docs/API.md#13-agent-clients--mcp-hub).
 
+Erasure is verifiable — the "right to be forgotten, with receipts": `POST /api/v1/erasure-receipts` (or the MCP `forget_memory` tool) cascades a deletion across rows, links and vectors, re-checks every derived artifact, and returns a receipt (`completed` or `completed_with_residual`). See [docs/API.md — Erasure Receipts](docs/API.md#14-erasure-receipts).
+
 ```bash
 # 1. Register an agent client (as your logged-in user)
 curl -X POST http://localhost:8000/api/v1/agents \
