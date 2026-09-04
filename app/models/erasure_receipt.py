@@ -26,7 +26,9 @@ class ErasureReceipt(Base):
     id:                   Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     user_id:              Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     requested_memory_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"), nullable=False)
-    status:               Mapped[str]       = mapped_column(String(16), default="completed", server_default="completed", nullable=False)
+    # String(32): the honest statuses ("completed_with_residual" = 23 chars)
+    # do not fit String(16) — the INSERT failed exactly when the receipt mattered.
+    status:               Mapped[str]       = mapped_column(String(32), default="completed", server_default="completed", nullable=False)
     detail:               Mapped[dict]      = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"), nullable=False)
     created_at:           Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
 

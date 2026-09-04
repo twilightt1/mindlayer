@@ -51,12 +51,16 @@ class _FakeDB:
     memory_entities/memory_sources → link counts (residual when the statement
     carries a list param); count( + memories → residual children count;
     otherwise the descendant-ids query (param = BFS frontier — one id or a
-    list of them).
+    list of them). BFS children are ownership-aware: ``foreign_child_ids``
+    rows belong to another user and are returned only when the statement
+    carries no ``user_id`` filter — i.e. when the service dropped the filter.
     """
 
-    def __init__(self, *, owned=None, child_ids=None, entity_links=0, source_links=0, residual=None, rows=None, total=0):
+    def __init__(self, *, owned=None, child_ids=None, entity_links=0, source_links=0, residual=None, rows=None, total=0,
+                 foreign_child_ids=None):
         self._owned = owned or {}
         self._child_ids = child_ids or {}
+        self._foreign_child_ids = foreign_child_ids or {}
         self._entity_links = entity_links
         self._source_links = source_links
         self._residual = residual or {"children": 0, "entity_links": 0, "source_links": 0}
@@ -84,11 +88,13 @@ class _FakeDB:
             if "memory_sources" in sql:
                 return _FakeScalar(self._residual["source_links"] if residual else self._source_links)
             return _FakeScalar(self._residual["children"] if residual else 0)
-        parent_id = next(iter(params.values()))
-        if isinstance(parent_id, (list, tuple)):  # BFS frontier: children of every id in it
+        parent_id = next((v for v in params.values() if isinstance(v, (list, tuple))), None)
+        if parent_id is not None:  # BFS frontier: children of every id in it
             found = [cid for pid in parent_id for cid in self._child_ids.get(pid, [])]
+            if not any("user_id" in key for key in params):  # unfiltered query → cross-user rows leak in
+                found += [cid for pid in parent_id for cid in self._foreign_child_ids.get(pid, [])]
             return _FakeRows(found)
-        return _FakeRows(self._child_ids.get(parent_id, []))
+        return _FakeRows(self._child_ids.get(next(iter(params.values()), None), []))
 
     def add(self, obj):
         self.added.append(obj)
@@ -270,6 +276,53 @@ async def test_transitive_descendants_deleted_and_verified(no_chroma, monkeypatc
     assert sorted(no_chroma) == sorted([str(mid), str(child), str(grandchild)])
     # Verification re-query covers the whole affected set (target + descendants).
     assert verified_ids == [[str(mid), str(child), str(grandchild)]]
+
+
+async def test_bfs_skips_foreign_user_descendants(no_chroma):
+    """The descendant BFS must be ownership-checked: another user's child row is
+    never collected, deleted, or disclosed (its vector stays unverified — the
+    DB cascade still removes the row, which is unknowable from this scope)."""
+    user_id, mid = uuid.uuid4(), uuid.uuid4()
+    child, foreign_child = uuid.uuid4(), uuid.uuid4()
+    db = _FakeDB(
+        owned={mid: _memory_row(mid, user_id)},
+        child_ids={mid: [child]},
+        foreign_child_ids={mid: [foreign_child]},
+    )
+
+    receipt = await erase_memories(db, user_id, [mid], requested_by="rest_api")
+
+    target = receipt.detail["targets"][0]
+    assert str(foreign_child) not in target["affected_memory_ids"]
+    assert sorted(target["vectors_deleted"]) == sorted([str(mid), str(child)])
+    assert sorted(no_chroma) == sorted([str(mid), str(child)])
+    # Compiled-SQL guard: every frontier query carries the user_id condition.
+    bfs_stmts = [s for s in db.statements if "FROM memories" in _sql(s) and "count(" not in _sql(s).lower()]
+    assert bfs_stmts, "BFS frontier statement not captured"
+    for stmt in bfs_stmts:
+        assert any("user_id" in key for key in stmt.compile(dialect=postgresql.dialect()).params)
+    assert receipt.status == "completed"
+
+
+async def test_depth_cap_flags_residual_status(no_chroma):
+    """A 6-level chain vs the 5-level BFS cap: the traversal is truncated, the
+    per-target detail flags it, and the receipt status is completed_with_residual."""
+    user_id, mid = uuid.uuid4(), uuid.uuid4()
+    chain = [uuid.uuid4() for _ in range(6)]  # mid → c1 → … → c6 (6 edges, cap 5)
+    child_ids = {mid: [chain[0]]}
+    child_ids.update({chain[i]: [chain[i + 1]] for i in range(5)})
+    db = _FakeDB(owned={mid: _memory_row(mid, user_id)}, child_ids=child_ids)
+
+    receipt = await erase_memories(db, user_id, [mid], requested_by="rest_api")
+
+    target = receipt.detail["targets"][0]
+    assert target["traversal_depth"] == 5
+    assert target["depth_capped"] is True
+    assert target["vectors_unverified_depth_cap"] == 1  # 6th level stays untracked
+    assert target["affected_memory_ids"] == [str(c) for c in chain[:5]]
+    assert target["vector_residual"] == []  # verified absence stays its own field
+    assert receipt.status == "completed_with_residual"
+    assert receipt.detail["summary"]["residual_vectors"] == 0
 
 
 @pytest.mark.asyncio

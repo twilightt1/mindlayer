@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("id", UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("requested_memory_ids", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("status", sa.String(16), nullable=False, server_default="completed"),
+        sa.Column("status", sa.String(32), nullable=False, server_default="completed"),
         sa.Column("detail", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.PrimaryKeyConstraint("id"),
