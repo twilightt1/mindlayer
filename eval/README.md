@@ -19,6 +19,13 @@ This directory contains evaluation tooling for the Orivory RAG demo.
 | `live_api_eval.py` | Live API evaluator, SSE parser, response collector, and live scoring helpers. |
 | `Orivory_offline_eval.py` | Lightweight keyword sanity check used by `run_eval.py --mode offline`. |
 
+## Benchmarks
+
+External long-term-memory benchmarks (LongMemEval-S, MemoryAgentBench) live in
+`eval/benchmarks/`, driven by the phased runner CLI `eval/run_benchmark.py`
+(plan → ingest → query → score; it never fabricates scores). Dataset download,
+hygiene rules, and per-phase usage: `eval/benchmarks/README.md`.
+
 ## Dataset Schema
 
 Each item in `Orivory_eval_dataset.json` uses this shape:
