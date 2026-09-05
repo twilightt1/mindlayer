@@ -159,6 +159,7 @@ orivory/
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Shipped milestones and open follow-ups |
 | [docs/research/](docs/research/) | Market / user / platform / papers research behind the pivot |
 | [docs/EVALUATION_GUIDE.md](docs/EVALUATION_GUIDE.md) | RAG evaluation + benchmarks |
+| [docs/LITE_MODE.md](docs/LITE_MODE.md) | One-container lite mode |
 | [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) · [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md) · [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Ops |
 
 ## Contributing
