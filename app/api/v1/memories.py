@@ -114,7 +114,7 @@ async def list_memories(
     db: Annotated[AsyncSession, Depends(get_db)],
     source_type: Literal["manual_note", "file_upload", "google_drive", "notion",
                           "gmail", "web_clipper", "rss", "conversation_excerpt",
-                          "chatgpt_import", "claude_import", "generic_import", "other"] | None = None,
+                          "chatgpt_import", "claude_import", "gemini_import", "copilot_import", "openclaw_import", "generic_import", "other"] | None = None,
     tag: str | None = Query(default=None, description="Filter by tag (exact match)"),
     query: str | None = Query(default=None, description="Substring search in title/content"),
     pinned: bool | None = None,

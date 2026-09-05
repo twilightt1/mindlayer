@@ -147,5 +147,7 @@ async def revoke_agent_client(
 
     # Idempotent for the owner: re-revoking an already-revoked client is still 204.
     client.status = "revoked"
-    client.revoked_at = datetime.now(UTC)
+    # Preserve the original revocation instant — it's the audit timestamp.
+    if client.revoked_at is None:
+        client.revoked_at = datetime.now(UTC)
     await db.commit()
