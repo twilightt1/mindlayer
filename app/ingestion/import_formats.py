@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -93,6 +94,21 @@ def _to_utc_datetime(value: Any) -> datetime:
     return datetime.now(UTC)
 
 
+def _safe_item[ItemType](convert: Callable[[], ItemType]) -> ItemType | None:
+    """Run one item's conversion; swallow per-item shape errors → None.
+
+    Malformed-but-JSON entries (e.g. PAM ``provenance`` as a string,
+    ChatGPT ``mapping`` as a list) are skipped, never fatal — a single bad
+    entry must not 500 a whole import. Format-LEVEL errors (non-array
+    payload, missing schema marker) stay :class:`ImportFormatError`.
+    """
+    try:
+        return convert()
+    except (AttributeError, TypeError, KeyError, ValueError):
+        log.warning("skipping malformed import entry", exc_info=True)
+        return None
+
+
 def _chatgpt_transcript(conversation: dict) -> str:
     """Render a conversation's user/assistant text, ordered by create_time.
 
@@ -136,20 +152,24 @@ def parse_chatgpt(data: Any) -> list[ImportItem]:
     for conversation in data:
         if not isinstance(conversation, dict):
             continue
-        content = _chatgpt_transcript(conversation)
-        if not content:
-            continue
-        items.append(
-            ImportItem(
-                title=_clip(conversation.get("title"), 500) or "Untitled ChatGPT conversation",
-                content=content,
-                source_ref=_clip(conversation.get("id"), 500),
-                captured_at=_to_utc_datetime(conversation.get("create_time")),
-                tags=["chatgpt"],
-                metadata={"import_format": "chatgpt"},
-            )
-        )
+        item = _safe_item(lambda conv=conversation: _chatgpt_item(conv))
+        if item is not None:
+            items.append(item)
     return items
+
+
+def _chatgpt_item(conversation: dict) -> ImportItem:
+    content = _chatgpt_transcript(conversation)
+    if not content:
+        raise ValueError("empty conversation transcript")
+    return ImportItem(
+        title=_clip(conversation.get("title"), 500) or "Untitled ChatGPT conversation",
+        content=content,
+        source_ref=_clip(conversation.get("id"), 500),
+        captured_at=_to_utc_datetime(conversation.get("create_time")),
+        tags=["chatgpt"],
+        metadata={"import_format": "chatgpt"},
+    )
 
 
 def parse_claude(data: Any) -> list[ImportItem]:
@@ -170,28 +190,32 @@ def parse_claude(data: Any) -> list[ImportItem]:
     for conversation in data:
         if not isinstance(conversation, dict):
             continue
-        lines: list[str] = []
-        for message in conversation.get("chat_messages") or []:
-            if not isinstance(message, dict):
-                continue
-            sender = message.get("sender")
-            text = str(message.get("text") or "").strip()
-            if not text or sender not in ("human", "assistant"):
-                continue
-            lines.append(f"{'User' if sender == 'human' else 'Assistant'}: {text}")
-        if not lines:
-            continue
-        items.append(
-            ImportItem(
-                title=_clip(conversation.get("name"), 500) or "Untitled Claude conversation",
-                content="\n\n".join(lines),
-                source_ref=_clip(conversation.get("uuid"), 500),
-                captured_at=_to_utc_datetime(conversation.get("created_at")),
-                tags=["claude"],
-                metadata={"import_format": "claude"},
-            )
-        )
+        item = _safe_item(lambda conv=conversation: _claude_item(conv))
+        if item is not None:
+            items.append(item)
     return items
+
+
+def _claude_item(conversation: dict) -> ImportItem:
+    lines: list[str] = []
+    for message in conversation.get("chat_messages") or []:
+        if not isinstance(message, dict):
+            continue
+        sender = message.get("sender")
+        text = str(message.get("text") or "").strip()
+        if not text or sender not in ("human", "assistant"):
+            continue
+        lines.append(f"{'User' if sender == 'human' else 'Assistant'}: {text}")
+    if not lines:
+        raise ValueError("empty claude conversation")
+    return ImportItem(
+        title=_clip(conversation.get("name"), 500) or "Untitled Claude conversation",
+        content="\n\n".join(lines),
+        source_ref=_clip(conversation.get("uuid"), 500),
+        captured_at=_to_utc_datetime(conversation.get("created_at")),
+        tags=["claude"],
+        metadata={"import_format": "claude"},
+    )
 
 
 def _parse_pam(data: dict) -> list[ImportItem]:
@@ -205,26 +229,35 @@ def _parse_pam(data: dict) -> list[ImportItem]:
     for memory in data.get("memories") or []:
         if not isinstance(memory, dict):
             continue
-        content = str(memory.get("content") or "").strip()
-        if not content:
-            continue
-        mem_type = str(memory.get("type") or "memory")
-        provenance = memory.get("provenance") or {}
-        items.append(
-            ImportItem(
-                title=_clip(f"[{mem_type}] {content[:120]}", 500),
-                content=content,
-                source_ref=_clip(memory.get("id"), 500),
-                captured_at=_to_utc_datetime((memory.get("temporal") or {}).get("created_at")),
-                tags=[mem_type],
-                metadata={
-                    "import_format": "generic",
-                    "pam": True,
-                    "platform": provenance.get("platform"),
-                },
-            )
-        )
+        item = _safe_item(lambda mem=memory: _pam_item(mem))
+        if item is not None:
+            items.append(item)
     return items
+
+
+def _pam_item(memory: dict) -> ImportItem:
+    content = str(memory.get("content") or "").strip()
+    if not content:
+        raise ValueError("empty PAM memory content")
+    mem_type = str(memory.get("type") or "memory")
+    provenance = memory.get("provenance") or {}
+    if not isinstance(provenance, dict):
+        provenance = {}
+    temporal = memory.get("temporal") or {}
+    if not isinstance(temporal, dict):
+        temporal = {}
+    return ImportItem(
+        title=_clip(f"[{mem_type}] {content[:120]}", 500),
+        content=content,
+        source_ref=_clip(memory.get("id"), 500),
+        captured_at=_to_utc_datetime(temporal.get("created_at")),
+        tags=[mem_type],
+        metadata={
+            "import_format": "generic",
+            "pam": True,
+            "platform": provenance.get("platform"),
+        },
+    )
 
 
 def parse_generic(data: Any) -> list[ImportItem]:
@@ -247,21 +280,29 @@ def parse_generic(data: Any) -> list[ImportItem]:
     for entry in data:
         if not isinstance(entry, dict):
             continue
-        content = str(entry.get("content") or "").strip()
-        if not content:
-            continue
-        items.append(
-            ImportItem(
-                title=_clip(entry.get("title"), 500),
-                content=content,
-                source_ref=_clip(entry.get("ref"), 500),
-                source_url=_clip(entry.get("url"), 1000),
-                captured_at=_to_utc_datetime(entry.get("created_at")),
-                tags=[str(t) for t in (entry.get("tags") or []) if str(t).strip()][:50],
-                metadata={"import_format": "generic"},
-            )
-        )
+        item = _safe_item(lambda e=entry: _generic_item(e))
+        if item is not None:
+            items.append(item)
     return items
+
+
+def _generic_item(entry: dict) -> ImportItem:
+    content = str(entry.get("content") or "").strip()
+    if not content:
+        raise ValueError("empty generic item content")
+    raw_tags = entry.get("tags")
+    # Non-list tags (e.g. a bare string) have ambiguous semantics — ignore
+    # them rather than char-splitting a string into fake per-character tags.
+    tags = [str(t) for t in raw_tags if str(t).strip()][:50] if isinstance(raw_tags, list) else []
+    return ImportItem(
+        title=_clip(entry.get("title"), 500),
+        content=content,
+        source_ref=_clip(entry.get("ref"), 500),
+        source_url=_clip(entry.get("url"), 1000),
+        captured_at=_to_utc_datetime(entry.get("created_at")),
+        tags=tags,
+        metadata={"import_format": "generic"},
+    )
 
 
 def detect_format(data: Any) -> str:

@@ -60,9 +60,10 @@ async def create_import(
     already-imported items instead of duplicating them.
     """
     # A blank form field and an omitted one mean the same thing: auto-detect.
-    # (curl's -F "source_format=" and stray client whitespace must not 422.)
-    if isinstance(source_format, str) and not source_format.strip():
-        source_format = None
+    # (curl's -F "source_format=" and stray client whitespace must not 422 —
+    # strip first, THEN blankness-check, so " chatgpt " resolves normally.)
+    if isinstance(source_format, str):
+        source_format = source_format.strip() or None
 
     # Pre-validate an explicit format before reading/decoding anything —
     # an unknown value must fail here, not as a misleading "could not
@@ -80,7 +81,7 @@ async def create_import(
         header = request.headers.get("content-length", "").strip()
         if header.isdigit() and int(header) > MAX_IMPORT_UPLOAD_BYTES:
             raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(f"Content-Length {header} exceeds the "
                         f"{MAX_IMPORT_UPLOAD_BYTES // (1024 * 1024)} MiB synchronous import cap."),
             )
@@ -90,7 +91,7 @@ async def create_import(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded file is empty.")
     if len(data) > MAX_IMPORT_UPLOAD_BYTES:
         raise HTTPException(
-            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Import file exceeds the {MAX_IMPORT_UPLOAD_BYTES // (1024 * 1024)} MiB synchronous cap.",
         )
 

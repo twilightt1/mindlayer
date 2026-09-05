@@ -454,3 +454,25 @@ def _literal_values(annotation) -> tuple:
         if typing.get_origin(arg) is typing.Literal:
             return typing.get_args(arg)
     return ()
+
+
+async def test_whitespace_wrapped_source_format_resolves_normally(monkeypatch):
+    """Fix wave: strip BEFORE blankness check — '  chatgpt  ' must resolve
+    to the chatgpt format (not 422, not auto-detect)."""
+    received: list = []
+
+    async def _fake_run_import(db, user_id, raw_data, source_format, *, requested_by):
+        received.append(source_format)
+        return ImportSummary(parsed=0, created=0, skipped_duplicates=0,
+                             failed=0, index_failures=0)
+
+    monkeypatch.setattr(imports_module, "run_import", _fake_run_import)
+
+    summary = await create_import(
+        file=_file_stub(b'[{"content": "x"}]'),
+        source_format="  chatgpt  ",
+        current_user=SimpleNamespace(id=uuid.uuid4()),
+        db=object(),
+    )
+    assert summary.parsed == 0
+    assert received == ["chatgpt"]

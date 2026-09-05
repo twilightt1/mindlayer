@@ -7,6 +7,7 @@ CI-safe: pure parsing, no DB, no Chroma.
 """
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 import pytest
@@ -325,3 +326,46 @@ def test_parse_import_unknown_format_rejected():
     # also when detection fails: no content-bearing shape at all
     with pytest.raises(ImportFormatError, match=r"could not detect"):
         parse_import({"stray": 1})
+
+
+def test_pam_malformed_provenance_degrades_never_crashes():
+    """Final fix wave: wrong-typed sub-fields degrade, never crash the import.
+
+    provenance-as-str is coerced to {} (platform: None) — the memory is kept
+    with its content intact. Hard per-item errors raised by the converter
+    are caught by _safe_item → skipped, never a 500.
+    """
+    data = {
+        "schema": "portable-ai-memory",
+        "memories": [
+            {"id": "p1", "type": "note", "content": "good memory",
+             "temporal": {"created_at": "2026-01-01T00:00:00Z"}, "provenance": {"platform": "chatgpt"}},
+            {"id": "p2", "type": "note", "content": "bad memory", "provenance": "not-a-dict"},
+        ],
+    }
+    items = parse_generic(data)
+    assert [i.source_ref for i in items] == ["p1", "p2"]
+    assert items[1].metadata["platform"] is None
+
+
+def test_generic_created_at_as_dict_degrades_to_now():
+    data = [{"content": "ok", "created_at": {"nested": True}}, {"content": "fine"}]
+    items = parse_generic(data)
+    assert [i.content for i in items] == ["ok", "fine"]  # _to_utc_datetime falls back to now()
+
+
+def test_chatgpt_payload_level_errors_stay_format_error():
+    """Format-LEVEL (payload-shape) errors stay ImportFormatError; per-item
+    shape errors (e.g. mapping-as-list on ONE conversation) are skipped by
+    _safe_item — one bad conversation must not 500 a whole import."""
+    with pytest.raises(ImportFormatError):
+        parse_import({"not": "an array"}, "chatgpt")
+    payload = json.dumps([{"title": "t", "mapping": ["not", "a", "dag"]}])
+    items = parse_import(payload, "chatgpt")  # skipped, not raised
+    assert items == []
+
+
+def test_generic_tags_as_string_ignored_not_char_split():
+    data = [{"content": "x", "tags": "rewind"}]
+    items = parse_generic(data)
+    assert items[0].tags == []

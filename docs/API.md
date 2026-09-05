@@ -2947,14 +2947,18 @@ curl -X POST https://api.orivory.io/api/v1/imports \
 }
 ```
 
-Duplicates are detected per `(user, source_type, source_ref)` — re-uploading the same export skips what you already imported. Conversation content is clipped at **10,000 characters** (truncation marker appended). Embedding is best-effort: `index_failures > 0` means those memories exist and are searchable by keyword but not yet vector-indexed (Postgres is the source of truth; reindex tasks recover them).
+Duplicates are detected per `(user, source_type, source_ref)` — re-uploading the same export skips what you already imported. Dedup runs per-request (select-then-insert): two concurrent uploads of the same file can both succeed, and generic items without a `ref` field are re-created on every re-upload (a unique index is the planned hardening). Conversation content is clipped at **10,000 characters** (truncation marker appended). Malformed entries inside an otherwise-valid file are **skipped, never fatal** — one bad conversation can't fail the whole import. Embedding is best-effort: `index_failures > 0` means those memories exist and are searchable by keyword but not yet vector-indexed (Postgres is the source of truth; reindex tasks recover them).
 
 **Errors:** `422` — unparseable file, undetectable format, explicit unknown format, undecodable bytes · `413` — file over 20 MiB.
 
 > **Honest notes:**
 > - **Rewind/Limitless: no adapter.** Their local history lives in a SQLCipher-encrypted SQLite database with no official export format (the app was sunset 2025-12-19). Convert manually to the generic JSON shape, or wait for a dedicated adapter.
 > - **ChatGPT "Memory" feature contents are NOT in the data export** — only conversations.
-> - **OpenRecall** stores an unencrypted local SQLite; one `sqlite3` query with `json_group_array` converts it to the generic JSON shape.
+> - **OpenRecall** stores an unencrypted local SQLite; one `sqlite3` query converts it to the generic JSON shape:
+>
+>   ```bash
+>   sqlite3 recall.db "SELECT json_object('content', text, 'created_at', timestamp, 'title', title) FROM entries" > openrecall.json
+>   ```
 
 ---
 
