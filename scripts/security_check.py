@@ -36,6 +36,7 @@ def _base_production_settings(**overrides) -> dict[str, object]:
         "DATABASE_URL": "postgresql+asyncpg://orivory:strong-db-password@postgres:5432/ragdb",
         "REDIS_URL": "redis://redis:6379/0",
         "JWT_SECRET_KEY": "production-secret-key-with-more-than-32-characters",
+        "CONFIG_ENCRYPTION_KEY": "2CiSbMXhP2zwWOAk7nkEcGABAJSJnt7hl_SVcMBnlnk=",
         "MINIO_ACCESS_KEY": "orivory-prod-minio",
         "MINIO_SECRET_KEY": "orivory-prod-minio-secret",
         "OPENROUTER_API_KEY": "sk-or-production",
