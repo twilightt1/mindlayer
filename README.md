@@ -155,6 +155,7 @@ orivory/
 | Doc | Contents |
 |---|---|
 | [docs/API.md](docs/API.md) | Full API reference: auth, chat, memories, MCP hub, erasure, imports |
+| [docs/how-it-works.html](docs/how-it-works.html) | The one-page explainer — how the hub works, honestly compared | 
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture — hub spine, agents, retrieval, data model |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Shipped milestones and open follow-ups |
 | [docs/research/](docs/research/) | Market / user / platform / papers research behind the pivot |
