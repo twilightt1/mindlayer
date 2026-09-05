@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 def utc_now() -> datetime:
     """Return current UTC datetime for SQLAlchemy onupdate callbacks.
-    
+
     This is called at row-update time (not import time), unlike using
     datetime.utcnow directly which is deprecated.
     """
