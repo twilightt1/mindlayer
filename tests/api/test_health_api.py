@@ -65,3 +65,12 @@ async def test_ready_returns_503_when_dependencies_are_degraded(monkeypatch):
     body = response.json()
     assert body["status"] == "degraded"
     assert body["checks"]["chroma"]["status"] == "failed"
+
+
+async def test_ready_includes_mcp_hub_check_when_enabled():
+    """MCP hub readiness: flag on → check present and ok (offline probe)."""
+    from app.services.health_service import check_readiness
+
+    payload = await check_readiness()
+    assert "mcp_hub" in payload["checks"]
+    assert payload["checks"]["mcp_hub"]["status"] == "ok"

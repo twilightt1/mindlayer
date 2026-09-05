@@ -69,13 +69,34 @@ async def _measure(name: str, checker: CheckFn) -> tuple[str, CheckPayload]:
         }
 
 
+async def _check_mcp_hub() -> None:
+    """Prove the MCP hub is wired: flag on + SDK app constructible.
+
+    Deliberately offline — a deep handshake lives in the integration suite;
+    readiness only asserts the mount exists so `docker compose` operators see
+    a failed check the moment the hub is misconfigured.
+    """
+    if not settings.MCP_HUB_ENABLED:
+        raise RuntimeError("MCP hub disabled (MCP_HUB_ENABLED=false)")
+    from app.mcp_hub.server import get_mcp_app
+
+    app = get_mcp_app()
+    if not callable(app):
+        raise RuntimeError("MCP app is not callable")
+
+
 def _default_readiness_checkers() -> dict[str, CheckFn]:
-    return {
+    checkers = {
         "postgres": _check_postgres,
         "redis": _check_redis,
         "minio": _check_minio,
         "chroma": _check_chroma,
     }
+    if settings.MCP_HUB_ENABLED:
+        # Flag-off is a deliberate configuration, not a degraded service —
+        # the check (and its failure signal) only exists while enabled.
+        checkers["mcp_hub"] = _check_mcp_hub
+    return checkers
 
 
 async def run_readiness_checks(
