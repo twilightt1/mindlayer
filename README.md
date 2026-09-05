@@ -48,6 +48,8 @@ Any MCP-capable agent can connect to your second brain. You register an agent cl
 
 Erasure is verifiable — the "right to be forgotten, with receipts": `POST /api/v1/erasure-receipts` (or the MCP `forget_memory` tool) cascades a deletion across rows, links and vectors, re-checks every derived artifact, and returns a receipt (`completed` or `completed_with_residual`). See [docs/API.md — Erasure Receipts](docs/API.md#14-erasure-receipts).
 
+Bringing an old brain along? One `POST /api/v1/imports` ingests a ChatGPT or Claude data export (plus generic JSON / PAM bundles) with dedup and truncation handling — leave anytime, bring everything. See [docs/API.md — Import Paths](docs/API.md#15-import-paths).
+
 ```bash
 # 1. Register an agent client (as your logged-in user)
 curl -X POST http://localhost:8000/api/v1/agents \

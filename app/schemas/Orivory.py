@@ -14,7 +14,8 @@ class MemoryCreate(BaseModel):
     content:       str               = Field(min_length=1, max_length=100_000)
     summary:       str | None        = Field(default=None, max_length=4000)
     source_type:   Literal["manual_note", "file_upload", "google_drive", "notion",
-                            "gmail", "web_clipper", "rss", "conversation_excerpt", "other"] = "manual_note"
+                            "gmail", "web_clipper", "rss", "conversation_excerpt",
+                            "chatgpt_import", "claude_import", "generic_import", "other"] = "manual_note"
     source_ref:    str | None        = Field(default=None, max_length=500)
     source_url:    str | None        = Field(default=None, max_length=1000)
     tags:          list[str]         = Field(default_factory=list, max_length=50)
@@ -31,6 +32,15 @@ class MemoryUpdate(BaseModel):
     salience:      float | None      = Field(default=None, ge=0.0, le=1.0)
     pinned:        bool | None       = None
     metadata:      dict | None       = None
+
+
+class ImportSummary(BaseModel):
+    """Result of one import run (POST /api/v1/imports)."""
+    parsed:              int
+    created:             int
+    skipped_duplicates:  int
+    failed:              int
+    index_failures:      int
 
 
 class MemoryEntityLink(BaseModel):

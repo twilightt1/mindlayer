@@ -10,6 +10,7 @@ from app.api.v1 import (
     discovery,
     entities,
     erasure,
+    imports,
     insights,
     memories,
     referral,
@@ -34,6 +35,7 @@ api_router.include_router(entities.router)
 api_router.include_router(entities.relations_router)  # /relations
 api_router.include_router(entities.graph_router)   # /graph/snapshot, /graph/related/...
 api_router.include_router(sources.router)
+api_router.include_router(imports.router)  # /imports - one-shot export upload
 
 # Q2 Growth Track: Proactive Discovery Features
 api_router.include_router(insights.router)      # /insights - Insight Cards
