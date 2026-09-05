@@ -14,11 +14,12 @@ async def test_check_readiness_ok(monkeypatch):
     monkeypatch.setattr(health_service, "_check_redis", ok)
     monkeypatch.setattr(health_service, "_check_minio", ok)
     monkeypatch.setattr(health_service, "_check_chroma", ok)
+    monkeypatch.setattr(health_service, "_check_mcp_hub", ok)
 
     result = await health_service.check_readiness()
 
     assert result["status"] == "ok"
-    assert set(result["checks"]) == {"postgres", "redis", "minio", "chroma"}
+    assert set(result["checks"]) == {"postgres", "redis", "minio", "chroma", "mcp_hub"}
     assert all(check["status"] == "ok" for check in result["checks"].values())
 
 
@@ -34,6 +35,7 @@ async def test_check_readiness_degraded_when_dependency_fails(monkeypatch):
     monkeypatch.setattr(health_service, "_check_redis", ok)
     monkeypatch.setattr(health_service, "_check_minio", ok)
     monkeypatch.setattr(health_service, "_check_chroma", failed)
+    monkeypatch.setattr(health_service, "_check_mcp_hub", ok)
 
     result = await health_service.check_readiness()
 

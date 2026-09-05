@@ -1,7 +1,7 @@
 # Deployment Guide
 
 This guide describes a production-like Docker Compose deployment for Orivory.
-Local development should continue using [docker-compose.yml](docker-compose.yml). Production-like deployments should combine it with [docker-compose.prod.yml](docker-compose.prod.yml).
+Local development should continue using [docker-compose.yml](../docker-compose.yml). Production-like deployments should combine it with [docker-compose.prod.yml](../docker-compose.prod.yml).
 
 ## Required Services
 
@@ -21,6 +21,11 @@ Copy the example environment and replace every placeholder before deployment:
 ```bash
 cp .env.example .env
 ```
+
+> **Note:** the dev `docker-compose.yml` ships a one-shot `migrate` service —
+> `app` and `celery_worker` start only after `alembic upgrade head` completes
+> (the `service_completed_successfully` gate). In production, run migrations
+> as a deploy step with the same guarantee.
 
 Production must use:
 
@@ -62,7 +67,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 docker build -t Orivory-api:latest .
 ```
 
-The [Dockerfile](Dockerfile) runs the app as a non-root user and defaults to a production `uvicorn` command. Development Compose can still override this with `--reload`.
+The [Dockerfile](../Dockerfile) runs the app as a non-root user and defaults to a production `uvicorn` command. Development Compose can still override this with `--reload`.
 
 ## Start Production-like Stack
 

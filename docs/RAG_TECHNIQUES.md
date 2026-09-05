@@ -14,9 +14,9 @@ paraphrases. Combining them via Reciprocal Rank Fusion gives the best
 of both.
 
 **Where.**
-- BM25: [`app/retrieval/bm25_retriever.py`](app/retrieval/bm25_retriever.py)
-- Dense: [`app/retrieval/vector_store.py`](app/retrieval/vector_store.py)
-- RRF: [`app/retrieval/hybrid_retriever.py`](app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
+- BM25: [`app/retrieval/bm25_retriever.py`](../app/retrieval/bm25_retriever.py)
+- Dense: [`app/retrieval/vector_store.py`](../app/retrieval/memory/vector_store.py)
+- RRF: [`app/retrieval/hybrid_retriever.py`](../app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
 
 **Trade-off.** Slightly higher latency than dense-only (two retrievers +
 fusion), but ~30% recall improvement on Vietnamese technical terms
@@ -36,7 +36,7 @@ score(d) = Σ_i  1 / (k + rank_i(d))     # k = 60 (Cormack et al.)
 calibration between retrievers (BM25 scores ≠ cosine scores). It also
 handles "the result only appears in one list" gracefully.
 
-**Where.** [`app/retrieval/hybrid_retriever.py`](app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
+**Where.** [`app/retrieval/hybrid_retriever.py`](../app/retrieval/hybrid_retriever.py) (contains `reciprocal_rank_fusion` function)
 
 **Test.** `tests/rag/test_rrf.py` — covers single-list inputs, equal rank, and
 overlapping docs.
@@ -55,7 +55,7 @@ overlapping docs.
 **Why.** Small children → precise embedding (better recall).
 Large parents → readable context for the answer agent.
 
-**Where.** [`app/retrieval/processor.py`](app/retrieval/processor.py)
+**Where.** [`app/retrieval/hybrid_retriever.py`](../app/retrieval/hybrid_retriever.py)
 
 **Trade-off.** 4-6× more storage, but the LLM's "answer quality" metrics
 improve noticeably because the answer agent has surrounding context for
@@ -87,13 +87,13 @@ A small cross-encoder reads `(query, chunk)` pairs and re-orders the top-K
 chunks. Cheaper than re-embedding the whole corpus, and the signal is much
 stronger than cosine similarity alone.
 
-**Where.** [`app/retrieval/reranker.py`](app/retrieval/reranker.py)
+**Where.** [`app/retrieval/reranker.py`](../app/retrieval/reranker.py)
 (uses FlashRank by default)
 
 **Trade-off.** ~50-150 ms added latency. We compensate by
 reranking only the **top 20** of the 50 retrieved chunks.
 
-**Benchmark.** See [`eval/benchmarks/reranker_benchmark.py`](eval/benchmarks/reranker_benchmark.py)
+**Benchmark.** See [`eval/benchmarks/reranker_benchmark.py`](../eval/README.md)
 for an NDCG/MRR harness.
 
 ---
@@ -108,8 +108,8 @@ After the answer agent runs, a second LLM call asks:
 If `is_hallucination` is True, the graph re-enters the answer node with
 the same context but a stricter prompt hint — up to 3 times.
 
-**Where.** [`app/agents/hallucination_agent.py`](app/agents/hallucination_agent.py)
-(used by [`app/graph.py`](app/graph.py))
+**Where.** [`app/agents/hallucination_agent.py`](../app/agents/hallucination_agent.py)
+(used by [`app/agents/graph.py`](../app/agents/graph.py))
 
 **Test.** `tests/rag/test_hallucination_retry.py`
 
@@ -123,7 +123,7 @@ Two correction edges in the graph:
 
 Each is bounded at 3 retries to prevent infinite loops.
 
-**Where.** [`app/graph.py`](app/graph.py) — see the `add_conditional_edges` calls.
+**Where.** [`app/agents/graph.py`](../app/agents/graph.py) — see the `add_conditional_edges` calls.
 
 **Metric.** "Correction rate" in the eval report measures how often
 retries actually fixed the issue.
@@ -135,7 +135,7 @@ retries actually fixed the issue.
 Successful parent retrievals are cached in Redis (`parent:<doc_id>:<chunk_id>`)
 for 2 hours. Hot docs become sub-millisecond to retrieve.
 
-**Where.** [`app/retrieval/cache.py`](app/retrieval/cache.py)
+**Where.** [`app/retrieval/retrieval_cache.py`](../app/retrieval/retrieval_cache.py)
 
 **Trade-off.** Redis becomes a hard dependency in production. For local
 dev, the cache layer transparently falls back to a no-op.
@@ -150,22 +150,16 @@ dev, the cache layer transparently falls back to a no-op.
 - **Diacritic-safe BM25** — keep diacritics for the index (Vietnamese users
   type with diacritics), strip only for the query (some keyboards lose them)
 
-**Where.** [`app/retrieval/preprocessor.py`](app/retrieval/preprocessor.py)
+**Where.** [`app/retrieval/hyde_agent.py`](../app/retrieval/hyde_agent.py)
 
 ---
 
-## 10. Versioned prompt registry with A/B testing
+## 10. Prompt management
 
-All 4 agent prompts are versioned (`v1`, `v2`, ...). For each
-conversation, the registry assigns a variant deterministically
-(hash of `agent:conversation_id`) so the same conversation always sees
-the same prompt — critical for fair A/B comparison.
-
-Outcomes are logged to a JSONL file and aggregated by variant for
-analysis.
-
-**Where.** [`app/agents/prompts/`](app/agents/prompts/) — see
-[`registry.py`](app/agents/prompts/registry.py) and
-[`integration.py`](app/agents/prompts/integration.py).
-
-**Test.** `tests/agents/test_prompt_registry.py` (20 tests)
+Agent prompts live as module-level constants inside each agent file
+(e.g. `GRADE_DOCS_PROMPT` and `QUERY_EXPANSION_PROMPT` in
+[`app/agents/crag_agent.py`](../app/agents/crag_agent.py)). The original
+versioned-prompt registry was removed as dead weight during the P4
+hardening pass; A/B experimentation now runs through the eval experiment
+sweeper (`scripts/eval_experiments.py` — see
+[EVALUATION_GUIDE.md](EVALUATION_GUIDE.md#prompt-ab-testing)).

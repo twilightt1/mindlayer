@@ -15,7 +15,7 @@ Before opening a bug report:
 
 ### 2. 💡 Suggesting Features
 
-- Check the [roadmap](orivory-product-roadmap-2025.md)
+- Check the [roadmap](docs/ROADMAP.md)
 - Open a [feature request](.github/ISSUE_TEMPLATE/feature_request.md)
 - Explain the use case and benefits
 

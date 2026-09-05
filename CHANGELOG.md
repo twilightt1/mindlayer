@@ -4,6 +4,58 @@ All notable changes to Orivory are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — Open Memory Hub MVP (2026-09-02 → 2026-09-04)
+
+The strategic pivot from "AI second brain app" to an **open memory hub for
+AI agents** (decision one-pager: `docs/ideas/open-memory-hub.md`; research
+corpus: `docs/research/`).
+
+### Added
+- **MCP server** at `/mcp` — six scoped memory tools (`search_memory`,
+  `get_memory`, `list_recent`, `add_memory`, `delete_memory`,
+  `forget_memory`) over the official `mcp` SDK (stateless HTTP, pinned
+  `>=1.9.0,<2`), with per-agent identity, ASGI scope normalization
+  (Starlette 1.6 307 header-strip workaround), and settings-driven
+  transport security (`MCP_HUB_ALLOWED_HOSTS`).
+- **Agent clients + access ledger** — `agent_clients` registry
+  (`memory:read`/`memory:write` scopes, sha256-only token storage,
+  plaintext shown once, instant revocation) and the append-only
+  `memory_access_logs` ledger ("which AI saw what, when").
+- **Erasure receipts** — `erase_memories` service with ownership-checked
+  transitive cascade (BFS over `parent_id`), Chroma vector cleanup +
+  adversarial verification pass, three honest receipt statuses
+  (`completed` / `completed_with_residual` / `completed_with_errors`),
+  per-target isolation with session rollback; `forget_memory` MCP tool and
+  `POST/GET /api/v1/erasure-receipts`.
+- **Import paths** — `POST /api/v1/imports`: ChatGPT / Claude / generic /
+  PAM `memory-store.json` exports with auto-detection, per-item isolation
+  (malformed entries skip, never fatal), 10k-char cap, dedup by
+  (user, source_type, source_ref), best-effort embedding with counted
+  failures.
+- **Benchmark harness** — `eval/benchmarks/`: LongMemEval-S (primary) +
+  MemoryAgentBench (secondary, selective-forgetting) adapters, phased
+  runner CLI with a structural no-fabrication guarantee, dataset sha256
+  integrity, leaderboard-hygiene fields reserved.
+- **ClawHub skill package** — `skills/orivory/` (agent runbook, tool
+  catalog, error runbook, worked examples).
+- **Compose hardening** — one-shot `migrate` service gating `app` /
+  `celery_worker` (`alembic upgrade head` before any server starts) and an
+  `mcp_hub` readiness check.
+- **CI** — DB-free hub/benchmark test suites wired into the workflow.
+
+### Changed
+- `memories.source_type` gained import/MCP values (`chatgpt_import`,
+  `claude_import`, `generic_import`, `mcp_agent`) — no migration needed
+  (unconstrained `String(32)`); Literals extended in schemas and routes.
+- `POST /api/v1/memories` now validates `parent_id` ownership (404 on
+  foreign/missing parent).
+- Docs rewritten around the hub positioning; pre-pivot architecture/spec
+  docs removed (history in git).
+
+### Removed
+- `OpenMemory`-era docs superseded by `docs/ARCHITECTURE.md`;
+  sprint-progress trackers; stale demo script; root `main.py` stub.
+
 ## [Unreleased] — Phase 1-3 remediation (2026-06-01 → 2026-06-02)
 
 ### Security

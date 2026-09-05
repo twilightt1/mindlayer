@@ -22,6 +22,20 @@ x-backend-depends: &backend-depends
     condition: service_healthy
 
 services:
+  # One-shot schema migration — runs before app/celery so `docker compose up`
+  # never starts a server against a database without tables (the "silent
+  # empty-database" failure class). App gates on service_completed_successfully.
+  migrate:
+    build: .
+    env_file: .env
+    environment:
+      <<: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: alembic upgrade head
+    restart: "no"
+
   app:
     build: .
     ports:
@@ -29,7 +43,17 @@ services:
     env_file: .env
     environment:
       <<: *backend-env
-    depends_on: *backend-depends
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./app:/app/app
       - ./.env:/app/.env
@@ -63,7 +87,17 @@ services:
     env_file: .env
     environment:
       <<: *backend-env
-    depends_on: *backend-depends
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: celery -A app.tasks.celery_app worker -Q default,ingestion,email -c 4 -l INFO
     restart: unless-stopped
 
