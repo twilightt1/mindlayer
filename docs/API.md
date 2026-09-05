@@ -22,8 +22,9 @@ Base URL: `https://api.orivory.io/api/v1`
 12. [Error Reference](#12-error-reference)
 13. [Agent Clients & MCP Hub](#13-agent-clients--mcp-hub)
 14. [Erasure Receipts](#14-erasure-receipts)
-15. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
-16. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
+15. [Import Paths](#15-import-paths)
+16. [Appendix A: OpenAPI Schema (YAML)](#appendix-a-openapi-schema-yaml)
+17. [Appendix B: SDK Examples](#appendix-b-sdk-examples)
 
 ---
 
@@ -2904,6 +2905,56 @@ curl -s https://api.orivory.io/api/v1/erasure-receipts/7c9e6679-7425-40de-944b-e
 Agents with the `memory:write` scope can call the `forget_memory` MCP tool (endpoint `/mcp`, see [§13](#13-agent-clients--mcp-hub)) with `{"memory_ids": ["<uuid>", ...]}`. It returns a compact summary (`receipt_id`, `status`, `erased`, `skipped`, `invalid`) instead of the full receipt — fetch the receipt via `GET /api/v1/erasure-receipts/{id}` for the per-target detail. Every authorized call appends an `mcp_forget` row to the access ledger pointing at the receipt.
 
 > **Note — ledger rows survive erasure by design.** The access ledger is append-only and is never erased by an erasure call: it records that a memory was *accessed before* deletion, which is exactly what makes it an audit trail. Receipts, by contrast, quote personal memory ids and are deleted with the user.
+
+---
+
+## 15. Import Paths
+
+Bring an existing AI assistant's memory into Orivory in one call. The endpoint accepts a raw export file, auto-detects (or takes an explicit format), normalizes it into memories, and returns a summary.
+
+### POST /api/v1/imports
+
+```bash
+curl -X POST https://api.orivory.io/api/v1/imports \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "file=@conversations.json" \
+  -F "source_format=chatgpt"
+```
+
+| Form field | Required | Description |
+|---|---|---|
+| `file` | yes | The raw export file (JSON). Max **20 MiB** (larger → `413`). |
+| `source_format` | no | `chatgpt` · `claude` · `generic`. Omitted/blank = **auto-detect**. An explicit unknown value → `422`. |
+
+**Accepted formats** (detection heuristics follow the [PAM importer mappings](https://github.com/portable-ai-memory/portable-ai-memory/blob/master/importer-mappings.md)):
+
+| Format | Detected shape | Notes |
+|---|---|---|
+| `chatgpt` | OpenAI export: array of conversations with a `mapping` DAG of `{author.role, content.parts}` nodes | One memory per conversation; system/empty turns skipped; turns ordered by `create_time` |
+| `claude` | Claude export: `chat_messages` with `sender` human/assistant and message-level `text` | Thinking/tool blocks dropped |
+| `generic` | JSON array of `{title?, content, created_at?, url?, ref?, tags?}` | The escape hatch for anything else |
+| PAM bundle | `{"schema": "portable-ai-memory", "memories": [...]}` | [Portable AI Memory](https://portable-ai-memory.org/spec/v1.0/) `memory-store.json` (auto-detects to `generic`) |
+
+**Response `201`** — `ImportSummary`:
+
+```json
+{
+  "parsed": 42,
+  "created": 40,
+  "skipped_duplicates": 2,
+  "failed": 0,
+  "index_failures": 0
+}
+```
+
+Duplicates are detected per `(user, source_type, source_ref)` — re-uploading the same export skips what you already imported. Conversation content is clipped at **10,000 characters** (truncation marker appended). Embedding is best-effort: `index_failures > 0` means those memories exist and are searchable by keyword but not yet vector-indexed (Postgres is the source of truth; reindex tasks recover them).
+
+**Errors:** `422` — unparseable file, undetectable format, explicit unknown format, undecodable bytes · `413` — file over 20 MiB.
+
+> **Honest notes:**
+> - **Rewind/Limitless: no adapter.** Their local history lives in a SQLCipher-encrypted SQLite database with no official export format (the app was sunset 2025-12-19). Convert manually to the generic JSON shape, or wait for a dedicated adapter.
+> - **ChatGPT "Memory" feature contents are NOT in the data export** — only conversations.
+> - **OpenRecall** stores an unencrypted local SQLite; one `sqlite3` query with `json_group_array` converts it to the generic JSON shape.
 
 ---
 
