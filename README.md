@@ -63,6 +63,12 @@ The whole memory hub — API + MCP server + SQLite + in-process Chroma — in a
 single container. No Postgres, no Redis, no MinIO, no workers.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/twilightt1/orivory/main/install.sh | bash
+```
+
+or plain docker:
+
+```bash
 docker run -d --name orivory -p 8000:8000 -v orivory-data:/data \
   -e OPENAI_API_KEY=sk-... ghcr.io/twilightt1/orivory:lite
 ```

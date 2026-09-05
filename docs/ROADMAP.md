@@ -51,14 +51,19 @@
     code TODOs.
 
 ### From claude-mem competitive analysis (see research/CLAUDE_MEM_ANALYSIS.md)
-- **Auto-capture for OpenClaw**: an OpenClaw-side hook/integration that
-  flows agent session activity into Orivory's ingestion path without manual
-  calls (the pattern behind claude-mem's 90K+ stars) — highest-leverage
-  counter-move.
-- **Compression-before-storage**: optional AI summarize step before memory
-  writes (feature-flagged; ~10x token savings is their most-quoted metric).
-- **Progressive-disclosure search**: index → details workflow baked into
-  MCP tool descriptions; consider a `timeline` tool.
+- ✅ **Auto-capture for OpenClaw** (PR #11): agent-token imports + the
+  stdlib-only `scripts/openclaw_capture.py` watcher — sessions auto-flow
+  into the ingestion path without manual calls.
+- ✅ **Compression-before-storage** (this PR): feature-flagged
+  (`COMPRESSION_ENABLED`, default off) best-effort AI summarize before
+  memory writes on both the REST and MCP seams; failures degrade to raw.
+- ✅ **Progressive-disclosure search** (this PR): `search` returns an
+  index (id/title/snippet, no full content); new `timeline` tool returns
+  anchor + before/after windows; workflow baked into tool docstrings.
+- ✅ **One-command installer** (this PR): `curl … install.sh | bash`
+  bootstraps the lite container idempotently with health gating.
+- ⏳ **LLM-judge real runs**: requires `OPENAI_API_KEY` — the runner
+  honest-skips rather than fabricate scores (hygiene rule 1).
 - **Watch**: claude-mem's server-runtime GA plan (#2685) — Docker+pg+redis+
   scopes is Orivory's full-stack lane; land ledger/receipts/benchmark
   differentiators before their GA drops.
