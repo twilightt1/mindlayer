@@ -55,17 +55,19 @@ OAuth values as needed.
 ### 2. Start infrastructure
 
 ```powershell
-docker compose up -d postgres redis chromadb minio flower
+docker compose up -d postgres redis chromadb minio flower migrate
 ```
+
+The one-shot `migrate` service runs `alembic upgrade head` before the app
+starts — with it up (exited 0), tables exist and the API is safe to boot.
 
 `docker-compose.yml` is optimized for local development and uses source bind
 mounts plus API `--reload`. For production-like validation, use
-[docker-compose.prod.yml](docker-compose.prod.yml) with the deployment docs:
+[docker-compose.prod.yml](../docker-compose.prod.yml) with the deployment docs:
 
-- [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
-- [OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
-- [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)
-- [SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md)
+- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+- [OPERATIONS_RUNBOOK.md](OPERATIONS_RUNBOOK.md)
+- [BACKUP_RESTORE.md](BACKUP_RESTORE.md)
 
 Check container health:
 
@@ -176,7 +178,7 @@ Run the deterministic RAG evaluation report:
 .\.venv\Scripts\python.exe eval/run_eval.py --mode offline --output-dir eval/results --top-k 5
 ```
 
-Reports are written to [latest_report.md](eval/results/latest_report.md) and [latest_report.json](eval/results/latest_report.json).
+Reports are written to [latest_report.md](../eval/results/latest_report.md) and [latest_report.json](../eval/results/latest_report.json).
 
 These tests use mocks/monkeypatching and do not need Postgres, Redis, MinIO,
 ChromaDB, or external LLM/API credentials.
@@ -230,7 +232,7 @@ Reports are written to `eval/results/live_api_report.md` and
 ### Full test suite
 
 The full suite expects a local test database at the URL configured in
-[tests/conftest.py](tests/conftest.py).
+[tests/conftest.py](../tests/conftest.py).
 
 ```powershell
 pytest tests/ -v
@@ -320,7 +322,7 @@ curl http://localhost:8000/ready
 
 ### MinIO bucket or credential errors
 
-The app creates the configured bucket on startup via [ensure_bucket](app/storage.py).
+The app creates the configured bucket on startup via [ensure_bucket](../app/storage.py).
 If readiness reports MinIO failed:
 
 ```powershell

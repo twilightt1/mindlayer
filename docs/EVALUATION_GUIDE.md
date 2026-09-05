@@ -19,8 +19,11 @@ results.
 .venv/Scripts/python scripts/eval_experiments.py --experiment topk_sweep \
     --variants topk_3,topk_5,topk_8
 
-# 5. LLM cost benchmark (no API needed)
-.venv/Scripts/python eval/benchmarks/run_benchmark.py --mode cost
+# 5. Memory benchmarks (LongMemEval-S / MemoryAgentBench)
+.venv/bin/python eval/run_benchmark.py \
+    --benchmark longmemeval_s \
+    --dataset eval/benchmarks/data/longmemeval_s_cleaned.json \
+    --phase plan --limit 20
 ```
 
 ## What gets measured
@@ -136,6 +139,37 @@ The exit code propagates; pull request is blocked on regression.
 Output: `eval/experiments/router_compare_comparison.md` with
 side-by-side metrics.
 
+## Benchmarks (memory hub)
+
+The memory-hub benchmark harness lives in [`eval/benchmarks/`](../eval/benchmarks/README.md)
+(see that README for the full protocol and leaderboard-hygiene rules):
+
+- **LongMemEval-S** (primary) — 500 human-curated questions over ~115k-token
+  chat histories; tests knowledge updates, temporal reasoning, abstention.
+- **MemoryAgentBench** (secondary) — the only benchmark scoring selective
+  forgetting; Orivory's `forget_memory` path is exercised two-sided
+  (surviving answer recalled AND stale fact gone).
+
+```bash
+# Phase 1 — plan (no dataset needed with the committed fixtures)
+.venv/bin/python eval/run_benchmark.py --benchmark longmemeval_s \
+    --dataset eval/benchmarks/fixtures/longmemeval_s_fixture.json --phase plan
+
+# Phase 2 — download the real dataset (~264 MB, HuggingFace
+# xiaowu0162/longmemeval-cleaned) into eval/benchmarks/data/, then:
+.venv/bin/python eval/run_benchmark.py --benchmark longmemeval_s \
+    --dataset eval/benchmarks/data/longmemeval_s_cleaned.json --limit 20
+
+# Phase 3 — score an existing results JSON
+.venv/bin/python eval/run_benchmark.py --benchmark longmemeval_s \
+    --results eval/benchmarks/results/<run>/results.json
+```
+
+No scores ship in the repo — results are written only from real runs, with
+the dataset sha256 recorded. The LLM judge for non-exact-match answers is a
+pinned follow-up; until then, aggregate numbers read artificially low by
+design.
+
 ## Cost & latency analysis
 
 ```bash
@@ -151,11 +185,10 @@ GET /admin/ai-costs?hours=24
 
 ## Benchmarking different models
 
-```bash
-# Compare cost across all known models
-.venv/Scripts/python eval/benchmarks/run_benchmark.py --mode cost
+Model/cost comparisons come out of the RAG eval (every case records tokens
+and latency per agent):
 
-# Real LLM benchmark (requires API key)
-.venv/Scripts/python eval/benchmarks/run_benchmark.py --mode llm \
-    --models openai/gpt-4o-mini,openai/gpt-4o --n-runs 5
+```bash
+.venv/bin/python -c "from app.observability.cost import CostTracker; \
+    t = CostTracker(); print(t.breakdown_by_agent())"
 ```

@@ -2,7 +2,7 @@
 
 **Ngày:** 2026-09-02
 **Đầu vào:** [USER_RESEARCH.md](USER_RESEARCH.md) (desk research, ~25 truy vấn có nguồn) + [MARKET_RESEARCH.md](MARKET_RESEARCH.md) (21 truy vấn có nguồn, bản đồ 20+ đối thủ).
-**Phạm vi:** khuyến nghị chiến lược + thứ tự thực hiện cho 90 ngày tới. Không thay thế [NEXT_PHASE_ROADMAP.md](../NEXT_PHASE_ROADMAP.md) (P0–P4 đã xong) — mà là phase tiếp theo sau P0–P4.
+**Phạm vi:** khuyến nghị chiến lược + thứ tự thực hiện cho 90 ngày tới. Không thay thế [NEXT_PHASE_ROADMAP.md](../ROADMAP.md) (P0–P4 đã xong) — mà là phase tiếp theo sau P0–P4.
 
 > **⚠️ Đã được cập nhật (2026-09-02, muộn hơn):** sau 6 file research bổ sung ([PLATFORM_LANDSCAPE](PLATFORM_LANDSCAPE.md), [OSS_GROWTH_PLAYBOOK](OSS_GROWTH_PLAYBOOK.md), [FLAGSHIP_DEMAND_EVIDENCE](FLAGSHIP_DEMAND_EVIDENCE.md), [ICP_AND_TIMING](ICP_AND_TIMING.md), [PAPERS_AGENT_MEMORY](PAPERS_AGENT_MEMORY.md), [PAPERS_HCI_PRIVACY](PAPERS_HCI_PRIVACY.md)) và quyết định của founder, hướng phát triển chính thức là **Open Memory Hub (D1) — ICP OpenClaw-first, implementation-first + benchmark công khai**. Xem one-pager quyết định tại [docs/ideas/open-memory-hub.md](../ideas/open-memory-hub.md). Các khuyến nghị H1–H5 dưới đây vẫn có hiệu lực nhưng được xếp lại: MCP server + capture friction lên trước, digest xuống thành feature hỗ trợ theo guardrails từ papers.
 
