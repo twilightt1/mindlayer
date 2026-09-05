@@ -75,6 +75,25 @@ def _memory_brief(memory: Memory) -> dict[str, Any]:
     }
 
 
+def _memory_index_row(memory: Memory) -> dict[str, Any]:
+    """Progressive-disclosure index row: no full content, a snippet only.
+
+    Search results are for FILTERING — full content is fetched per-id by
+    ``get_memory`` after the caller decides which hits matter. Snippets are
+    clipped to 160 chars so a 20-hit search stays ~1k tokens instead of
+    dumping every memory body into context.
+    """
+    content = memory.content or ""
+    return {
+        "id": str(memory.id),
+        "title": memory.title,
+        "snippet": (content[:160].rstrip() + "…") if len(content) > 160 else content,
+        "tags": list(memory.tags or []),
+        "salience": memory.salience,
+        "captured_at": _iso(memory.captured_at),
+    }
+
+
 def _ledger_entry(
     principal: AgentPrincipal,
     action: str,
@@ -117,7 +136,13 @@ async def _recall_memory_ids(query: str, limit: int) -> list[tuple[UUID, float]]
 
 
 async def search_memory(query: str, limit: int = 8) -> dict[str, Any]:
-    """Search the caller's memories (requires the ``memory:read`` scope)."""
+    """Search the caller's memories — returns an INDEX, not full content.
+
+    Progressive-disclosure step 1 (the workflow that saves ~10x tokens):
+    results carry ``id/title/salience/captured_at/snippet`` only. Review the
+    index, then call ``get_memory`` on the few ids that matter (or
+    ``timeline`` for context around one). Do NOT fetch details for every hit.
+    Requires the ``memory:read`` scope."""
     principal = _current_principal()
     if principal is None:
         return IDENTITY_ERROR
@@ -139,7 +164,7 @@ async def search_memory(query: str, limit: int = 8) -> dict[str, Any]:
                 )
             ).scalars().all()
             by_id = {row.id: row for row in rows}
-            results = [_memory_brief(by_id[mid]) for mid, _ in recalled if mid in by_id]
+            results = [_memory_index_row(by_id[mid]) for mid, _ in recalled if mid in by_id]
         db.add(
             _ledger_entry(
                 principal,
@@ -153,6 +178,79 @@ async def search_memory(query: str, limit: int = 8) -> dict[str, Any]:
         )
         await db.commit()
     return {"query": query, "results": results}
+
+
+async def timeline(memory_id: str, window: int = 4) -> dict[str, Any]:
+    """Context AROUND one memory (progressive-disclosure step 2).
+
+    Given an id from ``search``, returns the memory plus up to ``window``
+    neighbours captured before and after it — chronological context without
+    fetching every detail. Cheaper than ``get_memory`` on many ids when
+    you need surrounding history. Requires the ``memory:read`` scope.
+    """
+    principal = _current_principal()
+    if principal is None:
+        return IDENTITY_ERROR
+    if not principal.can_read():
+        return READ_SCOPE_ERROR
+    try:
+        anchor_id = UUID(memory_id)
+    except ValueError:
+        return {"error": "invalid memory id"}
+    capped = max(1, min(window, 10))
+    async with _session() as db:
+        anchor = await db.get(Memory, anchor_id)
+        if anchor is None or anchor.user_id != principal.user_id:
+            return {"error": "memory not found"}
+
+        def _before_or_at(m: Memory) -> bool:
+            return (m.captured_at, m.id) < (anchor.captured_at, anchor.id)
+
+        def _after(m: Memory) -> bool:
+            return (m.captured_at, m.id) > (anchor.captured_at, anchor.id)
+
+        before_rows = (
+            (
+                await db.execute(
+                    select(Memory)
+                    .where(Memory.user_id == principal.user_id)
+                    .order_by(Memory.captured_at.desc(), Memory.id.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        after_rows = list(reversed(before_rows))
+
+        neighbours = [
+            m
+            for m in before_rows
+            if _before_or_at(m) and m.id != anchor.id
+        ][:capped]
+        neighbours_after = [m for m in after_rows if _after(m)][:capped]
+
+        db.add(
+            _ledger_entry(
+                principal,
+                ACTION_SEARCH,
+                detail={
+                    "timeline_anchor": str(anchor.id),
+                    "window": capped,
+                    "returned": len(neighbours) + len(neighbours_after) + 1,
+                },
+            )
+        )
+        await db.commit()
+
+    def _row(m: Memory) -> dict[str, Any]:
+        return {"id": str(m.id), "title": m.title,
+                "snippet": (m.content or "")[:160], "captured_at": _iso(m.captured_at)}
+
+    return {
+        "anchor": _row(anchor),
+        "before": [_row(m) for m in reversed(neighbours)],
+        "after": [_row(m) for m in neighbours_after],
+    }
 
 
 async def get_memory(memory_id: str) -> dict[str, Any]:
@@ -217,11 +315,21 @@ async def add_memory(title: str, content: str, tags: list[str] | None = None) ->
         return IDENTITY_ERROR
     if not principal.can_write():
         return WRITE_SCOPE_ERROR
+    # Compression-before-storage (feature-flagged, best-effort): failures
+    # store the original content — never block an agent write.
+    summary_out: str | None = None
+    from app.services.compression_service import compress_memory
+
+    compressed = await compress_memory(content)
+    if compressed is not None:
+        content, summary_out = compressed[1], compressed[0]
+
     memory = Memory(
         id=uuid4(),  # client-side id so the ledger + indexing can reference it
         user_id=principal.user_id,
         title=title,
         content=content,
+        summary=summary_out,
         tags=list(tags or []),
         source_type="mcp_agent",
         source_ref=f"agent:{principal.name}",
@@ -328,5 +436,5 @@ __all__ = [
     "forget_memory",
     "get_memory",
     "list_recent",
-    "search_memory",
+    "search_memory", "timeline",
 ]

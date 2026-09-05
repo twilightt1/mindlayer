@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     # CHROMA_LOCAL_PATH — no chroma container needed.
     CHROMA_MODE: str = "http"  # http | local
     LEDGER_RETENTION_DAYS: int = 90
+    # Compression-before-storage (claude-mem adopt-learn): off by default —
+    # opt-in per deployment; failures degrade to storing raw content.
+    COMPRESSION_ENABLED: bool = False
+    COMPRESSION_THRESHOLD_CHARS: int = 2000
+    COMPRESSION_MODEL: str = "gpt-4o-mini"
     CHROMA_LOCAL_PATH: str = "/data/chroma"
 
     # lite: "fs" stores uploads on the local filesystem instead of MinIO.

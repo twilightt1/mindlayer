@@ -86,11 +86,22 @@ async def create_memory(
         parent = await db.get(Memory, body.parent_id)
         if parent is None or parent.user_id != current_user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Parent memory not found")
+    # Compression-before-storage (feature-flagged, best-effort): long
+    # bodies get an AI summary + compressed body before persisting. Any
+    # failure stores the original content unchanged.
+    content, summary = body.content, body.summary
+    if body.auto_compress:
+        from app.services.compression_service import compress_memory
+
+        compressed = await compress_memory(body.content)
+        if compressed is not None:
+            content, summary = compressed[1], (summary or compressed[0])
+
     memory = Memory(
         user_id=current_user.id,
         title=body.title,
-        content=body.content,
-        summary=body.summary,
+        content=content,
+        summary=summary,
         source_type=body.source_type,
         source_ref=body.source_ref,
         source_url=body.source_url,

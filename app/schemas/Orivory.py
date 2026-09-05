@@ -23,6 +23,9 @@ class MemoryCreate(BaseModel):
     parent_id:     UUID | None       = None
     pinned:        bool              = False
     metadata:      dict              = Field(default_factory=dict)
+    # Opt-in AI compression of long bodies before persisting (server flag
+    # COMPRESSION_ENABLED must also be on; otherwise this is a no-op).
+    auto_compress: bool              = False
 
 
 class MemoryUpdate(BaseModel):

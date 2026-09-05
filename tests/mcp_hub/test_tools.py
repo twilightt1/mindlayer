@@ -8,7 +8,7 @@ exercised by the wiring test in test_server.py.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -24,6 +24,11 @@ def _principal(scopes: tuple[str, ...]) -> AgentPrincipal:
         name="TestAgent",
         scopes=frozenset(scopes),
     )
+
+
+def _memory(user_id=None, memory_id=None) -> Memory:
+    """Convenience factory for appended progressive-disclosure tests."""
+    return _memory_row(memory_id or uuid.uuid4(), user_id or uuid.uuid4())
 
 
 def _memory_row(memory_id: uuid.UUID, user_id: uuid.UUID) -> Memory:
@@ -58,6 +63,12 @@ class _FakeDB:
         self.added = []
         self.deleted = []
         self.committed = 0
+
+    async def get(self, model, obj_id):
+        for row in self.rows:
+            if getattr(row, "id", None) == obj_id:
+                return row
+        return None
 
     async def execute(self, _stmt):
         return _FakeResult(self.rows)
@@ -204,3 +215,87 @@ async def test_list_recent_returns_rows_and_logs(reader):
     ledger = [o for o in db.added if type(o).__name__ == "MemoryAccessLog"]
     assert ledger and ledger[0].action == "mcp_list"
     assert ledger[0].detail["returned"] == 1
+
+
+# ── Progressive disclosure: index rows + timeline ────────────────────────────
+
+
+def test_memory_index_row_no_full_content():
+    memory = _memory(user_id=uuid.uuid4())
+    memory.content = "x" * 400
+    row = hub_tools._memory_index_row(memory)
+    assert row["id"] == str(memory.id)
+    assert len(row["snippet"]) == 161  # 160 + ellipsis
+    assert "content" not in row  # full body never in the index
+
+
+def test_memory_index_row_short_content_kept():
+    memory = _memory(user_id=uuid.uuid4())
+    memory.content = "short note"
+    row = hub_tools._memory_index_row(memory)
+    assert row["snippet"] == "short note"
+
+
+async def test_search_returns_index_rows(writer, monkeypatch):
+    writer, db = writer
+    """Search results carry snippets, not full bodies — progressive
+    disclosure step 1. Callers filter on the index, then get_memory."""
+    m1 = _memory(user_id=writer.user_id)
+    m2 = _memory(user_id=writer.user_id)
+    m2.content = "y" * 500
+    monkeypatch.setattr(hub_tools, "_recall_memory_ids", _fake_recall([m1.id, m2.id]))
+    db.rows = [m1, m2]
+    out = await hub_tools.search_memory("postgres")
+    assert out["results"][0]["snippet"] == m1.content
+    assert len(out["results"][1]["snippet"]) == 161
+    assert all("content" not in r for r in out["results"])
+    # ledgered as search
+    assert any(getattr(a, "action", "") == hub_tools.ACTION_SEARCH for a in db.added)
+
+
+async def test_timeline_returns_anchor_and_neighbours(reader, monkeypatch):
+    reader, db = reader
+    """Timeline = anchor + before/after windows, snippets only (step 2)."""
+    base = datetime.now(UTC)
+    older = _memory(user_id=reader.user_id)
+    older.captured_at = base - timedelta(hours=2)
+    older.content = "older context"
+    anchor = _memory(user_id=reader.user_id)
+    anchor.captured_at = base
+    newer = _memory(user_id=reader.user_id)
+    newer.captured_at = base + timedelta(hours=2)
+    newer.content = "newer context"
+    db.rows = [newer, anchor, older]  # query returns desc order
+
+    out = await hub_tools.timeline(memory_id=str(anchor.id), window=4)
+    assert out["anchor"]["id"] == str(anchor.id)
+    assert [b["id"] for b in out["before"]] == [str(older.id)]
+    assert [a["id"] for a in out["after"]] == [str(newer.id)]
+    assert all("content" not in row for row in [out["anchor"], *out["before"], *out["after"]])
+
+
+async def test_timeline_foreign_memory_rejected(reader):
+    reader, _db = reader
+    out = await hub_tools.timeline(memory_id=str(uuid.uuid4()))
+    assert out == {"error": "memory not found"}
+
+
+async def test_timeline_invalid_id(reader):
+    _reader, _db = reader
+    out = await hub_tools.timeline(memory_id="not-a-uuid")
+    assert out == {"error": "invalid memory id"}
+
+
+async def test_timeline_windows_capped(reader, monkeypatch):
+    reader, db = reader
+    base = datetime.now(UTC)
+    anchor = _memory(user_id=reader.user_id)
+    anchor.captured_at = base
+    rows = [anchor]
+    for i in range(7):
+        m = _memory(user_id=reader.user_id)
+        m.captured_at = base - timedelta(hours=i + 1)
+        rows.append(m)
+    db.rows = rows
+    out = await hub_tools.timeline(memory_id=str(anchor.id), window=4)
+    assert len(out["before"]) == 4  # capped, not all 7
