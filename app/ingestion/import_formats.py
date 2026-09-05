@@ -386,10 +386,12 @@ def parse_openclaw(data: Any) -> list[ImportItem]:
     i.e. the natural dump of the session-log store.
     """
     sessions = data.get("memory_entries") if isinstance(data, dict) else data
+    if sessions is None and isinstance(data, dict) and "session_id" in data:
+        sessions = [data]  # a single session record is also valid
     if not isinstance(sessions, list):
         raise ImportFormatError(
-            "OpenClaw export must be a JSON array of session records "
-            "or {'memory_entries': [...]}."
+            "OpenClaw export must be a JSON array of session records, "
+            "a single session record, or {'memory_entries': [...]}."
         )
     items: list[ImportItem] = []
     for session in sessions:
@@ -498,8 +500,12 @@ def detect_format(data: Any) -> str:
     if isinstance(data, dict):
         if data.get("schema") == "portable-ai-memory":
             return "generic"
+        if "session_id" in data and isinstance(data.get("entries"), list):
+            return "openclaw"
         if "memories" in data and "export_version" in data:
             return "gemini"
+        if "memory_entries" in data:
+            return "openclaw"
         if "conversations" in data and "copilot" in str(data.keys()).lower():
             return "copilot"
         if "memory_entries" in data:

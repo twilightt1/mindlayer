@@ -26,14 +26,44 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.auth import get_current_user
 from app.database import get_db
 from app.ingestion.import_formats import SOURCE_FORMATS, ImportFormatError
+from app.mcp_hub.identity import AgentPrincipal, resolve_principal
 from app.models.user import User
 from app.schemas.Orivory import ImportSummary
 from app.services.import_service import run_import
 from app.utils.dependencies import get_current_verified_user
+
+
+async def _optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Lenient auth: real user on valid JWT, else None (agent-token path).
+
+    Routes on the Bearer VALUE, not on JWT-validation outcomes: human JWTs
+    always take the strict dependency (same 401s as today); only oa_ agent
+    tokens fall through to the principal path. A broken human JWT therefore
+    still 401s (no silent downgrade), while an oa_ token never reaches the
+    JWT decoder at all.
+    """
+    auth_header = request.headers.get("authorization", "") or ""
+    scheme, _, value = auth_header.partition(" ")
+    if scheme.lower() == "bearer" and value.strip().startswith("oa_"):
+        return None
+    try:
+        return await get_current_verified_user(
+            await get_current_user(
+                HTTPAuthorizationCredentials(scheme="Bearer", credentials=value.strip()),
+                db,
+            )
+        )
+    except HTTPException:
+        return None
 
 log = logging.getLogger(__name__)
 
@@ -42,23 +72,73 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 MAX_IMPORT_UPLOAD_BYTES = 20 * 1024 * 1024  # keeps the v0 path synchronous
 
 
+async def _resolve_import_user(
+    request: Request,
+    db: AsyncSession,
+) -> tuple[User | None, AgentPrincipal | None]:
+    """Resolve the importing party: a human JWT user OR an agent token.
+
+    Agent-token imports (the auto-capture path) attribute the memories to
+    the agent's owner and record the agent in the ledger as an import —
+    the same governance story as every other MCP write.
+    """
+    auth_header = request.headers.get("authorization", "") or ""
+    scheme, _, value = auth_header.partition(" ")
+    if scheme.lower() == "bearer" and value.strip().startswith("oa_"):
+        principal = await resolve_principal(db, value.strip())
+        if principal is None:
+            return None, None
+        from app.models.user import User as UserModel
+
+        user = await db.get(UserModel, principal.user_id)
+        return user, principal
+    return None, None
+
+
 @router.post("", response_model=ImportSummary, status_code=status.HTTP_201_CREATED)
 async def create_import(
-    current_user: Annotated[User, Depends(get_current_verified_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    request: Request = None,
     file: UploadFile = File(..., description="Export file (JSON): ChatGPT/Claude "
                                               "conversations.json, PAM memory-store.json, "
-                                              "or a generic items array"),
+                                              "OpenClaw session dump, or a generic items array"),
     source_format: str | None = Form(default=None, description="One of: auto (default), "
                                                                 "chatgpt, claude, gemini, copilot, openclaw, generic"),
-    request: Request = None,  # best-effort Content-Length early reject (see module docstring)
 ) -> ImportSummary:
     """Import one export file as memories.
+
+    Accepts TWO auth modes:
+      - Human JWT (Authorization: Bearer <jwt>) — the second-brain UI path.
+      - Agent token (Authorization: Bearer oa_...) — the auto-capture path;
+        memories attribute to the agent's owner and the import is ledgered
+        as ``import`` by that agent.
 
     Auto-detects the format when ``source_format=auto`` (or is omitted).
     Idempotent per (user, format, ref): re-uploading a file skips
     already-imported items instead of duplicating them.
     """
+    requested_by = "rest_api"
+    agent_principal: AgentPrincipal | None = None
+
+    if current_user is None:
+        # JWT auth didn't resolve — try the agent-token path before failing.
+        user, agent_principal = await _resolve_import_user(request, db)
+        if user is None:
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required (human JWT or agent token).",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        # Imports write memories: require the same scope as MCP writes.
+        if not agent_principal.can_write():
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail="Agent token lacks the memory:write scope.",
+            )
+        current_user = user
+        requested_by = f"agent:{agent_principal.name}"
+
     # A blank form field and an omitted one mean the same thing: auto-detect.
     # (curl's -F "source_format=" and stray client whitespace must not 422 —
     # strip first, THEN blankness-check, so " chatgpt " resolves normally.)
@@ -98,15 +178,29 @@ async def create_import(
     # raw bytes, not a decoded str: run_import owns the utf-8 decode and
     # maps undecodable payloads to ImportFormatError → 422 (handoff 4).
     try:
-        summary = await run_import(db, current_user.id, data, source_format, requested_by="rest_api")
+        summary = await run_import(db, current_user.id, data, source_format, requested_by=requested_by)
     except ImportFormatError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if agent_principal is not None:
+        # Governance parity with MCP writes: agent-token imports are
+        # recorded in the access ledger under the calling agent.
+        from app.models.memory_access_log import MemoryAccessLog
+
+        db.add(MemoryAccessLog(
+            user_id=current_user.id,
+            agent_client_id=agent_principal.agent_client_id,
+            action="import",
+            detail={"source_format": source_format, "requested_by": requested_by,
+                    "created": summary.created, "file": file.filename or "upload"},
+        ))
+        await db.commit()
     log.info(
         "Import finished",
         extra={
             "user_id": str(current_user.id),
             "file": file.filename or "upload",
             "source_format": source_format,
+            "requested_by": requested_by,
             "created": summary.created,
             "skipped_duplicates": summary.skipped_duplicates,
         },
