@@ -112,13 +112,33 @@ def _with_retry(retries: int = 3, base_delay: float = 1.0):
 
 @_with_retry()
 async def _get_async_client():
+    """Async client for HTTP mode; in local (lite) mode the sync
+    PersistentClient is wrapped to satisfy await-less call sites — lite is
+    single-user so the blocking call is acceptable."""
     global _async_client
     if _async_client is None:
         import chromadb  # lazy: only needed at runtime
-        _async_client = await chromadb.AsyncHttpClient(
-            host=settings.CHROMA_HOST,
-            port=settings.CHROMA_PORT,
-        )
+        if settings.CHROMA_MODE == "local":
+            client = _get_sync_client()
+
+            class _SyncAsAsync:
+                def __init__(self, inner):
+                    self._inner = inner
+
+                def __getattr__(self, name):
+                    attr = getattr(self._inner, name)
+
+                    async def _call(*args, **kwargs):
+                        return attr(*args, **kwargs)
+
+                    return _call
+
+            _async_client = _SyncAsAsync(client)
+        else:
+            _async_client = await chromadb.AsyncHttpClient(
+                host=settings.CHROMA_HOST,
+                port=settings.CHROMA_PORT,
+            )
     return _async_client
 
 
@@ -127,10 +147,13 @@ def _get_sync_client():
     global _sync_client
     if _sync_client is None:
         import chromadb  # lazy: only needed at runtime
-        _sync_client = chromadb.HttpClient(
-            host=settings.CHROMA_HOST,
-            port=settings.CHROMA_PORT,
-        )
+        if settings.CHROMA_MODE == "local":
+            _sync_client = chromadb.PersistentClient(path=settings.CHROMA_LOCAL_PATH)
+        else:
+            _sync_client = chromadb.HttpClient(
+                host=settings.CHROMA_HOST,
+                port=settings.CHROMA_PORT,
+            )
     return _sync_client
 
 

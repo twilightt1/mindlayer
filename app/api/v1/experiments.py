@@ -41,7 +41,7 @@ async def get_user_variant(
 ) -> UserVariantResponse:
     """
     Get the current user's assigned variant for an experiment.
-    
+
     Uses deterministic hashing to ensure consistent assignment.
     """
     result = experiments_service.get_user_variant_by_name(

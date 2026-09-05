@@ -18,6 +18,9 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
+    # Lite mode: run tasks eagerly in-process — no broker, no workers.
+    task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
+    task_eager_propagates=False,
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],

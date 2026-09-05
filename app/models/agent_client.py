@@ -11,11 +11,11 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import TIMESTAMP, String, text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy import JSON, TIMESTAMP, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.types import GUID
 
 DEFAULT_SCOPES: list[str] = ["memory:read"]
 
@@ -23,14 +23,14 @@ DEFAULT_SCOPES: list[str] = ["memory:read"]
 class AgentClient(Base):
     __tablename__ = "agent_clients"
 
-    id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:    Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)  # FK added in migration
+    id:         Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:    Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)  # FK added in migration
     name:       Mapped[str]       = mapped_column(String(100), nullable=False)
     token_hash: Mapped[str]       = mapped_column(String(64), nullable=False, unique=True, index=True)
-    scopes:     Mapped[list[str]] = mapped_column(ARRAY(String), default=lambda: list(DEFAULT_SCOPES), server_default=text('\'{"memory:read"}\'::varchar[]'), nullable=False)
+    scopes:     Mapped[list[str]] = mapped_column(JSON, default=lambda: list(DEFAULT_SCOPES), nullable=False)
     status:     Mapped[str]       = mapped_column(String(16), default="active", server_default="active", nullable=False)
 
-    created_at:   Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
+    created_at:   Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     last_used_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     revoked_at:   Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 

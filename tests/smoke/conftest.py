@@ -17,10 +17,10 @@ def pytest_configure(config):
 def docker_services():
     """
     Fixture that ensures Docker services are available.
-    
+
     In CI, services are started via docker compose.
     In local development, assumes services are running.
-    
+
     Returns a dict with service connection info.
     """
     return {

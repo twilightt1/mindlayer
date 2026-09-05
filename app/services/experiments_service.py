@@ -30,7 +30,7 @@ from app.schemas.experiment import (
 class ExperimentsService:
     """
     Service for managing A/B experiments and user assignments.
-    
+
     In production, this would be backed by a database.
     Currently uses in-memory storage for demonstration.
     """

@@ -21,7 +21,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -133,9 +133,11 @@ async def list_memories(
         base = base.where(Memory.pinned == pinned)
         count_base = count_base.where(Memory.pinned == pinned)
     if tag:
-        # tags is a Postgres ARRAY; use the "contains" operator
-        base = base.where(Memory.tags.contains([tag]))
-        count_base = count_base.where(Memory.tags.contains([tag]))
+        # tags is a JSON column (was a Postgres ARRAY) — cast to text and
+        # match the quoted value; works identically on Postgres and SQLite.
+        tag_match = f'%"{tag}"%'
+        base = base.where(cast(Memory.tags, String).like(tag_match))
+        count_base = count_base.where(cast(Memory.tags, String).like(tag_match))
     if query:
         # Case-insensitive substring match in title OR content
         pattern = f"%{query.lower()}%"

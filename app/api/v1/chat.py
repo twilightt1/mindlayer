@@ -12,6 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,8 +44,6 @@ log    = logging.getLogger(__name__)
 # Root chat endpoint (POST /chat) - creates conversation if needed
 # ─────────────────────────────────────────────────────────────────────────────
 
-from pydantic import BaseModel, Field
-
 
 class RootChatRequest(BaseModel):
     """Request for root /chat endpoint."""
@@ -71,7 +70,7 @@ async def root_chat(
     db: AsyncSession = Depends(get_db),
 ):
     """Root chat endpoint - creates session if needed and streams response.
-    
+
     Frontend calls /api/v1/chat with {query, session_id}.
     This creates a conversation if session_id not provided.
     """

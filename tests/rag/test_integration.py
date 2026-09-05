@@ -1,11 +1,16 @@
+import os
+
 import pytest
 
 from app.agents import graph
 
 pytestmark = pytest.mark.rag
 
+_NO_LLM_KEY = os.environ.get("OPENAI_API_KEY") is None
+
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(_NO_LLM_KEY, reason="requires OPENAI_API_KEY")
 async def test_e2e_rag_query_flow(monkeypatch):
     calls: list[str] = []
 
@@ -139,6 +144,7 @@ async def test_e2e_chitchat_flow_skips_memory_and_retrieval(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(_NO_LLM_KEY, reason="requires OPENAI_API_KEY")
 async def test_rag_flow_retries_retrieval_when_context_is_irrelevant(monkeypatch):
     calls: list[str] = []
     grade_attempts = 0

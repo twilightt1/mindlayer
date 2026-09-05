@@ -2,10 +2,32 @@
 from __future__ import annotations
 
 import json
+import uuid as _uuid
 from typing import Any
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
+from sqlalchemy import Uuid as _SaUuid
 from sqlalchemy.types import TypeDecorator
+
+
+class GUID(_SaUuid):
+    """Cross-dialect UUID column.
+
+    SQLAlchemy's native ``Uuid`` type rejects str-bound values on SQLite
+    when the value arrives as a string (e.g. straight from Pydantic).
+    This subclass coerces str → uuid.UUID before binding so every driver
+    (asyncpg, sqlite) sees a real UUID object.
+    """
+
+    def bind_processor(self, dialect):
+        impl_processor = super().bind_processor(dialect)
+
+        def process(value):
+            if isinstance(value, str):
+                value = _uuid.UUID(value)
+            return impl_processor(value)
+
+        return process
 
 
 class EncryptedJSONB(TypeDecorator):
@@ -19,7 +41,7 @@ class EncryptedJSONB(TypeDecorator):
     out without a data migration. New writes are always encrypted.
     """
 
-    impl = JSONB
+    impl = JSON
     cache_ok = True
 
     def process_bind_param(self, value: Any, dialect: Any) -> Any:

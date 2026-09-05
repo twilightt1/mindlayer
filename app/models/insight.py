@@ -12,6 +12,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     Boolean,
     Float,
@@ -20,12 +21,12 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.types import GUID
 
 
 class InsightTypeEnum(StrEnum):
@@ -61,14 +62,14 @@ class InsightCard(Base):
     __tablename__ = "insight_cards"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
 
     # Ownership
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -97,14 +98,14 @@ class InsightCard(Base):
 
     # Source documents (JSON array of document references)
     source_docs: Mapped[list[dict]] = mapped_column(
-        JSONB,
+        JSON,
         nullable=False,
         server_default="[]",
     )
     source_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        server_default="1",
+        default=1,
     )
 
     # Metadata
@@ -123,7 +124,7 @@ class InsightCard(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
         index=True,
     )
     shown_at: Mapped[datetime | None] = mapped_column(
@@ -157,7 +158,7 @@ class InsightCard(Base):
     shown_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        server_default="0",
+        default=0,
     )
     relevance_score: Mapped[float] = mapped_column(
         Float,
@@ -165,9 +166,9 @@ class InsightCard(Base):
         server_default="0.5",
     )
 
-    # Learned preferences (JSONB for flexibility)
+    # Learned preferences (JSON for flexibility)
     user_preferences_snapshot: Mapped[dict | None] = mapped_column(
-        JSONB,
+        JSON,
         nullable=True,
     )
 

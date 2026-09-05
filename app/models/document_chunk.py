@@ -2,11 +2,11 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Integer, Text, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, TIMESTAMP, ForeignKey, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.types import GUID
 
 if TYPE_CHECKING:
     from app.models.document import Document
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 
-    id:          Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:          Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     content:     Mapped[str]       = mapped_column(Text, nullable=False)
     chunk_index: Mapped[int]       = mapped_column(Integer(), nullable=False)
-    chunk_metadata: Mapped[dict]      = mapped_column(JSONB, server_default="{}")
-    created_at:  Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"))
+    chunk_metadata: Mapped[dict]      = mapped_column(JSON, server_default="{}")
+    created_at:  Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     document: Mapped["Document"] = relationship(back_populates="chunks")

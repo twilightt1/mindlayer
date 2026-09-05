@@ -1,7 +1,6 @@
 """Pytest configuration and shared fixtures."""
 import asyncio
 import os
-from unittest.mock import AsyncMock
 
 # Mock required environment variables BEFORE importing app modules
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost:55432/ragdb_test")
@@ -17,7 +16,6 @@ from sqlalchemy.pool import NullPool
 from app.database import Base, get_db
 from app.main import app
 
-
 # ─── Rate Limiter Mock ─────────────────────────────────────────────────────────
 # Disable rate limiting in tests by mocking Redis calls.
 # Each test should be fast enough that rate limits shouldn't apply.
@@ -25,19 +23,19 @@ from app.main import app
 
 class MockRedisPipeline:
     """Mock Redis pipeline that returns safe values for rate limiting."""
-    
+
     def zremrangebyscore(self, *args):
         return self
-    
+
     def zcard(self, *args):
         return self
-    
+
     def zadd(self, *args, **kwargs):
         return self
-    
+
     def expire(self, *args):
         return self
-    
+
     async def execute(self):
         # Return (removed_count, current_count, added_count, ttl)
         # current_count=0 means we're under the limit
@@ -46,27 +44,27 @@ class MockRedisPipeline:
 
 class MockRedis:
     """Mock Redis for tests that returns empty pipeline results."""
-    
+
     def __init__(self):
         self._counters = {}  # For incr() mocking
-    
+
     def pipeline(self):
         """Return a mock pipeline (synchronous method, async execute)."""
         return MockRedisPipeline()
-    
+
     async def incr(self, key: str) -> int:
         """Mock incr that always returns 1 (under limit)."""
         self._counters[key] = self._counters.get(key, 0) + 1
         return self._counters[key]
-    
+
     async def expire(self, key: str, seconds: int) -> bool:
         """Mock expire - always succeeds."""
         return True
-    
+
     async def get(self, key: str) -> str | None:
         """Mock get - always returns None."""
         return None
-    
+
     async def set(self, key: str, value, ex: int | None = None, nx: bool = False) -> bool:
         """Mock SET with NX semantics mirroring the atomic-window pattern."""
         if nx:
@@ -76,23 +74,23 @@ class MockRedis:
             return True
         self._counters[key] = value
         return True
-    
+
     async def setex(self, key: str, seconds: int, value: str) -> bool:
         """Mock setex - always succeeds."""
         return True
-    
+
     async def delete(self, key: str) -> int:
         """Mock delete - always succeeds."""
         return 1
-    
+
     async def zcard(self, key: str) -> int:
         """Mock zcard for rate limiting - always returns 0."""
         return 0
-    
+
     async def zadd(self, key: str, mapping: dict) -> int:
         """Mock zadd for rate limiting."""
         return 1
-    
+
     async def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
         """Mock zremrangebyscore for rate limiting."""
         return 0
@@ -106,7 +104,7 @@ def mock_redis_for_rate_limiter(monkeypatch):
     """Mock Redis client to bypass rate limiting in tests."""
     async def mock_get_redis():
         return _mock_redis
-    
+
     # Patch Redis at all locations where it's used
     monkeypatch.setattr("app.middleware.rate_limiter.get_redis", mock_get_redis)
     monkeypatch.setattr("app.redis_client.get_redis", mock_get_redis)

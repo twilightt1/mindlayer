@@ -1,0 +1,47 @@
+# Lite image — the whole memory hub in one container: API + MCP server,
+# SQLite storage, in-process Chroma, in-memory caches, eager tasks, local
+# file uploads. Zero external services.
+#
+#   docker build -f Dockerfile.lite -t orivory:lite .
+#   docker run -d -p 8000:8000 -v orivory-data:/data \
+#     -e LITE_MODE=1 -e OPENAI_API_KEY=sk-... orivory:lite
+#
+# The Next.js frontend is NOT included (lite targets agents via /mcp + API).
+
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    LITE_MODE=1 \
+    DATABASE_URL=sqlite+aiosqlite:////data/orivory.db \
+    REDIS_URL= \
+    CHROMA_MODE=local \
+    CHROMA_LOCAL_PATH=/data/chroma \
+    STORAGE_BACKEND=fs \
+    FS_STORAGE_PATH=/data/uploads
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt aiosqlite
+
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app \
+    && mkdir -p /data && chown -R app:app /data /app
+
+COPY --chown=app:app . .
+
+USER app
+
+VOLUME /data
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+    CMD curl -fs http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

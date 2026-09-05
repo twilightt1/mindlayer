@@ -1,4 +1,21 @@
-.PHONY: dev build up down migrate seed test lint lint-full lint-fix format demo-smoke security-check check
+.PHONY: dev build up down migrate seed test lint lint-full lint-fix format demo-smoke security-check check lite-build lite-run quickstart
+
+# ── Lite mode (one container, zero external services) ────────────────────────
+
+lite-build:
+	docker build -f Dockerfile.lite -t ghcr.io/twilightt1/orivory:lite .
+
+# The whole memory hub in one container: API + MCP server, SQLite, in-process
+# Chroma, in-memory caches, filesystem uploads. No Postgres/Redis/MinIO/Chroma.
+lite-run:
+	docker run -d --name orivory-lite -p 8000:8000 -v orivory-data:/data \
+		-e OPENAI_API_KEY=$${OPENAI_API_KEY:-} ghcr.io/twilightt1/orivory:lite
+
+# One command from clone to running hub (builds first if no image yet).
+quickstart: lite-build lite-run
+	@echo "Orivory is up:  http://localhost:8000  (MCP: /mcp)"
+
+# ── Full stack (Postgres + Redis + ChromaDB + MinIO + workers + UI) ─────────
 
 dev:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -26,7 +43,7 @@ beat:
 
 # CI-safe unit tests only (skips live infra and Redis-bound auth tests).
 test:
-	.\.venv\Scripts\python.exe -m pytest tests -q --ignore=tests/integration --ignore=tests/api/test_auth_api.py --ignore=tests/api/test_admin_api.py --ignore=tests/test_auth.py
+	python -m pytest tests -q --ignore=tests/integration --ignore=tests/api/test_auth_api.py --ignore=tests/api/test_admin_api.py --ignore=tests/test_auth.py
 
 # Targeted lint matching CI's narrow path list.
 lint:
@@ -34,11 +51,11 @@ lint:
 
 # Full-repo lint (Phase 1-3 remediation pass).
 lint-full:
-	.\.venv\Scripts\python.exe -m ruff check app tests eval scripts
+	python -m ruff check app tests eval scripts
 
 # Auto-fix safe lint issues across app/, tests/, eval/, and scripts/.
 lint-fix:
-	.\.venv\Scripts\python.exe -m ruff check app tests eval scripts --fix
+	python -m ruff check app tests eval scripts --fix
 
 format:
 	ruff format app/
@@ -47,7 +64,7 @@ demo-smoke:
 	python scripts/demo_smoke.py
 
 security-check:
-	.\.venv\Scripts\python.exe scripts\security_check.py
+	python scripts/security_check.py
 
 # Convenience: run tests + lint + security check together.
 check: test lint-full security-check

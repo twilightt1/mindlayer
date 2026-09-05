@@ -14,17 +14,18 @@ from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     ForeignKey,
     Index,
     Integer,
     String,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.types import GUID
 
 
 class WorkspaceType(StrEnum):
@@ -70,9 +71,9 @@ class Workspace(Base):
     __tablename__ = "workspaces"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
 
     # Workspace details
@@ -92,7 +93,7 @@ class Workspace(Base):
 
     # Ownership
     owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -100,14 +101,14 @@ class Workspace(Base):
 
     # Organization (for team workspaces)
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         nullable=True,
         index=True,
     )
 
-    # Settings (JSONB for flexibility)
+    # Settings (JSON for flexibility)
     settings: Mapped[dict] = mapped_column(
-        JSONB,
+        JSON,
         nullable=False,
         server_default="{}",
     )
@@ -123,19 +124,19 @@ class Workspace(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
     )
 
     # Member count (denormalized for performance)
     member_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        server_default="1",
+        default=1,
     )
 
     # Indexes
@@ -170,14 +171,14 @@ class TeamMembership(Base):
     __tablename__ = "team_memberships"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
 
     # Workspace
     workspace_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -185,7 +186,7 @@ class TeamMembership(Base):
 
     # User
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -205,9 +206,9 @@ class TeamMembership(Base):
         server_default="active",
     )
 
-    # Permissions (JSONB for custom permissions)
+    # Permissions (JSON for custom permissions)
     permissions: Mapped[dict] = mapped_column(
-        JSONB,
+        JSON,
         nullable=False,
         server_default="{}",
     )
@@ -216,7 +217,7 @@ class TeamMembership(Base):
     joined_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
     )
     last_accessed_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP,
@@ -251,14 +252,14 @@ class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
 
     # Workspace
     workspace_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -266,7 +267,7 @@ class WorkspaceInvite(Base):
 
     # Inviter
     inviter_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -277,7 +278,7 @@ class WorkspaceInvite(Base):
         nullable=False,
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
@@ -315,7 +316,7 @@ class WorkspaceInvite(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
     )
     expires_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,

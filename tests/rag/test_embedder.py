@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -100,17 +100,17 @@ async def test_embed_texts_jina(monkeypatch):
             {"embedding": [0.4, 0.5, 0.6]},
         ]
     }
-    
+
     mock_client = AsyncMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
     mock_client.post = AsyncMock(return_value=mock_response)
-    
+
     monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: mock_client)
-    
+
     texts = ["hello", "world"]
     embeddings = await embedder._embed_with_jina(texts)
-    
+
     assert len(embeddings) == 2
     assert embeddings[0] == [0.1, 0.2, 0.3]
     assert embeddings[1] == [0.4, 0.5, 0.6]
@@ -124,16 +124,16 @@ def test_embed_texts_jina_sync(monkeypatch):
             {"embedding": [0.1, 0.2, 0.3]},
         ]
     }
-    
+
     mock_client = MagicMock()
     mock_client.__enter__ = MagicMock(return_value=mock_client)
     mock_client.__exit__ = MagicMock(return_value=None)
     mock_client.post = MagicMock(return_value=mock_response)
-    
+
     monkeypatch.setattr("httpx.Client", lambda **kwargs: mock_client)
-    
+
     texts = ["hello"]
     embeddings = embedder._embed_sync_with_jina(texts)
-    
+
     assert len(embeddings) == 1
     assert embeddings[0] == [0.1, 0.2, 0.3]

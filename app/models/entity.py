@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     Float,
     ForeignKey,
@@ -29,13 +30,13 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models._datetime_helpers import utc_now
+from app.models.types import GUID
 
 if TYPE_CHECKING:
     from app.models.memory import Memory
@@ -75,20 +76,20 @@ RELATION_TYPES = (
 class Entity(Base):
     __tablename__ = "entities"
 
-    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:            Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:       Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name:          Mapped[str]        = mapped_column(String(255), nullable=False)
     entity_type:   Mapped[str]        = mapped_column(String(32),  nullable=False, server_default="other")
-    aliases:       Mapped[list[str]]  = mapped_column(ARRAY(String), server_default=text("'{}'::varchar[]"), nullable=False)
+    aliases:       Mapped[list[str]]  = mapped_column(JSON, nullable=False)
     description:   Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    first_seen_at: Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    last_seen_at:  Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    mention_count: Mapped[int]        = mapped_column(Integer(), server_default="0", nullable=False)
+    first_seen_at: Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at:  Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    mention_count: Mapped[int]        = mapped_column(Integer(), default=0, nullable=False)
 
-    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
-    created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
+    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSON, server_default="{}", nullable=False)
+    created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=utc_now, nullable=False)
 
     user:           Mapped[User]                  = relationship(back_populates="entities")
     memory_links:   Mapped[list[MemoryEntity]]    = relationship(back_populates="entity", cascade="all, delete-orphan")
@@ -117,17 +118,17 @@ class Entity(Base):
 class Relation(Base):
     __tablename__ = "relations"
 
-    id:                Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:           Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_entity_id:  Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
-    target_entity_id:  Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:                Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:           Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_entity_id:  Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_entity_id:  Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
     relation:          Mapped[str]       = mapped_column(String(64), nullable=False, server_default="related_to")
     weight:            Mapped[float]     = mapped_column(Float, server_default="0.5", nullable=False)
-    evidence_count:    Mapped[int]       = mapped_column(Integer(), server_default="1", nullable=False)
-    last_evidence_at:  Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    extra_metadata:    Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
-    created_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
+    evidence_count:    Mapped[int]       = mapped_column(Integer(), default=1, nullable=False)
+    last_evidence_at:  Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    extra_metadata:    Mapped[dict]      = mapped_column("metadata", JSON, server_default="{}", nullable=False)
+    created_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:        Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=utc_now, nullable=False)
 
     source: Mapped[Entity] = relationship("Entity", foreign_keys=[source_entity_id], back_populates="outgoing_relations")
     target: Mapped[Entity] = relationship("Entity", foreign_keys=[target_entity_id], back_populates="incoming_relations")
@@ -143,11 +144,11 @@ class MemoryEntity(Base):
 
     __tablename__ = "memory_entities"
 
-    id:        Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    memory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False, index=True)
-    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:        Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    memory_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False, index=True)
+    entity_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("entities.id", ondelete="CASCADE"), nullable=False, index=True)
     salience:  Mapped[float]     = mapped_column(Float, server_default="0.5", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     memory: Mapped[Memory] = relationship(back_populates="entity_links")
     entity: Mapped[Entity] = relationship(back_populates="memory_links")
