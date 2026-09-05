@@ -14,6 +14,7 @@ celery_app = Celery(
         "app.tasks.graph_tasks",
         "app.tasks.reindex_tasks",
         "app.tasks.salience_tasks",
+        "app.tasks.ledger_tasks",
     ],
 )
 
@@ -52,6 +53,10 @@ celery_app.conf.update(
         "decay-stale-salience": {
             "task":     "tasks.decay_stale_salience",
             "schedule": crontab(hour=3, minute=17),  # daily, off-peak, off-round
+        },
+        "prune-access-ledger": {
+            "task":     "tasks.prune_access_ledger",
+            "schedule": crontab(hour=4, minute=23),  # daily, off-peak, off-round
         },
     },
 )

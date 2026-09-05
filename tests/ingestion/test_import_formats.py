@@ -22,8 +22,11 @@ from app.ingestion.import_formats import (
     detect_format,
     parse_chatgpt,
     parse_claude,
+    parse_copilot,
+    parse_gemini,
     parse_generic,
     parse_import,
+    parse_openclaw,
 )
 
 # Real ChatGPT conversations.json shape: array of conversations; mapping is a
@@ -88,6 +91,9 @@ def test_source_type_mapping_locked():
     assert SOURCE_TYPE_FOR_FORMAT == {
         "chatgpt": "chatgpt_import",
         "claude": "claude_import",
+        "gemini": "gemini_import",
+        "copilot": "copilot_import",
+        "openclaw": "openclaw_import",
         "generic": "generic_import",
     }
 
@@ -382,3 +388,42 @@ def test_giant_create_time_overflow_degrades_never_fatal():
     ])
     items = parse_import(payload, "chatgpt")
     assert sorted(i.title for i in items) == ["boom", "fine"]  # both survive
+
+
+def test_gemini_takesout_activities_shape():
+    data = [
+        {"time": "2026-07-01T10:00:00Z", "title": "Trip planning", "text": "User: plan a trip\nAssistant: here is a plan"},
+        {"title": "Empty", "text": ""},
+    ]
+    items = parse_gemini(data)
+    assert len(items) == 1
+    assert items[0].title == "Trip planning"
+    assert "plan a trip" in items[0].content
+
+
+def test_gemini_conversations_shape():
+    data = {"conversations": [{"title": "Idea", "created_date": "2026-07-02T09:00:00Z",
+                               "messages": [{"role": "user", "text": "brainstorm"}]}]}
+    items = parse_gemini(data)
+    assert len(items) == 1 and "brainstorm" in items[0].content
+
+
+def test_copilot_thread_shape():
+    data = {"conversations": [{"conversation_id": "c1", "title": "Copilot chat",
+                               "thread": [{"role": "user", "text": "write tests"}]}]}
+    items = parse_copilot(data)
+    assert len(items) == 1 and items[0].source_ref == "c1"
+
+
+def test_openclaw_session_shape():
+    data = {"memory_entries": [{"session_id": "s1",
+                                "entries": [{"role": "user", "content": "ship it"}]}]}
+    items = parse_openclaw(data)
+    assert len(items) == 1 and "ship it" in items[0].content
+    assert items[0].tags == ["openclaw"]
+
+
+def test_detect_openclaw_and_gemini():
+    assert detect_format({"memory_entries": [{"session_id": "s"}]}) == "openclaw"
+    assert detect_format([{"session_id": "s", "memory_entries": []}]) == "openclaw"
+    assert detect_format({"memories": [], "export_version": "1"}) == "gemini"

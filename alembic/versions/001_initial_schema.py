@@ -3,16 +3,17 @@
 Revision ID: 001
 Revises:
 """
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from alembic import op
 
 revision      = "001"
 down_revision = None
 
 
 def upgrade() -> None:
-           
+
     op.create_table("users",
         sa.Column("id",              UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("email",           sa.String(255),  unique=True, nullable=False),
@@ -31,7 +32,7 @@ def upgrade() -> None:
     op.create_index("ix_users_email",     "users", ["email"],     unique=True)
     op.create_index("ix_users_google_id", "users", ["google_id"], unique=True)
 
-                         
+
     op.create_table("email_verifications",
         sa.Column("id",           UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("user_id",      UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
@@ -46,7 +47,7 @@ def upgrade() -> None:
     op.create_index("ix_ev_user_id", "email_verifications", ["user_id"])
     op.create_index("ix_ev_token",   "email_verifications", ["token"], unique=True)
 
-                             
+
     op.create_table("password_reset_sessions",
         sa.Column("id",           UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("user_id",      UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
@@ -61,7 +62,7 @@ def upgrade() -> None:
     op.create_index("ix_prs_user_id", "password_reset_sessions", ["user_id"])
     op.create_index("ix_prs_token",   "password_reset_sessions", ["token"], unique=True)
 
-                   
+
     op.create_table("conversations",
         sa.Column("id",             UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("user_id",        UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
@@ -72,7 +73,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_conversations_user_id", "conversations", ["user_id"])
 
-               
+
     op.create_table("documents",
         sa.Column("id",              UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("conversation_id", UUID(as_uuid=True), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False),
@@ -88,7 +89,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_documents_conversation_id", "documents", ["conversation_id"])
 
-                     
+
     op.create_table("document_chunks",
         sa.Column("id",          UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("document_id", UUID(as_uuid=True), sa.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False),
@@ -99,7 +100,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_chunks_document_id", "document_chunks", ["document_id"])
 
-              
+
     op.create_table("messages",
         sa.Column("id",              UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("conversation_id", UUID(as_uuid=True), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False),
@@ -111,7 +112,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_messages_conversation_id", "messages", ["conversation_id"])
 
-                 
+
     op.create_table("user_quotas",
         sa.Column("id",                 UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("user_id",            UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False),

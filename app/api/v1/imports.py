@@ -50,7 +50,7 @@ async def create_import(
                                               "conversations.json, PAM memory-store.json, "
                                               "or a generic items array"),
     source_format: str | None = Form(default=None, description="One of: auto (default), "
-                                                                "chatgpt, claude, generic"),
+                                                                "chatgpt, claude, gemini, copilot, openclaw, generic"),
     request: Request = None,  # best-effort Content-Length early reject (see module docstring)
 ) -> ImportSummary:
     """Import one export file as memories.

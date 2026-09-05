@@ -32,6 +32,13 @@ The MemoryAgentBench stub adapter consumes `eval/benchmarks/fixtures/memoryagent
 
 ## How to run
 
+**LLM judge.** Answers not covered by the exact-match guard are scored by
+the official LongMemEval judge semantics — implemented in
+`eval/benchmarks/llm_judge.py` with a pinned prompt version
+(`JUDGE_PROMPT_VERSION = longmemeval-official-v1`). Every results file
+records the judge version; changing the prompt requires bumping it and
+re-running.
+
 The v0 boundary is: **download dataset → plan → score**. Live ingest/query/judge wiring is a pinned follow-up — in v0, `--phase ingest` and `--phase query` exit 3 with a refusal message and write nothing; `--phase score` aggregates an existing per-question results JSON (the one phase that needs no live stack):
 
 ```bash

@@ -23,6 +23,7 @@ import {
   Bell,
   Keyboard
 } from "lucide-react";
+import { History, Upload } from "lucide-react";
 
 // ============================================================================
 // NAVIGATION ITEMS
@@ -63,6 +64,18 @@ const NAV_ITEMS = [
     label: "Analytics",
     href: "/analytics",
     icon: BarChart3,
+    badge: null,
+  },
+  {
+    label: "Imports",
+    href: "/imports",
+    icon: Upload,
+    badge: null,
+  },
+  {
+    label: "Security",
+    href: "/security",
+    icon: History,
     badge: null,
   },
 ];

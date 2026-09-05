@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 log = logging.getLogger(__name__)
 
 #: source_format values accepted by the API (exact strings).
-SOURCE_FORMATS = ("auto", "chatgpt", "claude", "generic")
+SOURCE_FORMATS = ("auto", "chatgpt", "claude", "gemini", "copilot", "openclaw", "generic")
 
 #: Memory.source_type written per format (exact strings — also in the
 #: MemoryCreate and list_memories Literals; no migration needed because
@@ -35,6 +35,9 @@ SOURCE_FORMATS = ("auto", "chatgpt", "claude", "generic")
 SOURCE_TYPE_FOR_FORMAT = {
     "chatgpt": "chatgpt_import",
     "claude": "claude_import",
+    "gemini": "gemini_import",
+    "copilot": "copilot_import",
+    "openclaw": "openclaw_import",
     "generic": "generic_import",
 }
 
@@ -260,6 +263,175 @@ def _pam_item(memory: dict) -> ImportItem:
     )
 
 
+def parse_gemini(data: Any) -> list[ImportItem]:
+    """Gemini Apps Takeout / export → one ImportItem per conversation.
+
+    PAM §3 documents two Takeout variants:
+      - ``MyActivity.json``: array of {time, title?, text?} entries
+      - ``Gemini Conversations.json``: {conversations: [{title, created_date,
+        messages: [{role, text}]}]}
+
+    Both reduce to the conversation-transcript shape. Undetectable garbage
+    raises :class:`ImportFormatError`.
+    """
+    if isinstance(data, dict):
+        convs = data.get("conversations") or []
+        if not isinstance(convs, list):
+            raise ImportFormatError(
+                "Gemini export 'conversations' must be a JSON array."
+            )
+        data = convs
+    if not isinstance(data, list):
+        raise ImportFormatError(
+            "Gemini export must be a JSON array of activities or "
+            "{'conversations': [...]} object."
+        )
+    items: list[ImportItem] = []
+    for conv in data:
+        item = _safe_item(lambda c=conv: _gemini_item(c))
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _gemini_item(conv: dict) -> ImportItem:
+    title = _clip(conv.get("title") or conv.get("text"), 500) or "Untitled Gemini conversation"
+    turns = conv.get("messages") or []
+    if not isinstance(turns, list):
+        turns = []
+    lines: list[str] = []
+    for turn in turns:
+        if not isinstance(turn, dict):
+            continue
+        role = str(turn.get("role") or "user")
+        text = str(turn.get("text") or "").strip()
+        if not text:
+            continue
+        label = "User" if role.lower() in ("user", "human") else "Assistant"
+        lines.append(f"{label}: {text}")
+    content = "\n\n".join(lines) if lines else str(conv.get("text") or "").strip()
+    if not content:
+        raise ValueError("empty gemini conversation")
+    if len(content) > MAX_CONTENT_CHARS:
+        content = content[:MAX_CONTENT_CHARS] + TRUNCATION_MARKER
+    created = _to_utc_datetime(conv.get("created_date") or conv.get("time"))
+    return ImportItem(
+        title=title,
+        content=content,
+        source_ref=_clip(conv.get("id") or conv.get("title"), 500),
+        captured_at=created,
+        tags=["gemini"],
+        metadata={"import_format": "gemini"},
+    )
+
+
+def parse_copilot(data: Any) -> list[ImportItem]:
+    """GitHub Copilot export (PAM §4) → one ImportItem per conversation.
+
+    PAM §4 documents the Privacy-Dashboard export: a JSON array of
+    ``{conversation_id, thread: {messages: [{role, text?}]}, ...}``-ish
+    shapes. Fields are defensive: everything optional, empty entries skip.
+    """
+    convs = data.get("conversations") if isinstance(data, dict) else data
+    if not isinstance(convs, list):
+        raise ImportFormatError(
+            "Copilot export must be a JSON array of conversations "
+            "or {'conversations': [...]}."
+        )
+    items: list[ImportItem] = []
+    for conv in convs:
+        item = _safe_item(lambda c=conv: _copilot_item(c))
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _copilot_item(conv: dict) -> ImportItem:
+    thread = conv.get("thread") or conv.get("messages") or []
+    if not isinstance(thread, list):
+        raise ValueError("copilot thread is not a list")
+    lines: list[str] = []
+    for turn in thread:
+        if not isinstance(turn, dict):
+            continue
+        role = str(turn.get("role") or "user")
+        text = str(turn.get("text") or turn.get("content") or "").strip()
+        if not text:
+            continue
+        label = "User" if role.lower() in ("user", "human") else "Assistant"
+        lines.append(f"{label}: {text}")
+    if not lines:
+        raise ValueError("empty copilot conversation")
+    content = "\n\n".join(lines)
+    if len(content) > MAX_CONTENT_CHARS:
+        content = content[:MAX_CONTENT_CHARS] + TRUNCATION_MARKER
+    title = _clip(conv.get("title"), 500) or "Untitled Copilot conversation"
+    return ImportItem(
+        title=title,
+        content=content,
+        source_ref=_clip(conv.get("conversation_id") or conv.get("id"), 500),
+        captured_at=_to_utc_datetime(conv.get("created_at")),
+        tags=["copilot"],
+        metadata={"import_format": "copilot"},
+    )
+
+
+def parse_openclaw(data: Any) -> list[ImportItem]:
+    """OpenClaw session-log dump → one ImportItem per session.
+
+    OpenClaw stores agent memory as local Markdown state (see
+    docs/research/PLATFORM_LANDSCAPE.md §4). The converter accepts the
+    JSON shape produced by the documented export flow: a list of
+    ``{session_id, entries: [{role, content, timestamp?}]}`` records —
+    i.e. the natural dump of the session-log store.
+    """
+    sessions = data.get("memory_entries") if isinstance(data, dict) else data
+    if not isinstance(sessions, list):
+        raise ImportFormatError(
+            "OpenClaw export must be a JSON array of session records "
+            "or {'memory_entries': [...]}."
+        )
+    items: list[ImportItem] = []
+    for session in sessions:
+        item = _safe_item(lambda s=session: _openclaw_item(s))
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _openclaw_item(session: dict) -> ImportItem:
+    session_id = str(session.get("session_id") or "").strip()
+    entries = session.get("entries") or session.get("logs") or []
+    if not isinstance(entries, list):
+        raise ValueError("openclaw session entries are not a list")
+    lines: list[str] = []
+    for entry in entries:
+        if isinstance(entry, str):
+            entry = {"role": "user", "content": entry}
+        if not isinstance(entry, dict):
+            continue
+        role = str(entry.get("role") or "user")
+        text = str(entry.get("content") or entry.get("text") or "").strip()
+        if not text:
+            continue
+        label = "User" if role.lower() in ("user", "human") else "Assistant"
+        lines.append(f"{label}: {text}")
+    if not lines:
+        raise ValueError("empty openclaw session")
+    content = "\n\n".join(lines)
+    if len(content) > MAX_CONTENT_CHARS:
+        content = content[:MAX_CONTENT_CHARS] + TRUNCATION_MARKER
+    title = _clip(session.get("title"), 500) or f"OpenClaw session {session_id[:8]}" if session_id else "OpenClaw session"
+    return ImportItem(
+        title=title,
+        content=content,
+        source_ref=_clip(session_id or session.get("id"), 500) or None,
+        captured_at=_to_utc_datetime(session.get("created_at") or session.get("timestamp")),
+        tags=["openclaw"],
+        metadata={"import_format": "openclaw"},
+    )
+
+
 def parse_generic(data: Any) -> list[ImportItem]:
     """Generic JSON → ImportItems.
 
@@ -319,16 +491,28 @@ def detect_format(data: Any) -> str:
                 return "chatgpt"
             if "chat_messages" in sample:
                 return "claude"
+            if "session_id" in sample and "memory_entries" in sample:
+                return "openclaw"
             if "content" in sample:
                 return "generic"
-    if isinstance(data, dict) and data.get("schema") == "portable-ai-memory":
-        return "generic"
+    if isinstance(data, dict):
+        if data.get("schema") == "portable-ai-memory":
+            return "generic"
+        if "memories" in data and "export_version" in data:
+            return "gemini"
+        if "conversations" in data and "copilot" in str(data.keys()).lower():
+            return "copilot"
+        if "memory_entries" in data:
+            return "openclaw"
     return "unknown"
 
 
 _PARSERS: dict[str, Any] = {
     "chatgpt": parse_chatgpt,
     "claude": parse_claude,
+    "gemini": parse_gemini,
+    "copilot": parse_copilot,
+    "openclaw": parse_openclaw,
     "generic": parse_generic,
 }
 

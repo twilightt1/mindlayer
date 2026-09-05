@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     # lite: "local" runs ChromaDB in-process (PersistentClient) against
     # CHROMA_LOCAL_PATH — no chroma container needed.
     CHROMA_MODE: str = "http"  # http | local
+    LEDGER_RETENTION_DAYS: int = 90
     CHROMA_LOCAL_PATH: str = "/data/chroma"
 
     # lite: "fs" stores uploads on the local filesystem instead of MinIO.
