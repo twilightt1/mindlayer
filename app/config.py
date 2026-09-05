@@ -4,16 +4,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
 
-    DATABASE_URL: str
+    # ── Lite mode ──────────────────────────────────────────────────────────────
+    # LITE_MODE=1 gives a zero-external-services deployment: SQLite storage,
+    # in-process Chroma, in-memory caches (no Redis), eager Celery tasks
+    # (no worker), filesystem uploads (no MinIO). Default DATABASE_URL /
+    # REDIS_URL point at the lite defaults; full-stack compose overrides them.
+    LITE_MODE: bool = False
+
+    # Celery: lite mode runs tasks eagerly in-process (no broker, no workers).
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+
+    DATABASE_URL: str = "sqlite+aiosqlite:////data/orivory.db"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
 
-    REDIS_URL: str
+    REDIS_URL: str = ""
     REDIS_POOL_MAX: int = 20
 
 
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = ""  # auto-generated (ephemeral) when unset in lite mode
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -55,6 +65,14 @@ class Settings(BaseSettings):
 
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8001
+    # lite: "local" runs ChromaDB in-process (PersistentClient) against
+    # CHROMA_LOCAL_PATH — no chroma container needed.
+    CHROMA_MODE: str = "http"  # http | local
+    CHROMA_LOCAL_PATH: str = "/data/chroma"
+
+    # lite: "fs" stores uploads on the local filesystem instead of MinIO.
+    STORAGE_BACKEND: str = "minio"  # minio | fs
+    FS_STORAGE_PATH: str = "/data/uploads"
 
 
     OPENROUTER_API_KEY: str = ""
@@ -146,6 +164,22 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
+
+    @model_validator(mode="after")
+    def _apply_lite_mode(self) -> "Settings":
+        if self.LITE_MODE:
+            # Ephemeral JWT secret when unset: lite is a single-user personal
+            # deployment; tokens survive only until the container restarts.
+            if not self.JWT_SECRET_KEY:
+                import secrets
+                self.JWT_SECRET_KEY = secrets.token_urlsafe(48)
+            # Eager tasks, local chroma, filesystem storage unless overridden.
+            self.CELERY_TASK_ALWAYS_EAGER = True
+            if self.CHROMA_MODE == "http" and self.CHROMA_HOST == "localhost":
+                self.CHROMA_MODE = "local"
+            if self.STORAGE_BACKEND == "minio" and not self.MINIO_ACCESS_KEY:
+                self.STORAGE_BACKEND = "fs"
+        return self
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

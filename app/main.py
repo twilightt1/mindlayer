@@ -15,13 +15,18 @@ log = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Starting RAG backend", environment=settings.ENVIRONMENT)
+    log.info("Starting RAG backend", environment=settings.ENVIRONMENT, lite=settings.LITE_MODE)
+    if settings.DATABASE_URL.startswith("sqlite"):
+        # Lite mode: create tables from model metadata (Postgres uses Alembic).
+        from app.database import bootstrap_sqlite
+        await bootstrap_sqlite()
+        log.info("SQLite schema bootstrapped")
     try:
         from app.storage import ensure_bucket
         await ensure_bucket()
-        log.info("MinIO bucket ready")
+        log.info("Storage ready (backend=%s)", settings.STORAGE_BACKEND)
     except Exception as e:
-        log.warning("MinIO init failed", error=str(e))
+        log.warning("Storage init failed", error=str(e))
     if settings.MCP_HUB_ENABLED:
         # Starlette does not run a mounted app's lifespan, so the host lifespan
         # must run the MCP session manager itself (see app/mcp_hub/server.py).

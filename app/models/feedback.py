@@ -10,16 +10,17 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     ForeignKey,
     Index,
     String,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.types import GUID
 
 
 class Feedback(Base):
@@ -28,24 +29,24 @@ class Feedback(Base):
     __tablename__ = "feedbacks"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
-        server_default=text("gen_random_uuid()"),
+        default=uuid.uuid4,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     message_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         nullable=False,
         index=True,
     )
@@ -66,7 +67,7 @@ class Feedback(Base):
 
     # Document IDs that were used in the answer
     doc_ids: Mapped[list[str]] = mapped_column(
-        ARRAY(String(128)),
+        JSON,
         nullable=False,
         server_default="{}",
     )
@@ -81,7 +82,7 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         nullable=False,
-        server_default=text("NOW()"),
+        server_default=func.now(),
         index=True,
     )
 

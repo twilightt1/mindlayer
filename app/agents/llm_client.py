@@ -86,7 +86,7 @@ class ResilientAsyncOpenAI:
         self.chat = type("Chat", (), {"completions": _ResilientCompletions(inner.chat.completions)})()
         self._llm_gate = _get_llm_semaphore()
 
-    async def __aenter__(self) -> "ResilientAsyncOpenAI":
+    async def __aenter__(self) -> ResilientAsyncOpenAI:
         return self
 
     async def __aexit__(self, *exc: Any) -> None:

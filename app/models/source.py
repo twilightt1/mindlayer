@@ -11,7 +11,7 @@ Orivory to pull memories from. Examples:
 
 `config` stores connection-specific settings (auth tokens, folder ids,
 etc.). It is encrypted at rest via ``EncryptedJSONB``: the dict is
-JSON-serialized and Fernet-encrypted before being written to the JSONB
+JSON-serialized and Fernet-encrypted before being written to the JSON
 column, and transparently decrypted on read. Legacy plaintext rows are
 read back unchanged, so no data migration is required.
 
@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     ForeignKey,
     Index,
@@ -31,14 +32,13 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models._datetime_helpers import utc_now
-from app.models.types import EncryptedJSONB
+from app.models.types import GUID, EncryptedJSONB
 
 if TYPE_CHECKING:
     from app.models.memory import Memory
@@ -70,8 +70,8 @@ SOURCE_STATUS = (
 class Source(Base):
     __tablename__ = "sources"
 
-    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:            Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:       Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     source_type:   Mapped[str]       = mapped_column(String(32), nullable=False, server_default="manual")
     display_name:  Mapped[str]       = mapped_column(String(255), nullable=False)
@@ -86,11 +86,11 @@ class Source(Base):
     last_sync_at:  Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     sync_cursor:   Mapped[str | None] = mapped_column(String(1000), nullable=True)  # opaque cursor for incremental sync
     sync_error:    Mapped[str | None] = mapped_column(Text, nullable=True)
-    memories_synced: Mapped[int]     = mapped_column(Integer(), server_default="0", nullable=False)
+    memories_synced: Mapped[int]     = mapped_column(Integer(), default=0, nullable=False)
 
-    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
-    created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
+    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSON, server_default="{}", nullable=False)
+    created_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=utc_now, nullable=False)
 
     user:        Mapped[User]                       = relationship(back_populates="sources")
     memory_links: Mapped[list[MemorySource]]        = relationship(back_populates="source", cascade="all, delete-orphan")
@@ -111,16 +111,16 @@ class MemorySource(Base):
 
     __tablename__ = "memory_sources"
 
-    id:             Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    memory_id:      Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_id:      Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
+    id:             Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    memory_id:      Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_id:      Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
 
     item_ref:     Mapped[str | None] = mapped_column(String(500), nullable=True)  # the remote id of the item
     item_url:     Mapped[str | None] = mapped_column(String(1000), nullable=True)
     item_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)        # short snippet from the source
 
-    fetched_at:     Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    extra_metadata: Mapped[dict]       = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
+    fetched_at:     Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    extra_metadata: Mapped[dict]       = mapped_column("metadata", JSON, server_default="{}", nullable=False)
 
     memory: Mapped[Memory] = relationship(back_populates="source_links")
     source: Mapped[Source] = relationship(back_populates="memory_links")

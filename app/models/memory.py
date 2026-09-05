@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     Boolean,
     Float,
@@ -31,13 +32,13 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    text,
+    func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models._datetime_helpers import utc_now
+from app.models.types import GUID
 
 if TYPE_CHECKING:
     from app.models.entity import MemoryEntity
@@ -48,9 +49,9 @@ if TYPE_CHECKING:
 class Memory(Base):
     __tablename__ = "memories"
 
-    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    parent_id:     Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id", ondelete="CASCADE"), nullable=True, index=True)
+    id:            Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:       Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    parent_id:     Mapped[uuid.UUID | None] = mapped_column(GUID(), ForeignKey("memories.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Origin description
     source_type:   Mapped[str]       = mapped_column(String(32), nullable=False, server_default="manual_note")
@@ -61,25 +62,25 @@ class Memory(Base):
     title:         Mapped[str | None] = mapped_column(String(500), nullable=True)
     content:       Mapped[str]        = mapped_column(Text, nullable=False)
     summary:       Mapped[str | None] = mapped_column(Text, nullable=True)
-    tags:          Mapped[list[str]]  = mapped_column(ARRAY(String), server_default=text("'{}'::varchar[]"), nullable=False)
+    tags:          Mapped[list[str]]  = mapped_column(JSON, nullable=False)
 
     # Scoring
     salience:      Mapped[float]      = mapped_column(Float, server_default="0.5", nullable=False)
-    pinned:        Mapped[bool]        = mapped_column(Boolean(), server_default="false", nullable=False)
-    is_shared:     Mapped[bool]        = mapped_column(Boolean(), server_default="false", nullable=False)  # Public share
+    pinned:        Mapped[bool]        = mapped_column(Boolean(), default=False, nullable=False)
+    is_shared:     Mapped[bool]        = mapped_column(Boolean(), default=False, nullable=False)  # Public share
 
     # Usage feedback (P2.1): bumped when a memory is recalled & used in an
     # answer; decayed periodically when untouched. Drives the salience loop.
-    recall_count:  Mapped[int]        = mapped_column(Integer(), server_default="0", nullable=False)
+    recall_count:  Mapped[int]        = mapped_column(Integer(), default=0, nullable=False)
     last_used_at:  Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     # Time
-    captured_at:   Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    indexed_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
-    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=utc_now, nullable=False)
+    captured_at:   Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    indexed_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:    Mapped[datetime]   = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=utc_now, nullable=False)
 
     # Free-form metadata
-    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
+    extra_metadata: Mapped[dict]      = mapped_column("metadata", JSON, server_default="{}", nullable=False)
 
     user:    Mapped[User]              = relationship(back_populates="memories")
     parent:  Mapped[Memory | None]     = relationship("Memory", remote_side="Memory.id", back_populates="children")
@@ -92,7 +93,7 @@ class Memory(Base):
         Index("ix_memories_user_salience", "user_id", "salience"),
         Index("ix_memories_source", "user_id", "source_type"),
         Index("ix_memories_user_last_used", "user_id", "last_used_at"),
-        Index("ix_memories_tags", "tags", postgresql_using="gin"),
+        Index("ix_memories_tags", "tags"),
     )
 
 

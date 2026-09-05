@@ -229,7 +229,7 @@ def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(key=REFRESH_COOKIE, path="/api/v1/auth")
 
 
-def _extract_refresh_token(body: "RefreshTokenRequest | None", request: Request) -> str | None:
+def _extract_refresh_token(body: RefreshTokenRequest | None, request: Request) -> str | None:
     """Prefer the httpOnly cookie; fall back to body for non-cookie clients."""
     cookie = request.cookies.get(REFRESH_COOKIE)
     if cookie:

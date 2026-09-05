@@ -13,24 +13,24 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Index, String, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, TIMESTAMP, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.types import GUID
 
 
 class ErasureReceipt(Base):
     __tablename__ = "erasure_receipts"
 
-    id:                   Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    user_id:              Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    requested_memory_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"), nullable=False)
+    id:                   Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id:              Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    requested_memory_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     # String(32): the honest statuses ("completed_with_residual" = 23 chars)
     # do not fit String(16) — the INSERT failed exactly when the receipt mattered.
     status:               Mapped[str]       = mapped_column(String(32), default="completed", server_default="completed", nullable=False)
-    detail:               Mapped[dict]      = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"), nullable=False)
-    created_at:           Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
+    detail:               Mapped[dict]      = mapped_column(JSON, default=dict, nullable=False)
+    created_at:           Mapped[datetime]  = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
         Index("ix_erasure_receipts_user_time", "user_id", "created_at"),
