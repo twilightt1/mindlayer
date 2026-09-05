@@ -47,6 +47,7 @@ Start here. Everything else is organized by purpose:
 | [research/ICP_AND_TIMING.md](research/ICP_AND_TIMING.md) | ICP reachability, competitive window, spec-vs-impl precedents |
 | [research/OSS_GROWTH_PLAYBOOK.md](research/OSS_GROWTH_PLAYBOOK.md) | Contributor growth playbook (evidence-ranked) |
 | [research/CLAWHUB_SKILL_FORMAT.md](research/CLAWHUB_SKILL_FORMAT.md) | OpenClaw skill format + publish flow |
+| [research/CLAUDE_MEM_ANALYSIS.md](research/CLAUDE_MEM_ANALYSIS.md) | claude-mem competitive analysis (92K★ threat + adopt-learn list) |
 | [research/DEVELOPMENT_RECOMMENDATIONS.md](research/DEVELOPMENT_RECOMMENDATIONS.md) | The original recommendation set (superseded in part by the hub pivot) |
 | [ideas/open-memory-hub.md](ideas/open-memory-hub.md) | The pivot decision one-pager (flagship, ICP, MVP scope) |
 

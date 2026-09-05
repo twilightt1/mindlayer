@@ -50,6 +50,19 @@
 10. **Parent ownership + depth-cap receipts polish** — partially done; see
     code TODOs.
 
+### From claude-mem competitive analysis (see research/CLAUDE_MEM_ANALYSIS.md)
+- **Auto-capture for OpenClaw**: an OpenClaw-side hook/integration that
+  flows agent session activity into Orivory's ingestion path without manual
+  calls (the pattern behind claude-mem's 90K+ stars) — highest-leverage
+  counter-move.
+- **Compression-before-storage**: optional AI summarize step before memory
+  writes (feature-flagged; ~10x token savings is their most-quoted metric).
+- **Progressive-disclosure search**: index → details workflow baked into
+  MCP tool descriptions; consider a `timeline` tool.
+- **Watch**: claude-mem's server-runtime GA plan (#2685) — Docker+pg+redis+
+  scopes is Orivory's full-stack lane; land ledger/receipts/benchmark
+  differentiators before their GA drops.
+
 ## Explicitly out of scope (for now)
 
 Meeting-notes AI (30+ player market), team-first positioning, Celery for
