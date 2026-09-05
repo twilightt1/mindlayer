@@ -14,6 +14,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker as _mk_session
+from sqlalchemy.ext.asyncio import create_async_engine as _mk_engine
+from sqlalchemy.pool import NullPool as _NullPool
 
 from app.database import get_db
 from app.main import app
@@ -56,11 +59,6 @@ async def _seed_agent(monkey=None, name="capture-agent",
     return {"user_id": user_id, "token": token, "client_id": client_id}
 
 
-from sqlalchemy.ext.asyncio import async_sessionmaker as _mk_session
-from sqlalchemy.ext.asyncio import create_async_engine as _mk_engine
-from sqlalchemy.pool import NullPool as _NullPool
-
-
 def _TestSession():
     eng = _mk_engine(
         "postgresql+asyncpg://postgres:password@localhost:55432/ragdb_test",
@@ -70,14 +68,11 @@ def _TestSession():
 
 
 async def _client():
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.pool import NullPool
-
-    test_engine = create_async_engine(
+    test_engine = _mk_engine(
         "postgresql+asyncpg://postgres:password@localhost:55432/ragdb_test",
-        poolclass=NullPool)
-    test_session = async_sessionmaker(test_engine, class_=AsyncSession,
-                                      expire_on_commit=False)
+        poolclass=_NullPool)
+    test_session = _mk_session(test_engine, class_=AsyncSession,
+                               expire_on_commit=False)
 
     async def _db_override():
         async with test_session() as session:
@@ -185,12 +180,10 @@ async def test_revoked_agent_token_import_fails():
     from app.database import AsyncSessionLocal as _Session3
 
     async with _Session3() as db:
-        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.pool import NullPool
-    eng = create_async_engine(
+        eng = _mk_engine(
         "postgresql+asyncpg://postgres:password@localhost:55432/ragdb_test",
-        poolclass=NullPool)
-    Sess = async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+        poolclass=_NullPool)
+    Sess = _mk_session(eng, class_=AsyncSession, expire_on_commit=False)
     async with Sess() as db:
         row = await db.get(AgentClient, agent_env["client_id"])
         row.status = "revoked"
