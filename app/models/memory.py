@@ -93,7 +93,6 @@ class Memory(Base):
         Index("ix_memories_user_salience", "user_id", "salience"),
         Index("ix_memories_source", "user_id", "source_type"),
         Index("ix_memories_user_last_used", "user_id", "last_used_at"),
-        Index("ix_memories_tags", "tags"),
     )
 
 
