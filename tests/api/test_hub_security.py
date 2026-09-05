@@ -15,16 +15,14 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-
-from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.pool import NullPool
 
+from app.database import get_db
 from app.main import app
 from app.models.agent_client import AgentClient
 from app.models.memory import Memory
 from app.models.user import User
-from app.database import get_db
 from app.utils.dependencies import get_current_verified_user
 
 pytestmark = pytest.mark.api
