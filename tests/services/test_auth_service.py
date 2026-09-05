@@ -11,9 +11,10 @@ Note: Integration tests for the full auth flow (endpoint tests) are in
 tests/test_auth.py. These tests focus on pure logic and service functions
 that can be tested without the full app context.
 """
-import pytest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Import the functions we want to test
 from app.services import auth_service
@@ -26,7 +27,7 @@ class TestPasswordHashing:
         """Password hash should be a valid bcrypt hash."""
         password = "SecurePass123!"
         hashed = auth_service._hash(password)
-        
+
         # bcrypt hashes start with $2b$ or $2a$
         assert hashed.startswith("$2")
         assert len(hashed) == 60  # bcrypt hashes are always 60 chars
@@ -36,7 +37,7 @@ class TestPasswordHashing:
         password = "SamePassword"
         hash1 = auth_service._hash(password)
         hash2 = auth_service._hash(password)
-        
+
         # Note: bcrypt uses random salt, so hashes differ
         # But verify should work for the same password
         assert auth_service._verify(password, hash1)
@@ -46,7 +47,7 @@ class TestPasswordHashing:
         """_verify should return True for correct password."""
         password = "CorrectPassword"
         hashed = auth_service._hash(password)
-        
+
         assert auth_service._verify(password, hashed) is True
 
     def test_verify_incorrect_password(self):
@@ -54,14 +55,14 @@ class TestPasswordHashing:
         password = "CorrectPassword"
         wrong_password = "WrongPassword"
         hashed = auth_service._hash(password)
-        
+
         assert auth_service._verify(wrong_password, hashed) is False
 
     def test_verify_empty_password(self):
         """_verify should return False for empty password."""
         password = "SomePassword"
         hashed = auth_service._hash(password)
-        
+
         assert auth_service._verify("", hashed) is False
 
     def test_hash_long_password(self):
@@ -69,7 +70,7 @@ class TestPasswordHashing:
         # Create a password > 72 bytes
         long_password = "x" * 100
         hashed = auth_service._hash(long_password)
-        
+
         # Should still be a valid bcrypt hash
         assert hashed.startswith("$2")
         assert auth_service._verify(long_password, hashed)
@@ -78,7 +79,7 @@ class TestPasswordHashing:
         """Very long passwords (256+ bytes) should work correctly."""
         very_long = "a" * 256
         hashed = auth_service._hash(very_long)
-        
+
         assert hashed.startswith("$2")
         assert auth_service._verify(very_long, hashed)
 
@@ -86,9 +87,9 @@ class TestPasswordHashing:
     async def test_hash_async_returns_valid_hash(self):
         """Async hash should return a valid bcrypt hash."""
         password = "AsyncTestPass"
-        
+
         async_hash = await auth_service._hash_async(password)
-        
+
         assert async_hash.startswith("$2")
         assert auth_service._verify(password, async_hash)
 
@@ -97,7 +98,7 @@ class TestPasswordHashing:
         """Async verify should return True for correct password."""
         password = "AsyncVerifyPass"
         hashed = auth_service._hash(password)
-        
+
         result = await auth_service._verify_async(password, hashed)
         assert result is True
 
@@ -106,7 +107,7 @@ class TestPasswordHashing:
         """Async verify should return False for incorrect password."""
         password = "AsyncVerifyPass"
         hashed = auth_service._hash(password)
-        
+
         result = await auth_service._verify_async("WrongPassword", hashed)
         assert result is False
 
@@ -152,7 +153,7 @@ class TestTokenHashing:
         """_hash_refresh_token should return SHA256 hex."""
         token = "test-token-123"
         hashed = auth_service._hash_refresh_token(token)
-        
+
         # SHA256 hex is 64 characters
         assert len(hashed) == 64
         # SHA256 hex is lowercase hexadecimal
@@ -163,14 +164,14 @@ class TestTokenHashing:
         token = "deterministic-token"
         hash1 = auth_service._hash_refresh_token(token)
         hash2 = auth_service._hash_refresh_token(token)
-        
+
         assert hash1 == hash2
 
     def test_hash_refresh_token_different_inputs(self):
         """Different tokens should produce different hashes."""
         hash1 = auth_service._hash_refresh_token("token1")
         hash2 = auth_service._hash_refresh_token("token2")
-        
+
         assert hash1 != hash2
 
 
@@ -180,7 +181,7 @@ class TestNowHelper:
     def test_now_returns_utc_time(self):
         """_now should return timezone-aware UTC datetime."""
         now = auth_service._now()
-        
+
         assert isinstance(now, datetime)
         assert now.tzinfo == UTC
 
@@ -189,7 +190,7 @@ class TestNowHelper:
         before = datetime.now(UTC)
         now = auth_service._now()
         after = datetime.now(UTC)
-        
+
         assert before <= now <= after + timedelta(seconds=1)
 
 
@@ -205,13 +206,13 @@ class TestCreateRefreshToken:
         mock_pipeline.sadd = MagicMock()
         mock_pipeline.expire = MagicMock()
         mock_pipeline.execute = AsyncMock(return_value=[True, 1, True])
-        
+
         mock_redis = MagicMock()
         mock_redis.pipeline = MagicMock(return_value=mock_pipeline)
-        
+
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             token = await auth_service._create_refresh("user-123")
-            
+
             assert isinstance(token, str)
             assert len(token) > 0
 
@@ -223,13 +224,13 @@ class TestCreateRefreshToken:
         mock_pipeline.sadd = MagicMock()
         mock_pipeline.expire = MagicMock()
         mock_pipeline.execute = AsyncMock(return_value=[True, 1, True])
-        
+
         mock_redis = MagicMock()
         mock_redis.pipeline = MagicMock(return_value=mock_pipeline)
-        
+
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             await auth_service._create_refresh("user-123")
-            
+
             # Verify pipeline was used
             mock_redis.pipeline.assert_called_once()
             # Verify setex was called with refresh prefix
@@ -245,10 +246,10 @@ class TestInvalidateRefresh:
         mock_redis = AsyncMock()
         mock_redis.smembers.return_value = {b"hash1", b"hash2"}
         mock_redis.delete.return_value = 3
-        
+
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             await auth_service._invalidate_all_refresh("user-123")
-            
+
             mock_redis.smembers.assert_called_once()
             mock_redis.delete.assert_called()
 
@@ -257,10 +258,10 @@ class TestInvalidateRefresh:
         """_invalidate_all_refresh should handle no existing tokens."""
         mock_redis = AsyncMock()
         mock_redis.smembers.return_value = set()
-        
+
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             await auth_service._invalidate_all_refresh("user-123")
-            
+
             mock_redis.smembers.assert_called_once()
             mock_redis.delete.assert_called_once()  # Just the user key
 
@@ -269,10 +270,10 @@ class TestInvalidateRefresh:
         """_invalidate_one_refresh should delete only the specified token."""
         mock_redis = AsyncMock()
         mock_redis.delete.return_value = 1
-        
+
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             await auth_service._invalidate_one_refresh("raw-token")
-            
+
             mock_redis.delete.assert_called_once()
 
 
@@ -283,7 +284,7 @@ class TestEdgeCases:
         """Password with unicode characters should work."""
         password = "пароль"  # Russian word for password
         hashed = auth_service._hash(password)
-        
+
         assert hashed.startswith("$2")
         assert auth_service._verify(password, hashed)
 
@@ -291,7 +292,7 @@ class TestEdgeCases:
         """Password with emoji should work."""
         password = "🔐🔑🗝️"
         hashed = auth_service._hash(password)
-        
+
         assert hashed.startswith("$2")
         assert auth_service._verify(password, hashed)
 
@@ -299,7 +300,7 @@ class TestEdgeCases:
         """Password with special characters should work."""
         password = "P@$$w0rd!#$%^&*()"
         hashed = auth_service._hash(password)
-        
+
         assert hashed.startswith("$2")
         assert auth_service._verify(password, hashed)
 
@@ -307,7 +308,7 @@ class TestEdgeCases:
         """Password verification should be whitespace-sensitive."""
         password = "NoSpaces"
         hashed = auth_service._hash(password)
-        
+
         assert auth_service._verify("NoSpaces", hashed) is True
         assert auth_service._verify("No Spaces", hashed) is False
         assert auth_service._verify("NoSpaces ", hashed) is False
@@ -322,5 +323,5 @@ class TestEdgeCases:
             if "0" in otp:
                 seen_zero = True
                 break
-        
+
         assert seen_zero, "OTP should be able to contain zero digit"

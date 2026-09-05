@@ -9,8 +9,9 @@ These tasks are thin wrappers around email_service, so we focus on:
 - Task registration and configuration
 - Error handling and retry logic
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestTaskConfiguration:
@@ -63,10 +64,10 @@ class TestSendVerificationEmail:
     def test_sends_verification_email_successfully(self):
         """Should call email_service.send_verification with correct args."""
         from app.tasks import email_tasks
-        
-        mock_self = MagicMock()
+
+        MagicMock()
         mock_email_instance = MagicMock()
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
             # Call the underlying function directly to avoid Celery task proxy
             email_tasks.send_verification_email.run(
@@ -74,7 +75,7 @@ class TestSendVerificationEmail:
                 otp="123456",
                 token="verify-token-abc123"
             )
-            
+
             mock_email_instance.send_verification.assert_called_once_with(
                 "user@example.com",
                 "123456",
@@ -84,11 +85,11 @@ class TestSendVerificationEmail:
     def test_retries_on_failure(self):
         """Should retry when email_service.send_verification raises."""
         from app.tasks import email_tasks
-        
-        mock_self = MagicMock()
+
+        MagicMock()
         mock_email_instance = MagicMock()
         mock_email_instance.send_verification.side_effect = Exception("SMTP error")
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
             with pytest.raises(Exception, match="SMTP error"):
                 email_tasks.send_verification_email.run(
@@ -104,17 +105,18 @@ class TestSendPasswordResetEmail:
     def test_sends_password_reset_email_successfully(self):
         """Should call email_service.send_password_reset with correct args."""
         from app.tasks import email_tasks
-        
-        mock_self = MagicMock()
+
+        MagicMock()
         mock_email_instance = MagicMock()
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
+            # Call the underlying function directly to avoid Celery task proxy
             email_tasks.send_password_reset_email.run(
                 to="user@example.com",
                 otp="654321",
                 token="reset-token-xyz789"
             )
-            
+
             mock_email_instance.send_password_reset.assert_called_once_with(
                 "user@example.com",
                 "654321",
@@ -124,11 +126,11 @@ class TestSendPasswordResetEmail:
     def test_retries_on_failure(self):
         """Should retry when email_service.send_password_reset raises."""
         from app.tasks import email_tasks
-        
-        mock_self = MagicMock()
+
+        MagicMock()
         mock_email_instance = MagicMock()
         mock_email_instance.send_password_reset.side_effect = Exception("Connection refused")
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
             with pytest.raises(Exception, match="Connection refused"):
                 email_tasks.send_password_reset_email.run(
@@ -143,61 +145,65 @@ class TestTaskLogging:
 
     def test_verification_email_logs_on_success(self, caplog):
         """Should complete without errors on successful send."""
-        from app.tasks import email_tasks
         import logging
-        
+
+        from app.tasks import email_tasks
+
         caplog.set_level(logging.INFO)
-        
+
         mock_email_instance = MagicMock()
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
+            # Call the underlying function directly to avoid Celery task proxy
             email_tasks.send_verification_email.run(
                 to="user@example.com",
                 otp="123456",
                 token="token"
             )
-        
+
         # Task should complete without error logs
         assert not any(record.levelname == 'ERROR' for record in caplog.records)
 
     def test_verification_email_logs_error_on_failure(self, caplog):
         """Should log error when email sending fails."""
-        from app.tasks import email_tasks
         import logging
-        
+
+        from app.tasks import email_tasks
+
         caplog.set_level(logging.ERROR)
-        
+
         mock_email_instance = MagicMock()
         mock_email_instance.send_verification.side_effect = Exception("SMTP error")
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="SMTP error"):
                 email_tasks.send_verification_email.run(
                     to="user@example.com",
                     otp="123456",
                     token="token"
                 )
-        
+
         # Should have logged an error
         assert any("Verification email failed" in record.message for record in caplog.records)
 
     def test_password_reset_email_logs_error_on_failure(self, caplog):
         """Should log error when password reset email sending fails."""
-        from app.tasks import email_tasks
         import logging
-        
+
+        from app.tasks import email_tasks
+
         caplog.set_level(logging.ERROR)
-        
+
         mock_email_instance = MagicMock()
         mock_email_instance.send_password_reset.side_effect = Exception("Connection refused")
-        
+
         with patch('app.services.email_service.email_service', mock_email_instance):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="Connection refused"):
                 email_tasks.send_password_reset_email.run(
                     to="user@example.com",
                     otp="654321",
                     token="token"
                 )
-        
+
         # Should have logged an error
         assert any("Reset email failed" in record.message for record in caplog.records)

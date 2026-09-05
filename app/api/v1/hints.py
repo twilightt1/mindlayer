@@ -65,7 +65,7 @@ async def get_hints(
 ) -> HintListResponse:
     """
     Get available hints for the current user.
-    
+
     Returns hints that are:
     - Active
     - Not permanently dismissed
@@ -75,7 +75,7 @@ async def get_hints(
     user_state = _get_hint_state(current_user.id)
 
     available_hints = []
-    for hint_id, hint in _HINTS_STORE.items():
+    for _hint_id, hint in _HINTS_STORE.items():
         if not hint.get("active", True):
             continue
         if not _is_hint_available(hint, user_state):
@@ -103,7 +103,7 @@ async def record_interaction(
 ) -> HintInteractionResponse:
     """
     Record a user's interaction with a hint.
-    
+
     Actions:
     - shown: Hint was displayed to user
     - dismissed: User dismissed the hint
@@ -153,7 +153,7 @@ async def dismiss_hint(
 ) -> HintInteractionResponse:
     """
     Permanently dismiss a hint for the user.
-    
+
     The hint will not be shown again unless re-activated by admin.
     """
     user_state = _get_hint_state(current_user.id)
@@ -205,7 +205,7 @@ async def track_feature_use(
 ) -> HintInteractionResponse:
     """
     Track that a user used a feature.
-    
+
     This updates the hint state to prevent hints about unused features
     from being shown.
     """
