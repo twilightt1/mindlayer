@@ -2924,7 +2924,7 @@ curl -X POST https://api.orivory.io/api/v1/imports \
 | Form field | Required | Description |
 |---|---|---|
 | `file` | yes | The raw export file (JSON). Max **20 MiB** (larger → `413`). |
-| `source_format` | no | `chatgpt` · `claude` · `generic`. Omitted/blank = **auto-detect**. An explicit unknown value → `422`. |
+| `source_format` | no | `auto` (same as omitted/blank — detection) · `chatgpt` · `claude` · `generic`. An explicit unknown value → `422`. |
 
 **Accepted formats** (detection heuristics follow the [PAM importer mappings](https://github.com/portable-ai-memory/portable-ai-memory/blob/master/importer-mappings.md)):
 
@@ -2957,7 +2957,7 @@ Duplicates are detected per `(user, source_type, source_ref)` — re-uploading t
 > - **OpenRecall** stores an unencrypted local SQLite; one `sqlite3` query converts it to the generic JSON shape:
 >
 >   ```bash
->   sqlite3 recall.db "SELECT json_object('content', text, 'created_at', timestamp, 'title', title) FROM entries" > openrecall.json
+>   sqlite3 recall.db "SELECT json_group_array(json_object('content', text, 'created_at', timestamp, 'title', title)) FROM entries" > openrecall.json
 >   ```
 
 ---

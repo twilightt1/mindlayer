@@ -104,7 +104,7 @@ def _safe_item[ItemType](convert: Callable[[], ItemType]) -> ItemType | None:
     """
     try:
         return convert()
-    except (AttributeError, TypeError, KeyError, ValueError):
+    except (AttributeError, TypeError, KeyError, ValueError, OverflowError):
         log.warning("skipping malformed import entry", exc_info=True)
         return None
 
@@ -132,7 +132,7 @@ def _chatgpt_transcript(conversation: dict) -> str:
             continue
         try:
             create_time = float(message.get("create_time") or 0)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             create_time = 0.0
         turns.append((create_time, role, text))
     turns.sort(key=lambda turn: turn[0])

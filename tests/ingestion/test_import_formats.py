@@ -369,3 +369,16 @@ def test_generic_tags_as_string_ignored_not_char_split():
     data = [{"content": "x", "tags": "rewind"}]
     items = parse_generic(data)
     assert items[0].tags == []
+
+
+def test_giant_create_time_overflow_degrades_never_fatal():
+    """10**400 as create_time must not 500 the import: OverflowError is
+    caught and the turn degrades to insertion-order (create_time=0)."""
+    payload = json.dumps([
+        {"title": "boom", "mapping": {"a": {"message": {"author": {"role": "user"},
+         "content": {"parts": ["hi"]}, "create_time": 10**400}}}},
+        {"title": "fine", "mapping": {"a": {"message": {"author": {"role": "user"},
+         "content": {"parts": ["hello"]}, "create_time": 1700000000}}}},
+    ])
+    items = parse_import(payload, "chatgpt")
+    assert sorted(i.title for i in items) == ["boom", "fine"]  # both survive
