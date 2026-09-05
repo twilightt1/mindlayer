@@ -33,3 +33,6 @@ eval/benchmarks/data/
 **/node_modules/
 # runtime artifacts
 eval/costs.db
+
+# git worktrees
+.worktrees/

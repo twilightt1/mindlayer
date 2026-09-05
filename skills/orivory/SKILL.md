@@ -96,6 +96,29 @@ agent: *"What tools do you have for memory?"*
 See `examples/` for full prompts and `references/tool-catalog.md` for every
 tool's arguments and when to use which.
 
+## Auto-capture (optional, recommended)
+
+Hook your agent's session activity into Orivory so memories flow in without
+manual calls. Two supported paths:
+
+1. **`scripts/openclaw_capture.py` (stdlib-only daemon)** — watches your
+   OpenClaw session/memory directory for new and changed Markdown files,
+   converts them to the OpenClaw session-JSON shape, and POSTs them to
+   `POST /api/v1/imports` using an agent token (`memory:write` scope).
+   Dedup is end-to-end: the local state file skips unchanged files and the
+   endpoint skips `(user, type, ref)` duplicates.
+
+   ```bash
+   python3 scripts/openclaw_capture.py --watch ~/.openclaw/workspace \
+       --url http://localhost:8000 --token "$ORIVORY_TOKEN" --interval 30
+   ```
+
+   `--once` runs a single scan; `--dry-run` prints what would be captured.
+   See `scripts/openclaw_capture.py --help` for all flags.
+
+2. **MCP write tools directly** — agents that can call tools should use
+   `add_memory` per fact (the tool-call path is already ledgered).
+
 ## Error handling
 
 `references/error-handling.md` covers: `401` (token expired/revoked — re-register
