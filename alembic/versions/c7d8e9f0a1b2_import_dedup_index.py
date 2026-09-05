@@ -13,21 +13,22 @@ Revision ID: c7d8e9f0a1b2
 Revises: e6f7a8b9c0d1
 Create Date: 2026-09-05 00:00:00.000000
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "c7d8e9f0a1b2"
-down_revision: Union[str, None] = "e6f7a8b9c0d1"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "e6f7a8b9c0d1"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     # Deduplicate existing imported memories first — the unique index below
     # would fail otherwise. Keep ONE row per (user, type, ref): the
-    # lexicographically smallest (created_at, id) pair — deterministic even
+    # lexicographically smallest (captured_at, id) pair — deterministic even
     # when timestamps tie. Later duplicates were the result of the
     # documented concurrent-import race. Child rows follow via ON DELETE
     # CASCADE.
@@ -41,7 +42,7 @@ def upgrade() -> None:
             WHERE k.user_id = m.user_id
               AND k.source_type = m.source_type
               AND k.source_ref = m.source_ref
-              AND (k.created_at, k.id) < (m.created_at, m.id)
+              AND (k.captured_at, k.id) < (m.captured_at, m.id)
           )
         """
     )

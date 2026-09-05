@@ -1,20 +1,15 @@
 import asyncio
 from logging.config import fileConfig
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
 from alembic import context
-
-                                                 
-from app.database import Base
-from app.models import user, email_verification, password_reset_session
-from app.models import conversation, document, document_chunk, message, user_quota
-# Orivory second-brain models
-from app.models import memory, entity, source
-from app.models.admin_audit import AdminActionLog
-from app.models.system_setting import SystemSetting
-
 from app.config import settings
+from app.database import Base
+
+# Orivory second-brain models
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
