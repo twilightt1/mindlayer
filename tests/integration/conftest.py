@@ -29,6 +29,21 @@ for key, value in _TEST_ENV_DEFAULTS.items():
 pytestmark = [pytest.mark.integration, pytest.mark.requires_infra]
 
 
+@pytest_asyncio.fixture
+async def db():
+    """Session-scoped-style DB fixture for integration tests.
+
+    Tables are created by the Alembic `migrate` step that runs before this
+    suite in CI (`docker compose run --rm migrate`). Locally, run
+    `docker compose up -d migrate` first.
+    """
+    from app.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        yield session
+        await session.rollback()
+
+
 def pytest_runtest_setup(item):
     if "requires_infra" in item.keywords and os.getenv("RUN_LIVE_INTEGRATION") != "1":
         pytest.skip("Set RUN_LIVE_INTEGRATION=1 to run live integration tests.")

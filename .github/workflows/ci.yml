@@ -267,6 +267,9 @@ jobs:
           docker compose logs postgres redis chromadb minio
           exit 1
 
+      - name: Run migrations
+        run: docker compose run --rm migrate
+
       - name: Run live integration tests
         run: python -m pytest --confcutdir=tests/integration tests/integration -q
 
